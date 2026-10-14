@@ -1,0 +1,103 @@
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when its first story starts (via build's sprint sync)
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; the status view surfaces open ones
+
+generated: 10-14-2026 13:02
+last_updated: 10-14-2026 13:02
+project: credit_system
+project_key: CS
+tracking_system: file-system
+story_location: "_bmad-output/implementation-artifacts"
+
+development_status:
+  epic-1: in-progress
+  1-1-immutable-money-value-object-monetary-precision-foundations: in-progress
+  1-2-dual-tier-relational-database-foundations-migration-harness: backlog
+  1-3-server-enforced-postgresql-tenant-isolation-append-only-audi: backlog
+  1-4-cloud-backup-continuous-wal-archiving-restore-drill-harness: backlog
+  1-5-automated-security-multi-tenant-integrity-ci-verification-pi: backlog
+  1-6-shop-profile-configuration-timezone-currency-display-prefere: backlog
+  1-7-counter-staff-administration-14-permission-rbac-configuratio: backlog
+  1-8-staff-authentication-session-management-server-enforced-revo: backlog
+  1-9-platform-administrator-governance-cross-tenant-access-restri: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-reusable-customer-profile-data-schema-persistence: backlog
+  2-2-mandatory-customer-photo-capture-client-compression-pipeline: backlog
+  2-3-customer-photo-exception-request-shop-owner-approval-workflo: backlog
+  2-4-shop-scoped-duplicate-customer-detection-shared-phone-resolu: backlog
+  2-5-customer-search-loan-navigation-multi-loan-target-selection: backlog
+  2-6-server-side-sensitive-customer-data-masking-rbac-enforcement: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-multi-item-collateral-relational-schema-decimal-weight-calib: backlog
+  3-2-mandatory-collateral-photographic-capture-forensic-inspectio: backlog
+  3-3-collateral-photo-missing-exception-request-shop-owner-overri: backlog
+  3-4-decoupled-per-item-custody-state-machine-physical-handover-v: backlog
+  3-5-collateral-exception-state-shop-owner-administrative-closure: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-loan-agreement-data-model-zero-interest-principal-tracking: backlog
+  4-2-loan-term-selection-preliminary-due-date-display: backlog
+  4-3-decoupled-cash-disbursement-confirmation-official-due-date-c: backlog
+  4-4-loan-agreement-documentation-draft-agreements-cash-disbursem: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-payment-submission-anti-overpayment-validation-settlement-tr: backlog
+  5-2-double-entry-ledger-formula-atomic-transaction-persistence: backlog
+  5-3-payment-idempotency-concurrency-control-correction-pending-l: backlog
+  5-4-immutable-receipt-snapshot-model-watermarked-reprints-audit: backlog
+  5-5-controlled-financial-correction-shop-owner-reversal-approval: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-automated-local-midnight-overdue-evaluation-badging-engine: backlog
+  6-2-shop-owner-due-date-extension-workflow-history-chain: backlog
+  6-3-delinquency-customer-follow-up-promise-to-pay-logging: backlog
+  6-4-structured-owner-case-resolution-collateral-disposition-gove: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-shop-owner-real-time-cash-reconciliation-portfolio-dashboard: backlog
+  7-2-audited-tabular-data-export-in-pdf-csv-with-server-pii-maski: backlog
+  7-3-database-enforced-append-only-audit-trail-viewer-immutabilit: backlog
+  7-4-automated-security-verification-rbac-boundary-test-gates: backlog
+  7-5-continuous-wal-archiving-s3-object-versioning-disaster-recov: backlog
+  epic-7-retrospective: optional
+
+action_items:
+  - epic: 1
+    action: "Complete remaining Acceptance Criteria for Story 1.1 (Drift SQLite and PostgreSQL minor unit mapping layers)"
+    owner: "Developer"
+    status: in-progress
