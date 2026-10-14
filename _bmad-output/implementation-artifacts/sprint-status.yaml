@@ -30,7 +30,7 @@
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 
 generated: 10-14-2026 13:02
-last_updated: 10-14-2026 13:02
+last_updated: 10-14-2026 13:10
 project: credit_system
 project_key: CS
 tracking_system: file-system
@@ -38,8 +38,8 @@ story_location: "_bmad-output/implementation-artifacts"
 
 development_status:
   epic-1: in-progress
-  1-1-immutable-money-value-object-monetary-precision-foundations: in-progress
-  1-2-dual-tier-relational-database-foundations-migration-harness: backlog
+  1-1-immutable-money-value-object-monetary-precision-foundations: done
+  1-2-dual-tier-relational-database-foundations-migration-harness: ready-for-dev
   1-3-server-enforced-postgresql-tenant-isolation-append-only-audi: backlog
   1-4-cloud-backup-continuous-wal-archiving-restore-drill-harness: backlog
   1-5-automated-security-multi-tenant-integrity-ci-verification-pi: backlog
