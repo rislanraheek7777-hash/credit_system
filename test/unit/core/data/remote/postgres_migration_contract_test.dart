@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:credit_system/core/data/remote/migration_runner.dart';
 
@@ -8,11 +9,23 @@ void main() {
     late String downSql;
 
     setUpAll(() async {
-      final upFile = File('lib/core/data/remote/migrations/001_initial_schema.sql');
-      final downFile = File('lib/core/data/remote/migrations/001_initial_schema_down.sql');
+      final upFile = File(
+        'lib/core/data/remote/migrations/001_initial_schema.sql',
+      );
+      final downFile = File(
+        'lib/core/data/remote/migrations/001_initial_schema_down.sql',
+      );
 
-      expect(await upFile.exists(), isTrue, reason: '001_initial_schema.sql must exist');
-      expect(await downFile.exists(), isTrue, reason: '001_initial_schema_down.sql must exist');
+      expect(
+        await upFile.exists(),
+        isTrue,
+        reason: '001_initial_schema.sql must exist',
+      );
+      expect(
+        await downFile.exists(),
+        isTrue,
+        reason: '001_initial_schema_down.sql must exist',
+      );
 
       upSql = await upFile.readAsString();
       downSql = await downFile.readAsString();
@@ -29,7 +42,12 @@ void main() {
 
       for (final table in requiredTables) {
         expect(
-          upSql.contains(RegExp('CREATE TABLE (IF NOT EXISTS )?$table\\b', caseSensitive: false)),
+          upSql.contains(
+            RegExp(
+              'CREATE TABLE (IF NOT EXISTS )?$table\\b',
+              caseSensitive: false,
+            ),
+          ),
           isTrue,
           reason: '001_initial_schema.sql must create table $table',
         );
@@ -37,12 +55,7 @@ void main() {
     });
 
     test('MONETARY INVARIANT (AD-2, FR-22): strictly prohibits floating-point types for financial columns', () {
-      final prohibitedTypes = [
-        'DOUBLE PRECISION',
-        'FLOAT8',
-        'FLOAT4',
-        'REAL',
-      ];
+      final prohibitedTypes = ['DOUBLE PRECISION', 'FLOAT8', 'FLOAT4', 'REAL'];
 
       // Strip SQL line comments (-- ...) and block comments (/* ... */)
       final ddlStatementsOnly = upSql
@@ -53,17 +66,27 @@ void main() {
         expect(
           ddlStatementsOnly.toUpperCase().contains(type),
           isFalse,
-          reason: '001_initial_schema.sql DDL statements must NEVER contain prohibited floating-point type $type',
+          reason:
+              '001_initial_schema.sql DDL statements must NEVER contain prohibited floating-point type $type',
         );
       }
     });
 
     test('TIMESTAMP CONVENTION: strictly uses TIMESTAMPTZ instead of naive TIMESTAMP', () {
       // Find all column definitions with TIMESTAMP
-      final naiveTimestampMatches = RegExp(r'\bTIMESTAMP\b(?!\s+WITH\s+TIME\s+ZONE)', caseSensitive: false)
-          .allMatches(upSql)
-          .where((m) => !upSql.substring(m.start - 10, m.end + 10).toUpperCase().contains('TIMESTAMPTZ'))
-          .toList();
+      final naiveTimestampMatches =
+          RegExp(
+                r'\bTIMESTAMP\b(?!\s+WITH\s+TIME\s+ZONE)',
+                caseSensitive: false,
+              )
+              .allMatches(upSql)
+              .where(
+                (m) => !upSql
+                    .substring(m.start - 10, m.end + 10)
+                    .toUpperCase()
+                    .contains('TIMESTAMPTZ'),
+              )
+              .toList();
 
       expect(
         naiveTimestampMatches.isEmpty,
@@ -73,8 +96,19 @@ void main() {
     });
 
     test('IDENTIFIER CONVENTION: uses UUID primary keys and foreign keys', () {
-      expect(upSql.contains(RegExp(r'id UUID PRIMARY KEY', caseSensitive: false)), isTrue);
-      expect(upSql.contains(RegExp(r'shop_id UUID NOT NULL REFERENCES shops\(id\)', caseSensitive: false)), isTrue);
+      expect(
+        upSql.contains(RegExp(r'id UUID PRIMARY KEY', caseSensitive: false)),
+        isTrue,
+      );
+      expect(
+        upSql.contains(
+          RegExp(
+            r'shop_id UUID NOT NULL REFERENCES shops\(id\)',
+            caseSensitive: false,
+          ),
+        ),
+        isTrue,
+      );
     });
 
     test('TENANT ISOLATION (AD-1, FR-4): enables and FORCES Row-Level Security on tenant-owned tables', () {
@@ -82,14 +116,25 @@ void main() {
 
       for (final table in rlsTables) {
         expect(
-          upSql.contains(RegExp('ALTER TABLE $table ENABLE ROW LEVEL SECURITY;', caseSensitive: false)),
+          upSql.contains(
+            RegExp(
+              'ALTER TABLE $table ENABLE ROW LEVEL SECURITY;',
+              caseSensitive: false,
+            ),
+          ),
           isTrue,
           reason: 'RLS must be enabled on $table',
         );
         expect(
-          upSql.contains(RegExp('ALTER TABLE $table FORCE ROW LEVEL SECURITY;', caseSensitive: false)),
+          upSql.contains(
+            RegExp(
+              'ALTER TABLE $table FORCE ROW LEVEL SECURITY;',
+              caseSensitive: false,
+            ),
+          ),
           isTrue,
-          reason: 'RLS must be FORCED on $table so table owners cannot bypass policies',
+          reason:
+              'RLS must be FORCED on $table so table owners cannot bypass policies',
         );
       }
     });
@@ -103,20 +148,43 @@ void main() {
     });
 
     test('AUDIT IMMUTABILITY (AD-6, FR-31): enforces trigger blocking UPDATE and DELETE on audit_events', () {
-      expect(upSql.contains('CREATE OR REPLACE FUNCTION reject_audit_tampering()'), isTrue);
+      expect(
+        upSql.contains('CREATE OR REPLACE FUNCTION reject_audit_tampering()'),
+        isTrue,
+      );
       expect(upSql.contains('CREATE TRIGGER trg_audit_immutable'), isTrue);
       expect(upSql.contains('BEFORE UPDATE OR DELETE ON audit_events'), isTrue);
       expect(upSql.contains('RAISE EXCEPTION'), isTrue);
     });
 
     test('ROLLBACK CLEANLINESS: 001_initial_schema_down.sql drops objects in reverse dependency order', () {
-      expect(downSql.contains('DROP TRIGGER IF EXISTS trg_audit_immutable ON audit_events;'), isTrue);
-      expect(downSql.contains('DROP FUNCTION IF EXISTS reject_audit_tampering();'), isTrue);
-      expect(downSql.contains('DROP TABLE IF EXISTS sync_queue CASCADE;'), isTrue);
-      expect(downSql.contains('DROP TABLE IF EXISTS audit_events CASCADE;'), isTrue);
-      expect(downSql.contains('DROP TABLE IF EXISTS app_users CASCADE;'), isTrue);
+      expect(
+        downSql.contains(
+          'DROP TRIGGER IF EXISTS trg_audit_immutable ON audit_events;',
+        ),
+        isTrue,
+      );
+      expect(
+        downSql.contains('DROP FUNCTION IF EXISTS reject_audit_tampering();'),
+        isTrue,
+      );
+      expect(
+        downSql.contains('DROP TABLE IF EXISTS sync_queue CASCADE;'),
+        isTrue,
+      );
+      expect(
+        downSql.contains('DROP TABLE IF EXISTS audit_events CASCADE;'),
+        isTrue,
+      );
+      expect(
+        downSql.contains('DROP TABLE IF EXISTS app_users CASCADE;'),
+        isTrue,
+      );
       expect(downSql.contains('DROP TABLE IF EXISTS shops CASCADE;'), isTrue);
-      expect(downSql.contains('DROP TABLE IF EXISTS schema_migrations CASCADE;'), isTrue);
+      expect(
+        downSql.contains('DROP TABLE IF EXISTS schema_migrations CASCADE;'),
+        isTrue,
+      );
     });
   });
 
@@ -131,7 +199,8 @@ void main() {
 
     test('computes deterministic SHA-256 checksums regardless of CRLF or LF line endings', () {
       const sqlLf = 'CREATE TABLE test (\n  id INTEGER PRIMARY KEY\n);\n';
-      const sqlCrlf = 'CREATE TABLE test (\r\n  id INTEGER PRIMARY KEY\r\n);\r\n';
+      const sqlCrlf =
+          'CREATE TABLE test (\r\n  id INTEGER PRIMARY KEY\r\n);\r\n';
 
       final hashLf = MigrationRunner.computeChecksum(sqlLf);
       final hashCrlf = MigrationRunner.computeChecksum(sqlCrlf);
@@ -169,7 +238,11 @@ void main() {
       await runner.applyMigration(migration);
       final secondRun = await runner.applyMigration(migration);
 
-      expect(secondRun, isFalse, reason: 'Already applied migration must not re-execute');
+      expect(
+        secondRun,
+        isFalse,
+        reason: 'Already applied migration must not re-execute',
+      );
       final appliedList = await runner.getAppliedMigrations();
       expect(appliedList.length, equals(1));
     });
@@ -200,8 +273,18 @@ void main() {
 
     test('ORDERING: throws MigrationSequenceException if migrations are not in ascending version order', () async {
       final unorderedMigrations = [
-        const MigrationDefinition(version: 2, name: '002_second', upSql: '', downSql: ''),
-        const MigrationDefinition(version: 1, name: '001_first', upSql: '', downSql: ''),
+        const MigrationDefinition(
+          version: 2,
+          name: '002_second',
+          upSql: '',
+          downSql: '',
+        ),
+        const MigrationDefinition(
+          version: 1,
+          name: '001_first',
+          upSql: '',
+          downSql: '',
+        ),
       ];
 
       expect(
@@ -210,22 +293,25 @@ void main() {
       );
     });
 
-    test('ROLLBACK: cleanly reverts applied migration and removes tracking entry', () async {
-      const migration = MigrationDefinition(
-        version: 1,
-        name: '001_initial_schema',
-        upSql: 'CREATE TABLE dummy (id INT);',
-        downSql: 'DROP TABLE dummy;',
-      );
+    test(
+      'ROLLBACK: cleanly reverts applied migration and removes tracking entry',
+      () async {
+        const migration = MigrationDefinition(
+          version: 1,
+          name: '001_initial_schema',
+          upSql: 'CREATE TABLE dummy (id INT);',
+          downSql: 'DROP TABLE dummy;',
+        );
 
-      await runner.applyMigration(migration);
-      expect((await runner.getAppliedMigrations()).length, equals(1));
+        await runner.applyMigration(migration);
+        expect((await runner.getAppliedMigrations()).length, equals(1));
 
-      final rolledBack = await runner.rollbackMigration(migration);
-      expect(rolledBack, isTrue);
+        final rolledBack = await runner.rollbackMigration(migration);
+        expect(rolledBack, isTrue);
 
-      expect((await runner.getAppliedMigrations()).isEmpty, isTrue);
-    });
+        expect((await runner.getAppliedMigrations()).isEmpty, isTrue);
+      },
+    );
   });
 }
 
@@ -235,33 +321,41 @@ class _MockSqlExecutor implements SqlDatabaseExecutor {
   final List<String> executedStatements = [];
 
   @override
-  Future<void> execute(String sql) async {
+  Future<void> execute(String sql, [List<dynamic>? parameters]) async {
+    // Record the executed SQL and parameters for test inspection.
     executedStatements.add(sql);
-
-    // Mock INSERT into schema_migrations
+    // Mock INSERT into schema_migrations using provided parameters.
     if (sql.trim().toUpperCase().startsWith('INSERT INTO SCHEMA_MIGRATIONS')) {
-      final versionMatch = RegExp(r'VALUES \((\d+),').firstMatch(sql);
-      final nameMatch = RegExp(r"'([^']+)',\s*'([a-f0-9]{64})'").firstMatch(sql);
-
-      if (versionMatch != null && nameMatch != null) {
+      if (parameters != null && parameters.length >= 3) {
         _migrationsTable.add({
-          'version': int.parse(versionMatch.group(1)!),
-          'name': nameMatch.group(1)!,
-          'checksum': nameMatch.group(2)!,
+          'version': parameters[0],
+          'name': parameters[1],
+          'checksum': parameters[2],
           'applied_at': DateTime.now().toUtc(),
         });
       }
-    } else if (sql.trim().toUpperCase().startsWith('DELETE FROM SCHEMA_MIGRATIONS')) {
-      final versionMatch = RegExp(r'version\s*=\s*(\d+)').firstMatch(sql);
-      if (versionMatch != null) {
-        final version = int.parse(versionMatch.group(1)!);
+    } else if (sql.trim().toUpperCase().startsWith(
+      'DELETE FROM SCHEMA_MIGRATIONS',
+    )) {
+      // Support parameterized delete or fallback to parsing version from SQL.
+      if (parameters != null && parameters.isNotEmpty) {
+        final version = parameters[0];
         _migrationsTable.removeWhere((row) => row['version'] == version);
+      } else {
+        final versionMatch = RegExp(r'version\s*=\s*(\d+)').firstMatch(sql);
+        if (versionMatch != null) {
+          final version = int.parse(versionMatch.group(1)!);
+          _migrationsTable.removeWhere((row) => row['version'] == version);
+        }
       }
     }
   }
 
   @override
-  Future<List<Map<String, dynamic>>> query(String sql, [List? parameters]) async {
+  Future<List<Map<String, dynamic>>> query(
+    String sql, [
+    List<dynamic>? parameters,
+  ]) async {
     if (sql.contains('FROM schema_migrations')) {
       return List<Map<String, dynamic>>.from(_migrationsTable);
     }
@@ -269,7 +363,9 @@ class _MockSqlExecutor implements SqlDatabaseExecutor {
   }
 
   @override
-  Future<T> transaction<T>(Future<T> Function(SqlDatabaseExecutor tx) action) async {
+  Future<T> transaction<T>(
+    Future<T> Function(SqlDatabaseExecutor tx) action,
+  ) async {
     return await action(this);
   }
 }

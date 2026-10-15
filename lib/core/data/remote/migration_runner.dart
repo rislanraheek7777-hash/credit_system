@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
 
 /// Representation of a versioned database migration script pair.
@@ -61,10 +62,10 @@ class MigrationChecksumMismatchException extends MigrationException {
     required this.expectedChecksum,
     required this.recordedChecksum,
   }) : super(
-          'Checksum mismatch for migration version $version. '
-          'Recorded in database: "$recordedChecksum", but local file hash is: "$expectedChecksum". '
-          'Altering previously applied migrations is strictly forbidden to prevent schema drift.',
-        );
+         'Checksum mismatch for migration version $version. '
+         'Recorded in database: "$recordedChecksum", but local file hash is: "$expectedChecksum". '
+         'Altering previously applied migrations is strictly forbidden to prevent schema drift.',
+       );
 }
 
 /// Thrown when migrations are provided out of sequence or with version gaps.
@@ -84,11 +85,14 @@ class MigrationExecutionException extends MigrationException {
 /// Database abstraction allowing the migration runner to execute against
 /// real PostgreSQL connections or in-memory simulation harnesses.
 abstract class SqlDatabaseExecutor {
-  /// Executes a DDL or modification statement.
-  Future<void> execute(String sql);
+  /// Executes a DDL or modification statement, optionally with parameters.
+  Future<void> execute(String sql, [List<dynamic>? parameters]);
 
   /// Executes a query returning rows as a list of maps.
-  Future<List<Map<String, dynamic>>> query(String sql, [List<dynamic>? parameters]);
+  Future<List<Map<String, dynamic>>> query(
+    String sql, [
+    List<dynamic>? parameters,
+  ]);
 
   /// Executes [action] inside an atomic database transaction.
   Future<T> transaction<T>(Future<T> Function(SqlDatabaseExecutor tx) action);
@@ -156,9 +160,9 @@ class MigrationRunner {
 
     final appliedList = await getAppliedMigrations();
     final existing = appliedList.cast<AppliedMigrationRecord?>().firstWhere(
-          (m) => m?.version == migration.version,
-          orElse: () => null,
-        );
+      (m) => m?.version == migration.version,
+      orElse: () => null,
+    );
 
     final localChecksum = migration.checksum;
 
@@ -178,8 +182,8 @@ class MigrationRunner {
       try {
         await tx.execute(migration.upSql);
         await tx.execute(
-          "INSERT INTO schema_migrations (version, name, checksum, applied_at) "
-          "VALUES (${migration.version}, '${migration.name}', '$localChecksum', NOW());",
+          "INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (@p0, @p1, @p2, NOW());",
+          [migration.version, migration.name, localChecksum],
         );
       } catch (e) {
         throw MigrationExecutionException(
