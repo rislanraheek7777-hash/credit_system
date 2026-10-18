@@ -1,0 +1,182 @@
+-- =============================================================================
+-- pgTAP Integration Test: cross_tenant_write.tap
+-- Story 1.3 — Server-Enforced PostgreSQL Tenant Isolation
+-- Tests covered:
+--   T-CW-01  Cross-tenant INSERT blocked by WITH CHECK under cs_app.
+--   T-CW-02  cs_app CANNOT INSERT into public.shops (table-level restriction).
+--   T-CW-03  Cross-tenant UPDATE blocked under cs_app.
+--   T-CW-04  Cross-tenant DELETE blocked under cs_app.
+--   T-CW-05  Privilege escalation: cs_app cannot set BYPASSRLS or become superuser.
+--   T-CW-06  cs_app inherits no higher privileged roles.
+--   T-CW-07  cs_audit_admin has NO insert/update/delete permissions on audit_events.
+-- =============================================================================
+
+\set ON_ERROR_STOP on
+
+BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS pgtap;
+
+DO $$
+BEGIN
+    IF current_setting('server_version_num')::integer < 160000 THEN
+        RAISE EXCEPTION 'cross_tenant_write.tap requires PostgreSQL 16+. Current: %', version();
+    END IF;
+END;
+$$;
+
+SELECT plan(9);
+
+SAVEPOINT fixtures_start;
+
+-- Setup fixtures as admin
+INSERT INTO public.shops (id, name, currency_code, timezone, created_at, updated_at)
+VALUES
+    ('cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid, 'Tenant C Shop', 'LKR', 'Asia/Colombo', NOW(), NOW()),
+    ('dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid, 'Tenant D Shop', 'LKR', 'Asia/Colombo', NOW(), NOW());
+
+INSERT INTO public.app_users (id, shop_id, username, full_name, role, is_active, session_version)
+VALUES
+    ('c0000000-0000-0000-0000-000000000001'::uuid, 'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid, 'user_c', 'User Gamma', 'counter_staff', TRUE, 1),
+    ('d0000000-0000-0000-0000-000000000001'::uuid, 'dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid, 'user_d', 'User Delta', 'counter_staff', TRUE, 1);
+
+INSERT INTO public.sync_queue (
+    id, shop_id, idempotency_key, entity_type, entity_id, action_type, payload_json, status
+) VALUES (
+    'c1000000-0000-0000-0000-000000000001'::uuid, 'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid,
+    'c1000000-0000-0000-0000-000000000099'::uuid, 'loan', 'c1000000-0000-0000-0000-000000000055'::uuid,
+    'create', '{"amount": 50000}'::jsonb, 'pending_server_ack'
+);
+
+-- Establish Tenant C context
+SELECT set_config('app.current_shop_id', 'cccccccc-cccc-cccc-cccc-cccccccccccc', true);
+
+-- Switch to runtime application role
+SET LOCAL ROLE cs_app;
+
+-- =============================================================================
+-- T-CW-01: Cross-tenant INSERT blocked by WITH CHECK
+-- =============================================================================
+
+SELECT throws_matching(
+    $$ INSERT INTO public.app_users (
+           id, shop_id, username, full_name, role, is_active, session_version
+       ) VALUES (
+           'd0000000-0000-0000-0000-000000000099'::uuid,
+           'dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid,
+           'rogue_user', 'Rogue User', 'counter_staff', TRUE, 1
+       ) $$,
+    'violates row-level security policy|permission denied',
+    'T-CW-01: cs_app cannot INSERT user belonging to Tenant D under Tenant C context'
+);
+
+SELECT throws_matching(
+    $$ INSERT INTO public.sync_queue (
+           id, shop_id, idempotency_key, entity_type, entity_id, action_type, payload_json, status
+       ) VALUES (
+           'd1000000-0000-0000-0000-000000000001'::uuid,
+           'dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid,
+           'd1000000-0000-0000-0000-000000000099'::uuid,
+           'loan', 'd1000000-0000-0000-0000-000000000055'::uuid,
+           'create', '{"amount": 99999}'::jsonb, 'pending_server_ack'
+       ) $$,
+    'violates row-level security policy|permission denied',
+    'T-CW-01b: cs_app cannot INSERT sync_queue entry for Tenant D under Tenant C context'
+);
+
+-- =============================================================================
+-- T-CW-02: cs_app cannot INSERT into public.shops
+-- =============================================================================
+
+SELECT throws_matching(
+    $$ INSERT INTO public.shops (id, name, currency_code, timezone)
+       VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid, 'Forbidden Shop', 'LKR', 'Asia/Colombo') $$,
+    'permission denied for table shops',
+    'T-CW-02: cs_app is denied INSERT permission on public.shops'
+);
+
+-- =============================================================================
+-- T-CW-03: Cross-tenant UPDATE affects 0 rows
+-- =============================================================================
+
+SELECT is(
+    (WITH updated AS (
+        UPDATE public.sync_queue
+        SET    status = 'confirmed_by_server'
+        WHERE  shop_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid
+        RETURNING id
+     )
+     SELECT COUNT(*)::integer FROM updated
+    ),
+    0,
+    'T-CW-03: cs_app cross-tenant UPDATE on Tenant D rows updates 0 rows'
+);
+
+-- =============================================================================
+-- T-CW-04: Cross-tenant DELETE affects 0 rows
+-- =============================================================================
+
+SELECT is(
+    (WITH deleted AS (
+        DELETE FROM public.app_users
+        WHERE shop_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'::uuid
+        RETURNING id
+     )
+     SELECT COUNT(*)::integer FROM deleted
+    ),
+    0,
+    'T-CW-04: cs_app cross-tenant DELETE on Tenant D rows deletes 0 rows'
+);
+
+-- Reset role to DBA to inspect catalog
+RESET ROLE;
+
+-- =============================================================================
+-- T-CW-05 & T-CW-06: Privilege Escalation Checks
+-- =============================================================================
+
+SELECT ok(
+    NOT EXISTS (
+        SELECT 1 FROM pg_roles
+        WHERE rolname = 'cs_app' AND (rolsuper OR rolbypassrls)
+    ),
+    'T-CW-05: cs_app has neither SUPERUSER nor BYPASSRLS'
+);
+
+SELECT ok(
+    NOT EXISTS (
+        SELECT 1 FROM pg_auth_members am
+        JOIN   pg_roles member ON member.oid = am.member
+        JOIN   pg_roles granted ON granted.oid = am.roleid
+        WHERE  member.rolname = 'cs_app'
+          AND  granted.rolname IN ('pg_read_all_data', 'pg_write_all_data', 'rds_superuser')
+    ),
+    'T-CW-06: cs_app inherits no elevated maintenance roles'
+);
+
+-- =============================================================================
+-- T-CW-07: cs_audit_admin read-only constraint
+-- =============================================================================
+
+SELECT ok(
+    NOT EXISTS (
+        SELECT 1
+        FROM   information_schema.role_table_grants
+        WHERE  table_schema  = 'public'
+          AND  table_name    = 'audit_events'
+          AND  grantee       = 'cs_audit_admin'
+          AND  privilege_type IN ('INSERT', 'UPDATE', 'DELETE')
+    ),
+    'T-CW-07: cs_audit_admin has NO insert/update/delete grants on audit_events'
+);
+
+SELECT ok(
+    NOT EXISTS (
+        SELECT 1 FROM pg_roles WHERE rolname = 'cs_audit_writer' AND rolbypassrls
+    ),
+    'T-CW-08: cs_audit_writer does NOT have BYPASSRLS'
+);
+
+ROLLBACK TO SAVEPOINT fixtures_start;
+SELECT * FROM finish();
+ROLLBACK;

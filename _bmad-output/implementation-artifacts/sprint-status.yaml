@@ -53,7 +53,7 @@ development_status:
   2-1-reusable-customer-profile-data-schema-persistence: backlog
   2-2-mandatory-customer-photo-capture-client-compression-pipeline: backlog
   2-3-customer-photo-exception-request-shop-owner-approval-workflo: backlog
-  2-4-shop-scoped-duplicate-customer-detection-shared-phone-resolu: backlog
+  2-4-shop-scoped-duplicate-customer-detection-shared-phone-resolu: done
   2-5-customer-search-loan-navigation-multi-loan-target-selection: backlog
   2-6-server-side-sensitive-customer-data-masking-rbac-enforcement: backlog
   epic-2-retrospective: optional

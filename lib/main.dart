@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
+import 'package:credit_system/features/customers/presentation/customer_search_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -84,6 +86,32 @@ class _MyHomePageState extends State<MyHomePage> {
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add),
+            tooltip: 'Register Customer',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CustomerRegistrationScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search Customers',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CustomerSearchScreen(
+                    shopId: 'shop-default',
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Center(
         // Center is a layout widget. It takes a single child and positions it

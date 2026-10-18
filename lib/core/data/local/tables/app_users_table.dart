@@ -34,6 +34,9 @@ class AppUsers extends Table {
   IntColumn get sessionVersion =>
       integer().withDefault(const Constant(1))();
 
+  /// Comma-separated list of granted permission keys for Custom roles (Story 1.7).
+  TextColumn get permissions => text().nullable()();
+
   /// UTC creation timestamp.
   DateTimeColumn get createdAt => dateTime()();
 

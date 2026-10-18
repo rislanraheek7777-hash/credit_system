@@ -1,0 +1,145 @@
+-- =============================================================================
+-- pgTAP Integration Test: cross_tenant_select.tap
+-- Story 1.3 — Server-Enforced PostgreSQL Tenant Isolation
+-- Tests covered:
+--   T-CS-01  Cross-tenant SELECT returns zero rows under least-privileged role (cs_app).
+--   T-CS-02  Unset app.current_shop_id returns zero rows for cs_app.
+--   T-CS-03  Context reset prevents pool context leakage.
+--   T-CS-04  Context isolation test: verifies cs_app is locked to authorized shop,
+--            failed context calls revert cleanly, and subtransaction rollback
+--            restores baseline on the same connection.
+-- =============================================================================
+
+\set ON_ERROR_STOP on
+
+BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS pgtap;
+
+DO $$
+BEGIN
+    IF current_setting('server_version_num')::integer < 160000 THEN
+        RAISE EXCEPTION 'cross_tenant_select.tap requires PostgreSQL 16+. Current version: %', version();
+    END IF;
+END;
+$$;
+
+SELECT plan(10);
+
+SAVEPOINT fixtures_start;
+
+-- Fixtures created as DB admin
+INSERT INTO public.shops (id, name, currency_code, timezone, created_at, updated_at)
+VALUES
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'Tenant A Shop', 'LKR', 'Asia/Colombo', NOW(), NOW()),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid, 'Tenant B Shop', 'LKR', 'Asia/Colombo', NOW(), NOW());
+
+INSERT INTO public.app_users (id, shop_id, username, full_name, role, is_active, session_version)
+VALUES
+    ('a0000000-0000-0000-0000-000000000001'::uuid, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'user_a', 'User Alpha', 'counter_staff', TRUE, 1),
+    ('b0000000-0000-0000-0000-000000000001'::uuid, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid, 'user_b', 'User Beta',  'counter_staff', TRUE, 1);
+
+-- =============================================================================
+-- T-CS-01: Cross-tenant SELECT under cs_app role
+-- =============================================================================
+
+-- Server establishes Tenant A context
+SELECT set_config('app.current_shop_id', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true);
+
+-- Switch to runtime application role
+SET LOCAL ROLE cs_app;
+
+SELECT is(
+    (SELECT COUNT(*)::integer FROM public.shops WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid),
+    0,
+    'T-CS-01: cs_app cannot read Tenant B shop under Tenant A context'
+);
+
+SELECT is(
+    (SELECT COUNT(*)::integer FROM public.app_users WHERE shop_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid),
+    0,
+    'T-CS-01b: cs_app cannot read Tenant B users under Tenant A context'
+);
+
+SELECT is(
+    (SELECT COUNT(*)::integer FROM public.shops WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid),
+    1,
+    'T-CS-01c: cs_app can read its own Tenant A shop'
+);
+
+-- =============================================================================
+-- T-CS-02: Empty/Unset context returns zero rows
+-- =============================================================================
+
+SELECT set_config('app.current_shop_id', '', true);
+
+SELECT is(
+    (SELECT COUNT(*)::integer FROM public.shops),
+    0,
+    'T-CS-02: With unset app.current_shop_id, cs_app sees 0 shops'
+);
+
+SELECT is(
+    (SELECT COUNT(*)::integer FROM public.app_users),
+    0,
+    'T-CS-02b: With unset app.current_shop_id, cs_app sees 0 app_users'
+);
+
+-- =============================================================================
+-- T-CS-03: Context reset & isolation
+-- =============================================================================
+
+SELECT set_config('app.current_shop_id', '', false);
+
+SELECT is(
+    (SELECT COUNT(*)::integer FROM public.shops),
+    0,
+    'T-CS-03: Explicit context reset prevents data visibility'
+);
+
+-- =============================================================================
+-- T-CS-04: Subtransaction savepoint rollback & failed context isolation
+-- =============================================================================
+
+RESET ROLE;
+
+-- 1. Precondition: capture pre-test baseline into a temporary table
+CREATE TEMP TABLE _context_baseline AS
+SELECT current_setting('app.current_shop_id', true) AS val;
+
+-- 2. Precondition: verify fake shop is absent from database
+SELECT is(
+    (SELECT COUNT(*)::integer FROM public.shops WHERE id = 'ffffffff-ffff-4fff-afff-ffffffffffff'::uuid),
+    0,
+    'T-CS-04a: Precondition: fake shop UUID does not exist in public.shops'
+);
+
+-- 3. Failed call invariant: non-existent shop UUID rejected, context left unchanged
+SELECT throws_matching(
+    $$ SELECT public.cs_set_tenant_context('ffffffff-ffff-4fff-afff-ffffffffffff') $$,
+    'does not exist or access denied',
+    'T-CS-04b: cs_set_tenant_context rejects non-existent shop'
+);
+
+SELECT is(
+    current_setting('app.current_shop_id', true),
+    (SELECT val FROM _context_baseline),
+    'T-CS-04c: Failed context call left app.current_shop_id unchanged from baseline'
+);
+
+-- 4. Subtransaction rollback on the same connection:
+SAVEPOINT subtx_test;
+
+SELECT public.cs_set_tenant_context('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+
+ROLLBACK TO SAVEPOINT subtx_test;
+
+SELECT is(
+    current_setting('app.current_shop_id', true),
+    (SELECT val FROM _context_baseline),
+    'T-CS-04d: Subtransaction rollback restored app.current_shop_id to baseline on same connection'
+);
+
+ROLLBACK TO SAVEPOINT fixtures_start;
+SELECT * FROM finish();
+ROLLBACK;

@@ -1,0 +1,165 @@
+-- =============================================================================
+-- pgTAP Integration Test: audit_immutability.tap
+-- Story 1.3 — Append-Only Audit Trail
+-- Tests covered:
+--   T-AI-01  Valid INSERT into audit_events succeeds under authorized role.
+--   T-AI-02  cs_app CANNOT INSERT directly into audit_events.
+--   T-AI-03  cs_app CANNOT UPDATE audit_events (table permission denied).
+--   T-AI-04  cs_app CANNOT DELETE audit_events (table permission denied).
+--   T-AI-05  cs_audit_writer CANNOT UPDATE audit_events (blocked by trigger).
+--   T-AI-06  cs_audit_writer CANNOT DELETE audit_events (blocked by trigger).
+--   T-AI-07  reject_audit_tampering function is owned by cs_audit_writer.
+--   T-AI-08  cs_audit_admin holds SELECT only (no INSERT/UPDATE/DELETE).
+--   T-AI-09  Trigger trg_audit_immutable is active on audit_events.
+-- =============================================================================
+
+\set ON_ERROR_STOP on
+
+BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS pgtap;
+
+DO $$
+BEGIN
+    IF current_setting('server_version_num')::integer < 160000 THEN
+        RAISE EXCEPTION 'audit_immutability.tap requires PostgreSQL 16+. Current: %', version();
+    END IF;
+END;
+$$;
+
+SELECT plan(9);
+
+SAVEPOINT fixtures_start;
+
+-- Setup fixtures as admin
+INSERT INTO public.shops (id, name, currency_code, timezone, created_at, updated_at)
+VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'::uuid, 'Tenant E (Audit Test)', 'LKR', 'Asia/Colombo', NOW(), NOW());
+
+INSERT INTO public.app_users (id, shop_id, username, full_name, role, is_active, session_version)
+VALUES ('e0000000-0000-0000-0000-000000000001'::uuid, 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'::uuid, 'user_e', 'User Epsilon', 'counter_staff', TRUE, 1);
+
+SELECT set_config('app.current_shop_id', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', true);
+
+-- =============================================================================
+-- T-AI-01: Insert audit event as cs_audit_writer (authorized writer role)
+-- =============================================================================
+
+SET LOCAL ROLE cs_audit_writer;
+
+INSERT INTO public.audit_events (
+    id, shop_id, event_category, action_type, actor_id, target_entity_type,
+    target_entity_id, pre_state_json, post_state_json, reason, client_ip, user_agent, server_timestamp
+) VALUES (
+    'e1000000-0000-0000-0000-000000000001'::uuid,
+    'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'::uuid,
+    1, 'LOAN_CREATE', 'e0000000-0000-0000-0000-000000000001'::uuid,
+    'loan', 'e1000000-0000-0000-0000-000000000099'::uuid,
+    NULL, '{"amount": 50000}'::jsonb, 'Integration test fixture', '127.0.0.1', 'pgTAP/1.0', NOW()
+);
+
+RESET ROLE;
+
+SELECT is(
+    (SELECT COUNT(*)::integer FROM public.audit_events WHERE id = 'e1000000-0000-0000-0000-000000000001'::uuid),
+    1,
+    'T-AI-01: cs_audit_writer successfully writes audit record'
+);
+
+-- =============================================================================
+-- T-AI-02 to T-AI-04: Test cs_app cannot INSERT, UPDATE, or DELETE audit records (Table Grant Denial)
+-- =============================================================================
+
+SET LOCAL ROLE cs_app;
+
+SELECT throws_matching(
+    $$ INSERT INTO public.audit_events (
+           id, shop_id, event_category, action_type, actor_id, target_entity_type, target_entity_id
+       ) VALUES (
+           'e2000000-0000-0000-0000-000000000002'::uuid,
+           'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'::uuid,
+           1, 'TAMPER_INSERT', 'e0000000-0000-0000-0000-000000000001'::uuid, 'loan', gen_random_uuid()
+       ) $$,
+    'permission denied for table audit_events',
+    'T-AI-02: cs_app is denied direct INSERT on audit_events'
+);
+
+SELECT throws_matching(
+    $$ UPDATE public.audit_events
+       SET reason = 'tampered'
+       WHERE id = 'e1000000-0000-0000-0000-000000000001'::uuid $$,
+    'permission denied for table audit_events',
+    'T-AI-03: cs_app cannot UPDATE audit_events (table grant denied)'
+);
+
+SELECT throws_matching(
+    $$ DELETE FROM public.audit_events
+       WHERE id = 'e1000000-0000-0000-0000-000000000001'::uuid $$,
+    'permission denied for table audit_events',
+    'T-AI-04: cs_app cannot DELETE audit_events (table grant denied)'
+);
+
+RESET ROLE;
+
+-- =============================================================================
+-- T-AI-05 to T-AI-06: Test cs_audit_writer blocked by trigger (Audit Immutability)
+-- =============================================================================
+
+SET LOCAL ROLE cs_audit_writer;
+
+SELECT throws_matching(
+    $$ UPDATE public.audit_events
+       SET reason = 'tampered'
+       WHERE id = 'e1000000-0000-0000-0000-000000000001'::uuid $$,
+    'Audit trail records are append-only and cannot be modified or deleted',
+    'T-AI-05: cs_audit_writer cannot UPDATE audit_events (trigger rejection)'
+);
+
+SELECT throws_matching(
+    $$ DELETE FROM public.audit_events
+       WHERE id = 'e1000000-0000-0000-0000-000000000001'::uuid $$,
+    'Audit trail records are append-only and cannot be modified or deleted',
+    'T-AI-06: cs_audit_writer cannot DELETE audit_events (trigger rejection)'
+);
+
+RESET ROLE;
+
+-- =============================================================================
+-- T-AI-07: Ownership & Function Configuration Checks
+-- =============================================================================
+
+SELECT is(
+    (SELECT r.rolname FROM pg_proc p JOIN pg_roles r ON r.oid = p.proowner WHERE p.proname = 'reject_audit_tampering'),
+    'cs_audit_writer',
+    'T-AI-07: reject_audit_tampering is owned by cs_audit_writer'
+);
+
+-- =============================================================================
+-- T-AI-08: cs_audit_admin read-only grant check
+-- =============================================================================
+
+SELECT ok(
+    NOT EXISTS (
+        SELECT 1 FROM information_schema.role_table_grants
+        WHERE table_schema = 'public'
+          AND table_name = 'audit_events'
+          AND grantee = 'cs_audit_admin'
+          AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE')
+    ),
+    'T-AI-08: cs_audit_admin has NO insert, update, or delete privileges on audit_events'
+);
+
+-- =============================================================================
+-- T-AI-09: Trigger presence check
+-- =============================================================================
+
+SELECT ok(
+    EXISTS (
+        SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+        WHERE c.relname = 'audit_events' AND t.tgname = 'trg_audit_immutable' AND t.tgenabled = 'O'
+    ),
+    'T-AI-09: trg_audit_immutable is active on audit_events'
+);
+
+ROLLBACK TO SAVEPOINT fixtures_start;
+SELECT * FROM finish();
+ROLLBACK;
