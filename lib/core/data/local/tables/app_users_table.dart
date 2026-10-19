@@ -37,6 +37,13 @@ class AppUsers extends Table {
   /// Comma-separated list of granted permission keys for Custom roles (Story 1.7).
   TextColumn get permissions => text().nullable()();
 
+  /// Encrypted password hash for authentication (Story 1.7).
+  ///
+  /// Nullable to preserve existing users created before password authentication
+  /// was introduced. Existing users must have a password set via Shop Owner
+  /// administration before they can authenticate.
+  TextColumn get passwordHash => text().nullable()();
+
   /// UTC creation timestamp.
   DateTimeColumn get createdAt => dateTime()();
 

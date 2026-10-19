@@ -40,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -92,6 +92,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createIndex(idxLoansShopCustomer);
         await m.createIndex(idxLoansShopStatus);
         await m.createIndex(idxLoansShopCustomerStatus);
+      }
+      if (from < 8) {
+        // Upgrade from Schema Version 7 to Version 8 (Story 1.7):
+        // Add password_hash column to app_users for secure authentication.
+        final passwordHashColumn = appUsers.passwordHash as GeneratedColumn;
+        await m.addColumn(appUsers, passwordHashColumn);
       }
     },
     beforeOpen: (OpeningDetails details) async {

@@ -943,6 +943,17 @@ class $AppUsersTable extends AppUsers
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _passwordHashMeta = const VerificationMeta(
+    'passwordHash',
+  );
+  @override
+  late final GeneratedColumn<String> passwordHash = GeneratedColumn<String>(
+    'password_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -975,6 +986,7 @@ class $AppUsersTable extends AppUsers
     isActive,
     sessionVersion,
     permissions,
+    passwordHash,
     createdAt,
     updatedAt,
   ];
@@ -1051,6 +1063,15 @@ class $AppUsersTable extends AppUsers
         ),
       );
     }
+    if (data.containsKey('password_hash')) {
+      context.handle(
+        _passwordHashMeta,
+        passwordHash.isAcceptableOrUnknown(
+          data['password_hash']!,
+          _passwordHashMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1112,6 +1133,10 @@ class $AppUsersTable extends AppUsers
         DriftSqlType.string,
         data['${effectivePrefix}permissions'],
       ),
+      passwordHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}password_hash'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1157,6 +1182,13 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
   /// Comma-separated list of granted permission keys for Custom roles (Story 1.7).
   final String? permissions;
 
+  /// Encrypted password hash for authentication (Story 1.7).
+  ///
+  /// Nullable to preserve existing users created before password authentication
+  /// was introduced. Existing users must have a password set via Shop Owner
+  /// administration before they can authenticate.
+  final String? passwordHash;
+
   /// UTC creation timestamp.
   final DateTime createdAt;
 
@@ -1171,6 +1203,7 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     required this.isActive,
     required this.sessionVersion,
     this.permissions,
+    this.passwordHash,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1186,6 +1219,9 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     map['session_version'] = Variable<int>(sessionVersion);
     if (!nullToAbsent || permissions != null) {
       map['permissions'] = Variable<String>(permissions);
+    }
+    if (!nullToAbsent || passwordHash != null) {
+      map['password_hash'] = Variable<String>(passwordHash);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1204,6 +1240,9 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
       permissions: permissions == null && nullToAbsent
           ? const Value.absent()
           : Value(permissions),
+      passwordHash: passwordHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(passwordHash),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1223,6 +1262,7 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
       isActive: serializer.fromJson<bool>(json['isActive']),
       sessionVersion: serializer.fromJson<int>(json['sessionVersion']),
       permissions: serializer.fromJson<String?>(json['permissions']),
+      passwordHash: serializer.fromJson<String?>(json['passwordHash']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1239,6 +1279,7 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
       'isActive': serializer.toJson<bool>(isActive),
       'sessionVersion': serializer.toJson<int>(sessionVersion),
       'permissions': serializer.toJson<String?>(permissions),
+      'passwordHash': serializer.toJson<String?>(passwordHash),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1253,6 +1294,7 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     bool? isActive,
     int? sessionVersion,
     Value<String?> permissions = const Value.absent(),
+    Value<String?> passwordHash = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => AppUserEntry(
@@ -1264,6 +1306,7 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     isActive: isActive ?? this.isActive,
     sessionVersion: sessionVersion ?? this.sessionVersion,
     permissions: permissions.present ? permissions.value : this.permissions,
+    passwordHash: passwordHash.present ? passwordHash.value : this.passwordHash,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1281,6 +1324,9 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
       permissions: data.permissions.present
           ? data.permissions.value
           : this.permissions,
+      passwordHash: data.passwordHash.present
+          ? data.passwordHash.value
+          : this.passwordHash,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1297,6 +1343,7 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
           ..write('isActive: $isActive, ')
           ..write('sessionVersion: $sessionVersion, ')
           ..write('permissions: $permissions, ')
+          ..write('passwordHash: $passwordHash, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1313,6 +1360,7 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     isActive,
     sessionVersion,
     permissions,
+    passwordHash,
     createdAt,
     updatedAt,
   );
@@ -1328,6 +1376,7 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
           other.isActive == this.isActive &&
           other.sessionVersion == this.sessionVersion &&
           other.permissions == this.permissions &&
+          other.passwordHash == this.passwordHash &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1341,6 +1390,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
   final Value<bool> isActive;
   final Value<int> sessionVersion;
   final Value<String?> permissions;
+  final Value<String?> passwordHash;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1353,6 +1403,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     this.isActive = const Value.absent(),
     this.sessionVersion = const Value.absent(),
     this.permissions = const Value.absent(),
+    this.passwordHash = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1366,6 +1417,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     this.isActive = const Value.absent(),
     this.sessionVersion = const Value.absent(),
     this.permissions = const Value.absent(),
+    this.passwordHash = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1385,6 +1437,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     Expression<bool>? isActive,
     Expression<int>? sessionVersion,
     Expression<String>? permissions,
+    Expression<String>? passwordHash,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1398,6 +1451,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
       if (isActive != null) 'is_active': isActive,
       if (sessionVersion != null) 'session_version': sessionVersion,
       if (permissions != null) 'permissions': permissions,
+      if (passwordHash != null) 'password_hash': passwordHash,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1413,6 +1467,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     Value<bool>? isActive,
     Value<int>? sessionVersion,
     Value<String?>? permissions,
+    Value<String?>? passwordHash,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1426,6 +1481,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
       isActive: isActive ?? this.isActive,
       sessionVersion: sessionVersion ?? this.sessionVersion,
       permissions: permissions ?? this.permissions,
+      passwordHash: passwordHash ?? this.passwordHash,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1459,6 +1515,9 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     if (permissions.present) {
       map['permissions'] = Variable<String>(permissions.value);
     }
+    if (passwordHash.present) {
+      map['password_hash'] = Variable<String>(passwordHash.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1482,6 +1541,7 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
           ..write('isActive: $isActive, ')
           ..write('sessionVersion: $sessionVersion, ')
           ..write('permissions: $permissions, ')
+          ..write('passwordHash: $passwordHash, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -5219,6 +5279,7 @@ typedef $$AppUsersTableCreateCompanionBuilder = AppUsersCompanion Function({
   Value<bool> isActive,
   Value<int> sessionVersion,
   Value<String?> permissions,
+  Value<String?> passwordHash,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -5232,6 +5293,7 @@ typedef $$AppUsersTableUpdateCompanionBuilder = AppUsersCompanion Function({
   Value<bool> isActive,
   Value<int> sessionVersion,
   Value<String?> permissions,
+  Value<String?> passwordHash,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -5350,6 +5412,11 @@ class $$AppUsersTableFilterComposer
 
   ColumnFilters<String> get permissions => $composableBuilder(
     column: $table.permissions,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get passwordHash => $composableBuilder(
+    column: $table.passwordHash,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5483,6 +5550,11 @@ class $$AppUsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get passwordHash => $composableBuilder(
+    column: $table.passwordHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5548,6 +5620,11 @@ class $$AppUsersTableAnnotationComposer
 
   GeneratedColumn<String> get permissions => $composableBuilder(
     column: $table.permissions,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get passwordHash => $composableBuilder(
+    column: $table.passwordHash,
     builder: (column) => column,
   );
 
@@ -5675,6 +5752,7 @@ class $$AppUsersTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<int> sessionVersion = const Value.absent(),
                 Value<String?> permissions = const Value.absent(),
+                Value<String?> passwordHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -5687,6 +5765,7 @@ class $$AppUsersTableTableManager
                 isActive: isActive,
                 sessionVersion: sessionVersion,
                 permissions: permissions,
+                passwordHash: passwordHash,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5701,6 +5780,7 @@ class $$AppUsersTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<int> sessionVersion = const Value.absent(),
                 Value<String?> permissions = const Value.absent(),
+                Value<String?> passwordHash = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -5713,6 +5793,7 @@ class $$AppUsersTableTableManager
                 isActive: isActive,
                 sessionVersion: sessionVersion,
                 permissions: permissions,
+                passwordHash: passwordHash,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

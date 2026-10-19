@@ -18,8 +18,8 @@ void main() {
   });
 
   group('AppDatabase - Local Drift Foundations & Schema v7 Tests', () {
-    test('schema version is 7 and all tables exist', () {
-      expect(db.schemaVersion, equals(7));
+    test('schema version is 8 and all tables exist', () {
+      expect(db.schemaVersion, equals(8));
       expect(
         db.allTables.map((t) => t.actualTableName),
         containsAll([
@@ -186,7 +186,7 @@ void main() {
       expect(retrieved.reviewedByUserId, isNull);
     });
 
-    test('MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes', () async {
+    test('MIGRATION: verifies upgrade from schema version 1 to 8 preserves existing data and creates customers and photo exceptions with indexes', () async {
       // Step 1: Open raw sqlite3 in-memory database and construct the exact Version 1 schema
       final rawSqliteDb = sqlite.sqlite3.openInMemory();
       rawSqliteDb.execute('''
@@ -263,6 +263,7 @@ void main() {
           .getSingle();
       expect(existingUser.id, equals('user-v1-existing'));
       expect(existingUser.username, equals('v1.user'));
+      expect(existingUser.passwordHash, isNull);
       expect(existingUser.permissions, isNull);
 
       // Verify pre-existing sync_queue record survived without modification
@@ -331,7 +332,7 @@ void main() {
       await upgradedDb.close();
     });
 
-    test('MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes', () async {
+    test('MIGRATION: verifies upgrade from schema version 2 to 8 preserves existing data and adds permissions, customers & photo exceptions with indexes', () async {
       final rawSqliteDb = sqlite.sqlite3.openInMemory();
       rawSqliteDb.execute('''
         CREATE TABLE "shops" (
@@ -400,6 +401,7 @@ void main() {
       expect(user.id, equals('user-v2-existing'));
       expect(user.sessionVersion, equals(2));
       expect(user.permissions, isNull);
+      expect(user.passwordHash, isNull);
 
       // Verify pre-existing sync_queue record survived without modification
       final existingSync = await (upgradedDb.select(upgradedDb.syncQueue)
@@ -463,7 +465,7 @@ void main() {
       await upgradedDb.close();
     });
 
-    test('MIGRATION: verifies upgrade from schema version 3 to 7 preserves existing data and creates customers & photo exceptions with indexes', () async {
+    test('MIGRATION: verifies upgrade from schema version 3 to 8 preserves existing data and creates customers & photo exceptions with indexes', () async {
       final rawSqliteDb = sqlite.sqlite3.openInMemory();
       rawSqliteDb.execute('''
         CREATE TABLE "shops" (
@@ -531,6 +533,7 @@ void main() {
             ..where((u) => u.id.equals('user-v3-orig')))
           .getSingle();
       expect(user.permissions, equals('viewCustomers,createLoans'));
+      expect(user.passwordHash, isNull);
 
       // Verify pre-existing sync_queue record survived without modification
       final existingSync = await (upgradedDb.select(upgradedDb.syncQueue)
@@ -596,7 +599,7 @@ void main() {
       await upgradedDb.close();
     });
 
-    test('MIGRATION: verifies upgrade from schema version 4 to 7 preserves existing data and creates photo exceptions with indexes', () async {
+    test('MIGRATION: verifies upgrade from schema version 4 to 8 preserves existing data and creates photo exceptions with indexes', () async {
       final rawSqliteDb = sqlite.sqlite3.openInMemory();
       rawSqliteDb.execute('''
         CREATE TABLE "shops" (
@@ -682,6 +685,12 @@ void main() {
       expect(existingCustomer.nic, equals('198512345678'));
       expect(existingCustomer.photoUri, equals('/photos/cust.jpg'));
 
+      // Verify pre-existing user survived with password_hash column available
+      final existingUser = await (upgradedDb.select(upgradedDb.appUsers)
+            ..where((u) => u.id.equals('user-v4-orig')))
+          .getSingle();
+      expect(existingUser.passwordHash, isNull);
+
       // Verify SQLite customer_photo_exceptions indexes were created
       final photoIndexRows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'customer_photo_exceptions';").get();
       final photoIndexNames = photoIndexRows.map((r) => r.read<String>('name')).toList();
@@ -716,7 +725,7 @@ void main() {
       await upgradedDb.close();
     });
 
-    test('MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index', () async {
+    test('MIGRATION: verifies upgrade from schema version 5 to 8 preserves existing data and adds the shared-phone index', () async {
       final rawSqliteDb = sqlite.sqlite3.openInMemory();
       rawSqliteDb.execute('''
         CREATE TABLE "shops" (
@@ -818,6 +827,12 @@ void main() {
       expect(existingCustomer.fullName, equals('V5 Existing Customer'));
       expect(existingCustomer.nic, equals('198512345678'));
 
+      // Verify pre-existing user survived with password_hash column available
+      final existingUser = await (upgradedDb.select(upgradedDb.appUsers)
+            ..where((u) => u.id.equals('user-v5-orig')))
+          .getSingle();
+      expect(existingUser.passwordHash, isNull);
+
       // Verify the new v6 shared-phone index was created
       final customerIndexRows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'customers';").get();
       final customerIndexNames = customerIndexRows.map((r) => r.read<String>('name')).toList();
@@ -850,7 +865,7 @@ void main() {
       await upgradedDb.close();
     });
 
-    test('MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes', () async {
+    test('MIGRATION: verifies upgrade from schema version 6 to 8 preserves existing data and adds loans table with indexes', () async {
       final rawSqliteDb = sqlite.sqlite3.openInMemory();
       rawSqliteDb.execute('''
         CREATE TABLE "shops" (
@@ -953,6 +968,12 @@ void main() {
       expect(existingCustomer.fullName, equals('V6 Existing Customer'));
       expect(existingCustomer.nic, equals('198512345678'));
 
+      // Verify pre-existing user survived with password_hash column available
+      final existingUser = await (upgradedDb.select(upgradedDb.appUsers)
+            ..where((u) => u.id.equals('user-v6-orig')))
+          .getSingle();
+      expect(existingUser.passwordHash, isNull);
+
       // Verify the new v7 loans table and indexes were created
       final loanIndexRows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'loans';").get();
       final loanIndexNames = loanIndexRows.map((r) => r.read<String>('name')).toList();
@@ -983,6 +1004,169 @@ void main() {
           .getSingle();
       expect(newLoan.status, equals('active'));
       expect(newLoan.customerId, equals('cust-v6-existing'));
+
+      await upgradedDb.close();
+    });
+
+    test('MIGRATION: verifies upgrade from schema version 7 to 8 adds password_hash column', () async {
+      final rawSqliteDb = sqlite.sqlite3.openInMemory();
+      rawSqliteDb.execute('''
+        CREATE TABLE "shops" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "name" TEXT NOT NULL,
+          "currency_code" TEXT NOT NULL DEFAULT 'LKR',
+          "timezone" TEXT NOT NULL DEFAULT 'Asia/Colombo',
+          "business_address" TEXT,
+          "contact_phone" TEXT,
+          "contact_email" TEXT,
+          "registration_number" TEXT,
+          "logo_uri" TEXT,
+          "receipt_header_notes" TEXT,
+          "receipt_footer_notes" TEXT,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL
+        );
+        CREATE TABLE "app_users" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL,
+          "username" TEXT NOT NULL,
+          "full_name" TEXT NOT NULL,
+          "role" TEXT NOT NULL,
+          "is_active" INTEGER NOT NULL DEFAULT 1,
+          "session_version" INTEGER NOT NULL DEFAULT 1,
+          "permissions" TEXT,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL
+        );
+        CREATE TABLE "sync_queue" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL,
+          "idempotency_key" TEXT NOT NULL UNIQUE,
+          "entity_type" TEXT NOT NULL,
+          "entity_id" TEXT NOT NULL,
+          "action_type" TEXT NOT NULL,
+          "payload_json" TEXT NOT NULL,
+          "status" TEXT NOT NULL DEFAULT 'pending_server_ack',
+          "retry_count" INTEGER NOT NULL DEFAULT 0,
+          "last_error" TEXT,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER
+        );
+        CREATE TABLE "customers" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL,
+          "full_name" TEXT NOT NULL,
+          "nic" TEXT NOT NULL,
+          "phone" TEXT NOT NULL,
+          "address" TEXT NOT NULL,
+          "photo_uri" TEXT,
+          "photo_hash" TEXT,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL
+        );
+        CREATE INDEX "idx_customers_shop_id" ON "customers" ("shop_id");
+        CREATE UNIQUE INDEX "idx_customers_shop_nic" ON "customers" ("shop_id", "nic");
+        CREATE INDEX "idx_customers_shop_phone" ON "customers" ("shop_id", "phone");
+        CREATE TABLE "customer_photo_exceptions" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL,
+          "target_customer_id" TEXT NOT NULL,
+          "customer_nic" TEXT NOT NULL,
+          "requested_by_user_id" TEXT NOT NULL,
+          "request_reason" TEXT NOT NULL,
+          "status" TEXT NOT NULL DEFAULT 'pending_owner_approval',
+          "reviewed_by_user_id" TEXT,
+          "review_notes" TEXT,
+          "reviewed_at" INTEGER,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL
+        );
+        CREATE INDEX "idx_photo_exceptions_shop_status" ON "customer_photo_exceptions" ("shop_id", "status");
+        CREATE INDEX "idx_photo_exceptions_customer" ON "customer_photo_exceptions" ("shop_id", "target_customer_id");
+        CREATE INDEX "idx_photo_exceptions_nic" ON "customer_photo_exceptions" ("shop_id", "customer_nic");
+        CREATE TABLE "loans" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL,
+          "customer_id" TEXT NOT NULL,
+          "principal_cents" INTEGER NOT NULL,
+          "balance_cents" INTEGER NOT NULL,
+          "status" TEXT NOT NULL,
+          "due_date" INTEGER NOT NULL,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL,
+          "settled_at" INTEGER
+        );
+        CREATE INDEX "idx_loans_shop_id" ON "loans" ("shop_id");
+        CREATE INDEX "idx_loans_shop_customer" ON "loans" ("shop_id", "customer_id");
+        CREATE INDEX "idx_loans_shop_status" ON "loans" ("shop_id", "status");
+        CREATE INDEX "idx_loans_shop_customer_status" ON "loans" ("shop_id", "customer_id", "status");
+        PRAGMA user_version = 7;
+      ''');
+
+      final nowEpoch = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+      rawSqliteDb.execute('''
+        INSERT INTO "shops" ("id", "name", "currency_code", "timezone", "created_at", "updated_at")
+        VALUES ('shop-v7-orig', 'V7 Original Shop', 'LKR', 'Asia/Colombo', $nowEpoch, $nowEpoch);
+      ''');
+      rawSqliteDb.execute('''
+        INSERT INTO "app_users" ("id", "shop_id", "username", "full_name", "role", "is_active", "session_version", "permissions", "created_at", "updated_at")
+        VALUES ('user-v7-orig', 'shop-v7-orig', 'v7.staff', 'V7 Staff', 'counter_staff', 1, 1, NULL, $nowEpoch, $nowEpoch);
+      ''');
+      rawSqliteDb.execute('''
+        INSERT INTO "customers" ("id", "shop_id", "full_name", "nic", "phone", "address", "photo_uri", "photo_hash", "created_at", "updated_at")
+        VALUES ('cust-v7-existing', 'shop-v7-orig', 'V7 Existing Customer', '198512345678', '+94 77 999 8888', '45 Park Road', '/photos/cust.jpg', 'hash-v7', $nowEpoch, $nowEpoch);
+      ''');
+      rawSqliteDb.execute('''
+        INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "due_date", "created_at", "updated_at")
+        VALUES ('loan-v7-existing', 'shop-v7-orig', 'cust-v7-existing', 500000, 500000, 'active', $nowEpoch, $nowEpoch, $nowEpoch);
+      ''');
+
+      final executor = NativeDatabase.opened(rawSqliteDb);
+      final upgradedDb = AppDatabase.forTesting(executor);
+
+      // Verify pre-existing user survived with password_hash column available and null by default
+      final existingUser = await (upgradedDb.select(upgradedDb.appUsers)
+            ..where((u) => u.id.equals('user-v7-orig')))
+          .getSingle();
+      expect(existingUser.username, equals('v7.staff'));
+      expect(existingUser.passwordHash, isNull);
+
+      // Verify pre-existing customer survived without loss
+      final existingCustomer = await (upgradedDb.select(upgradedDb.customers)
+            ..where((c) => c.id.equals('cust-v7-existing')))
+          .getSingle();
+      expect(existingCustomer.fullName, equals('V7 Existing Customer'));
+      expect(existingCustomer.nic, equals('198512345678'));
+
+      // Verify pre-existing loan survived without loss
+      final existingLoan = await (upgradedDb.select(upgradedDb.loans)
+            ..where((l) => l.id.equals('loan-v7-existing')))
+          .getSingle();
+      expect(existingLoan.status, equals('active'));
+      expect(existingLoan.customerId, equals('cust-v7-existing'));
+
+      // Verify inserting a user with password_hash set works after migration
+      final now = DateTime.now().toUtc();
+      await upgradedDb.into(upgradedDb.appUsers).insert(
+        AppUserEntry(
+          id: 'user-v8-new',
+          shopId: 'shop-v7-orig',
+          username: 'v8.newuser',
+          fullName: 'V8 New User',
+          role: 'cashier',
+          isActive: true,
+          sessionVersion: 1,
+          permissions: 'viewCustomers',
+          passwordHash: 'scrypt:hashed-password',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final newUser = await (upgradedDb.select(upgradedDb.appUsers)
+            ..where((u) => u.id.equals('user-v8-new')))
+          .getSingle();
+      expect(newUser.passwordHash, equals('scrypt:hashed-password'));
 
       await upgradedDb.close();
     });
