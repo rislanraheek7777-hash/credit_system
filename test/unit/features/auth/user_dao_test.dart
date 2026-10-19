@@ -237,5 +237,93 @@ void main() {
       expect(unchanged!.isActive, isTrue);
       expect(unchanged.sessionVersion, equals(1));
     });
+
+    test('PASSWORD HASH: persists and retrieves passwordHash correctly', () async {
+      final hash = '\$argon2id\$v=19\$m=65536,t=3,p=4\$salt\$hash';
+      final user = AppUser(
+        id: 'user-pw-001',
+        shopId: 'shop-alpha-100',
+        username: 'staff.withhash',
+        fullName: 'Staff With Hash',
+        role: AppRole.cashier,
+        passwordHash: hash,
+      );
+
+      await userDao.createUser(user);
+
+      final retrieved = await userDao.getUserById('user-pw-001');
+      expect(retrieved, isNotNull);
+      expect(retrieved!.passwordHash, equals(hash));
+    });
+
+    test('PASSWORD HASH: user created without hash retains passwordHash == null', () async {
+      final user = AppUser(
+        id: 'user-pw-002',
+        shopId: 'shop-alpha-100',
+        username: 'staff.nohash',
+        fullName: 'Staff No Hash',
+        role: AppRole.cashier,
+      );
+
+      await userDao.createUser(user);
+
+      final retrieved = await userDao.getUserById('user-pw-002');
+      expect(retrieved, isNotNull);
+      expect(retrieved!.passwordHash, isNull);
+    });
+
+    test('PASSWORD HASH: updateUserPassword increments sessionVersion and preserves shop scoping', () async {
+      final user = AppUser(
+        id: 'user-pw-003',
+        shopId: 'shop-alpha-100',
+        username: 'staff.pwupdate',
+        fullName: 'Staff PW Update',
+        role: AppRole.cashier,
+        sessionVersion: 1,
+      );
+      await userDao.createUser(user);
+
+      final newHash = '\$argon2id\$v=19\$m=65536,t=3,p=4\$newSalt\$newHash';
+      await userDao.updateUserPassword(
+        'shop-alpha-100',
+        'user-pw-003',
+        passwordHash: newHash,
+      );
+
+      final updated = await userDao.getUserById('user-pw-003');
+      expect(updated!, isNotNull);
+      expect(updated.passwordHash, equals(newHash));
+      expect(updated.sessionVersion, equals(2)); // Incremented to revoke sessions
+    });
+
+    test('PASSWORD HASH: updateUserPassword rejects cross-shop updates', () async {
+      final user = AppUser(
+        id: 'user-pw-004',
+        shopId: 'shop-alpha-100',
+        username: 'staff.crossshop',
+        fullName: 'Staff Cross Shop',
+        role: AppRole.cashier,
+      );
+      await userDao.createUser(user);
+
+      // Attempt to update password for user in Shop Alpha using Shop Beta scope
+      expect(
+        () => userDao.updateUserPassword(
+          'shop-beta-200',
+          'user-pw-004',
+          passwordHash: '\$argon2id\$v=19\$m=65536,t=3,p=4\$salt\$hash',
+        ),
+        throwsA(isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('Cannot find user with ID "user-pw-004" in shop "shop-beta-200"'),
+        )),
+      );
+
+      // Verify the user was not changed
+      final unchanged = await userDao.getUserById('user-pw-004');
+      expect(unchanged!.passwordHash, isNull);
+      expect(unchanged.sessionVersion, equals(1));
+    });
   });
 }

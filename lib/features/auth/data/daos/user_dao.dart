@@ -22,6 +22,7 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
       isActive: entry.isActive,
       sessionVersion: entry.sessionVersion,
       customPermissions: AppUser.parsePermissions(entry.permissions),
+      passwordHash: entry.passwordHash,
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt,
     );
@@ -38,6 +39,7 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
       isActive: Value(user.isActive),
       sessionVersion: Value(user.sessionVersion),
       permissions: Value(user.serializePermissions()),
+      passwordHash: Value(user.passwordHash),
       createdAt: Value(user.createdAt),
       updatedAt: Value(user.updatedAt),
     );
@@ -105,6 +107,35 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
       AppUsersCompanion(
         role: Value(role.key),
         permissions: Value(serialized),
+        sessionVersion: Value(existing.sessionVersion + 1),
+        updatedAt: Value(DateTime.now().toUtc()),
+      ),
+    );
+  }
+
+  /// Updates a user's password hash within a specific [shopId].
+  ///
+  /// Increments [sessionVersion] by 1 to immediately revoke all existing sessions
+  /// (PRD FR-5 / Story 1.7 session revocation contract). Enforces shop boundary
+  /// isolation: throws [StateError] if the user does not exist within [shopId],
+  /// preventing cross-shop tampering.
+  Future<void> updateUserPassword(
+    String shopId,
+    String userId, {
+    required String passwordHash,
+  }) async {
+    final query = select(appUsers)
+      ..where((u) => u.shopId.equals(shopId) & u.id.equals(userId));
+    final existing = await query.getSingleOrNull();
+    if (existing == null) {
+      throw StateError('Cannot find user with ID "$userId" in shop "$shopId"');
+    }
+
+    await (update(appUsers)
+          ..where((u) => u.shopId.equals(shopId) & u.id.equals(userId)))
+        .write(
+      AppUsersCompanion(
+        passwordHash: Value(passwordHash),
         sessionVersion: Value(existing.sessionVersion + 1),
         updatedAt: Value(DateTime.now().toUtc()),
       ),

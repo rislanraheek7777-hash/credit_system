@@ -40,6 +40,13 @@ class AppUser {
   /// Optional custom permission overrides for [AppRole.custom].
   final Set<AppPermission>? customPermissions;
 
+  /// Argon2id password hash for authentication.
+  ///
+  /// Nullable to preserve existing users created before password authentication
+  /// was introduced. Existing users must have a password set via Shop Owner
+  /// administration before they can authenticate.
+  final String? passwordHash;
+
   /// UTC creation timestamp.
   final DateTime createdAt;
 
@@ -55,6 +62,7 @@ class AppUser {
     this.isActive = true,
     this.sessionVersion = 1,
     this.customPermissions,
+    this.passwordHash,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now().toUtc(),
@@ -149,6 +157,7 @@ class AppUser {
     bool? isActive,
     int? sessionVersion,
     Set<AppPermission>? customPermissions,
+    String? passwordHash,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -161,6 +170,7 @@ class AppUser {
       isActive: isActive ?? this.isActive,
       sessionVersion: sessionVersion ?? this.sessionVersion,
       customPermissions: customPermissions ?? this.customPermissions,
+      passwordHash: passwordHash ?? this.passwordHash,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now().toUtc(),
     );
@@ -176,7 +186,8 @@ class AppUser {
         other.fullName == fullName &&
         other.role == role &&
         other.isActive == isActive &&
-        other.sessionVersion == sessionVersion;
+        other.sessionVersion == sessionVersion &&
+        other.passwordHash == passwordHash;
   }
 
   @override
@@ -188,5 +199,6 @@ class AppUser {
         role,
         isActive,
         sessionVersion,
+        passwordHash,
       );
 }

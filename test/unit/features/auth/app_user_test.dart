@@ -139,5 +139,84 @@ void main() {
       final parsed = AppUser.parsePermissions(serialized);
       expect(parsed, equals(user.customPermissions));
     });
+
+    test('PASSWORD HASH: nullable passwordHash field defaults to null', () {
+      final user = AppUser(
+        id: 'user-1',
+        shopId: 'shop-1',
+        username: 'user',
+        fullName: 'Name',
+        role: AppRole.cashier,
+      );
+      expect(user.passwordHash, isNull);
+    });
+
+    test('PASSWORD HASH: accepts and stores a password hash value', () {
+      final user = AppUser(
+        id: 'user-1',
+        shopId: 'shop-1',
+        username: 'user',
+        fullName: 'Name',
+        role: AppRole.cashier,
+        passwordHash: '\$argon2id\$v=19\$m=65536,t=3,p=4\$salt\$hash',
+      );
+      expect(
+        user.passwordHash,
+        equals('\$argon2id\$v=19\$m=65536,t=3,p=4\$salt\$hash'),
+      );
+    });
+
+    test('PASSWORD HASH: copyWith replaces passwordHash when provided', () {
+      final user = AppUser(
+        id: 'user-1',
+        shopId: 'shop-1',
+        username: 'user',
+        fullName: 'Name',
+        role: AppRole.cashier,
+      );
+      expect(user.passwordHash, isNull);
+
+      final updated = user.copyWith(
+        passwordHash: '\$argon2id\$v=19\$m=65536,t=3,p=4\$newSalt\$newHash',
+      );
+      expect(
+        updated.passwordHash,
+        equals('\$argon2id\$v=19\$m=65536,t=3,p=4\$newSalt\$newHash'),
+      );
+      // Original is unchanged
+      expect(user.passwordHash, isNull);
+    });
+
+    test('PASSWORD HASH: equality includes passwordHash', () {
+      const hash = '\$argon2id\$v=19\$m=65536,t=3,p=4\$salt\$hash';
+      final user1 = AppUser(
+        id: 'user-1',
+        shopId: 'shop-1',
+        username: 'user',
+        fullName: 'Name',
+        role: AppRole.cashier,
+        passwordHash: hash,
+      );
+      final user2 = AppUser(
+        id: 'user-1',
+        shopId: 'shop-1',
+        username: 'user',
+        fullName: 'Name',
+        role: AppRole.cashier,
+        passwordHash: hash,
+      );
+      final user3 = AppUser(
+        id: 'user-1',
+        shopId: 'shop-1',
+        username: 'user',
+        fullName: 'Name',
+        role: AppRole.cashier,
+      ); // passwordHash is null
+
+      expect(user1, equals(user2));
+      expect(user1.hashCode, equals(user2.hashCode));
+      expect(user1, isNot(equals(user3)));
+      expect(user1.hashCode, isNot(equals(user3.hashCode)));
+    });
   });
 }
