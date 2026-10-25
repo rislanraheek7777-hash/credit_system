@@ -1,0 +1,28 @@
+name: DR Drill
+on:
+  workflow_dispatch:
+    inputs:
+      backup_file:
+        required: true
+      target_ts:
+        required: true
+      recovery_db_url:
+        required: true
+
+jobs:
+  dr-drill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Run drill
+        env:
+          BACKUP_FILE: ${{ github.event.inputs.backup_file }}
+          TARGET_TS: ${{ github.event.inputs.target_ts }}
+          RECOVERY_DB_URL: ${{ github.event.inputs.recovery_db_url }}
+          MODE: managed
+          RTO_LIMIT_SECONDS: 14400
+        run: bash scripts/dr_drill.sh

@@ -877,7 +877,7 @@ So that vault inventory is accurate and loans cannot be marked as fully complete
 **When** Counter Staff with `confirmCollateralReturn` permission hands back an item  
 **Then** staff inspects the original intake photos and recorded weights as verification aids, checks the item on screen, and confirms return  
 **And** the item transitions from `In Custody` to `Returned`, recording the return timestamp, handing staff ID, and customer handover confirmation  
-**And** an audit event (Category 10: `Collateral physical return confirmations`) is appended to `audit_events`.
+**And** an audit event (Category 11: `Collateral physical return confirmations and exception closures`) is appended to `audit_events`.
 
 **Given** a loan with two items where the customer retrieves only one item today  
 **When** staff confirms return of Item 1  
@@ -936,7 +936,7 @@ So that loan debt obligations are accurately recorded without automated interest
 **When** they create a loan agreement with an attached customer, at least one collateral item, and a Principal Amount (using the immutable `Money` Value Object)  
 **Then** the loan is persisted with `Financial Status: Active / Pending Disbursement`, `Overall Workflow Status: Active (Pending Disbursement)`  
 **And** the Initial Outstanding Balance is set exactly equal to the Principal Amount in integer cents  
-**And** an audit event (Category 2: `Loan agreement origination`) is appended to `audit_events`.
+**And** an audit event (Category 2: `Loan agreement origination and cancellation`) is appended to `audit_events`.
 
 **Given** a loan agreement submission  
 **When** submitted by the client application  
@@ -993,7 +993,8 @@ So that cash reports reflect only genuinely disbursed funds and the official rep
 **When** authorized staff with `confirmLoanDisbursement` permission confirms physical cash handover  
 **Then** the loan transitions to `Financial Status: Active / Disbursed`, `Overall Workflow Status: Active`  
 **And** records the confirmed cash disbursement timestamp and disbursing staff ID  
-**And** an audit event (Category 4: `Confirmed cash disbursement`) is appended to `audit_events`.
+**And** an audit event (Category 4: `Confirmed cash disbursement`) is **queued for append** to `audit_events` as an append-only local record carrying the category, the action type, the disbursing staff ID, the confirmed timestamp and the calculated official due date  
+**And** the authoritative append to the server-side `audit_events` table is performed by the server-side audit writer upon synchronization and is owned by the audit-writer work, not by this story.
 
 **Given** cash disbursement confirmation for a loan with a preset duration (30, 60, or 90 days)  
 **When** disbursement is confirmed  
@@ -1009,11 +1010,14 @@ So that cash reports reflect only genuinely disbursed funds and the official rep
 
 **Given** an agreement in `Pending Disbursement` that is abandoned or cancelled  
 **When** the Shop Owner cancels the agreement with a mandatory reason  
-**Then** the agreement transitions to `Cancelled / Undisbursed`, leaving an audit trail without impacting daily cash-out reports.
+**Then** the agreement transitions to `Cancelled / Undisbursed`, leaving an audit trail without impacting daily cash-out reports  
+**And** the cancellation is recorded as an audit event in FR-31 **Category 2** (`Loan agreement origination and cancellation`) with action type `cancel_loan_agreement` — it is **not** recorded under Category 4 (`Confirmed cash disbursement`), because no cash was disbursed  
+**And** the pledged collateral items of the cancelled agreement **remain in the shop's custody**; the cancellation performs no collateral return and no item custody transition  
+**And** the system never cancels an undisbursed agreement automatically: there is no timeout and no auto-expiry, and an abandoned agreement is surfaced on a non-destructive worklist that reports it without changing its state.
 
-* **Traceability:** FR-6, FR-19, FR-31 (Event #4), AD-3, AD-6
+* **Traceability:** FR-6, FR-19, FR-31 (Event #4 for the disbursement; Event #2 for the cancellation), AD-3, AD-6
 * **Dependencies:** Story 4.1, Story 4.2
-* **Testing Guidance:** Unit tests verifying Cases 1–5 calendar calculation semantics; integration test verifying cash disbursement updates loan state to Active; test verifying cash reports exclude undisbursed loans; cancellation audit test.
+* **Testing Guidance:** Unit tests verifying Cases 1–5 calendar calculation semantics; integration test verifying cash disbursement updates loan state to Active; test verifying cash reports exclude undisbursed loans; cancellation audit test asserting the event carries Category 2 with action type `cancel_loan_agreement`; test asserting a cancelled agreement cannot be disbursed and cannot be cancelled twice; test asserting the pledged items remain in custody after cancellation.
 
 ---
 
@@ -1430,12 +1434,12 @@ So that shop operations are completely transparent, tamper-resistant, and verifi
 **When** they browse the shop's audit trail  
 **Then** the interface displays chronological records across all 14 mandatory critical event categories:
   1. Customer creation and profile edits.
-  2. Loan agreement origination.
-  3. Collateral registration and item edits.
+  2. Loan agreement origination and cancellation.
+  3. Collateral registration and item detail edits.
   4. Confirmed cash disbursement.
-  5. Payment recording (partial and settlement).
+  5. Payment recording (partial and full settlement).
   6. Financial correction requests (with reason).
-  7. Financial correction approvals/rejections by Shop Owner.
+  7. Financial correction approvals or rejections by Shop Owner.
   8. Due date extensions (with original/revised dates and reason).
   9. Customer follow-up notes and promises to pay.
   10. Owner decisions on overdue loans and collateral disposition.
@@ -1443,6 +1447,7 @@ So that shop operations are completely transparent, tamper-resistant, and verifi
   12. Staff account creation, deactivation, and permission modifications.
   13. Receipt reprints.
   14. Security events (unauthorized access attempts, cross-tenant violations).
+**And** Category 2 carries multiple action types — `loan_agreement_origination`, `cancel_loan_agreement`, and `loan_term_reagreed` — under the canonical catalogue authority (R1/R4); the `action_type` is the distinguishing field within a category.
 
 **Given** any audit record  
 **When** inspected  

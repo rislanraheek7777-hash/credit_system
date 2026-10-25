@@ -67,6 +67,10 @@ The codebase is structured into isolated, testable layers:
      - Re-transmitted requests return the existing confirmed transaction and receipt snapshot without re-executing balance deductions.
   7. **Sensitive PII Security:**
      - Customer NIC numbers, residential addresses, and photographic blobs are protected by server-side role-based access control and encrypted in transit (TLS 1.3). Direct unauthenticated media URLs are forbidden.
+   8. **Offline Audit Durability (R2 — approved, not yet implemented):**
+     - Offline durability is provided by a local, append-only, hash-chained journal in Drift SQLite (see AD-6 rule 7). The journal is a durability mechanism, not a second authority: the central cloud PostgreSQL `audit_events` table remains the authoritative, cryptographically verified record of truth, and every journal entry is reconciled to it on synchronization.
+     - Cash disbursement and cancellation of an undisbursed agreement are **permitted while offline**: the business mutation and its journal entry are written in the same local ACID transaction; the agreement state transitions immediately in the local database and the event is marked `Pending Server Confirmation` until server acknowledgement. Other high-risk administrative actions (approving corrections, due-date extensions, administrative closures) remain locked offline per AD-6 rule 8.
+     - Reconciliation: on connectivity, each `PendingServerAck` journal entry is appended to `audit_events` by the server-side audit writer (Story 1.3 / 1.8); a rejected entry is surfaced as `failed` with `lastError` and is never silently dropped; an entry is removed from the local journal only after server acknowledgement. A device lost before synchronization leaves a permanent gap, which FR-32's RPO does not cover; this is an accepted risk of the offline-first model.
 
 ### AD-2 — Integer Minor Units with Immutable Money Value Object [ADOPTED]
 
@@ -333,11 +337,13 @@ The codebase is structured into isolated, testable layers:
        FOR EACH ROW EXECUTE FUNCTION reject_audit_tampering();
        ```
      - *Limitations & Stronger Protection:* Trigger protection safeguards against application-level exploits and standard DB users. For enterprise compliance and disaster recovery, database backups and audit archives must be replicated to write-once-read-many (WORM / Object Lock) storage.
-  7. **Local SQLite Audit Records & Trust Hierarchy:**
-     - In local Drift SQLite, audit records are protected at the application layer by exposing insert-only and query-only repository methods.
-     - The central cloud PostgreSQL audit trail serves as the authoritative, cryptographically verified record of truth.
+  7. **Local SQLite Audit Records & Trust Hierarchy (R2 — approved, not yet implemented):**
+     - In local Drift SQLite, audit records are protected at the application layer by exposing insert-only and query-only repository methods, and (for offline durability) by an append-only, hash-chained journal whose entries are written inside the same local ACID transaction as the business mutation. The journal's entries are not themselves authoritative audit events; they are durable pre-images.
+     - The central cloud PostgreSQL `audit_events` table serves as the authoritative, cryptographically verified record of truth, and every journal entry is reconciled to it on synchronization. The journal survives device restarts but is not tamper-evident against a compromised device; enterprise-grade tamper evidence is provided by the server-side trigger and (per rule 6) by WORM/Object Lock replication of `audit_events`.
   8. **Offline Policy & Authorization Guarantees:**
      - Counter operations recorded while offline are explicitly marked `PendingServerAck` and cannot bypass permissions. High-risk administrative actions (e.g., approving corrections, due-date extensions, or administrative closures) are programmatically locked until central server connectivity is confirmed.
+     - **Offline-permitted, journal-backed actions (R2/U-1, approved):** cash disbursement and cancellation of an undisbursed agreement are permitted while offline. The business mutation and its journal entry are written in the same local ACID transaction; the agreement state transitions immediately in the local database and the event is marked `Pending Server Confirmation` until server acknowledgement. Other high-risk administrative actions remain locked offline.
+     - **Reconciliation of the local journal:** on connectivity, each `PendingServerAck` journal entry is appended to `audit_events` by the server-side audit writer (Story 1.3 / 1.8); a rejected entry is surfaced as `failed` with `lastError` and is never silently dropped; an entry is removed from the local journal only after server acknowledgement. A device lost before synchronization leaves a permanent gap, which FR-32's RPO does not cover; this is an accepted risk of the offline-first model.
   9. **Automated Verification Testing:**
      - Automated test suites verify:
        - Denial of unauthorized actions across all 14 permission toggles.
@@ -345,6 +351,9 @@ The codebase is structured into isolated, testable layers:
        - Instant session termination upon account deactivation.
        - Rejection of database `UPDATE` and `DELETE` on `audit_events`.
        - Rejection of financial corrections and extensions when mandatory business reasons are missing.
+   10. **Ownership & Epic Allocation (R2 — approved, not yet implemented):**
+      - Story 1.3 (server-side append, trigger, RLS) and Story 1.8 (AuditService wiring) own the authoritative writer to `audit_events`.
+      - The local append-only journal and the sync engine are owned by a new Story 1.x (offline audit durability) under Epic 1, with Story 7.3 (audit viewer) reading only from the authoritative store and Story 7.5 (disaster-recovery drill) extending its consistency checks to the journal's reconciliation.
 
 ### AD-7 — Test Pyramid Strategy with Automated CI Pipeline & Risk-Prioritized Coverage [ADOPTED]
 

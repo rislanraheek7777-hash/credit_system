@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../../../../core/data/local/app_database.dart';
 import '../../../../core/data/local/tables/app_users_table.dart';
 import '../../../../core/permissions/app_permission.dart';
+import '../services/password_hash_service.dart';
 import '../../domain/models/app_user.dart';
 
 part 'user_dao.g.dart';
@@ -10,6 +11,8 @@ part 'user_dao.g.dart';
 @DriftAccessor(tables: [AppUsers])
 class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
   UserDao(super.db);
+
+  final PasswordHashService _passwordHashService = PasswordHashService();
 
   /// Converts a Drift [AppUserEntry] row into a domain [AppUser].
   AppUser _toDomain(AppUserEntry entry) {
@@ -73,6 +76,24 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
   /// Inserts a new user account into the local database.
   Future<void> createUser(AppUser user) async {
     await into(appUsers).insert(_toCompanion(user));
+  }
+
+  /// Inserts a new user account with a hashed password into the local database.
+  ///
+  /// Hashes [plaintextPassword] using Argon2id via [PasswordHashService] before
+  /// persistence. Only the encoded password hash is stored; the plaintext
+  /// password is never persisted.
+  ///
+  /// Rejects empty or invalid passwords via [PasswordHashService.hashPassword].
+  /// Enforces shop-scoped username uniqueness via the database unique constraint
+  /// on {shopId, username}.
+  Future<void> createUserWithPassword(
+    AppUser user,
+    String plaintextPassword,
+  ) async {
+    final passwordHash = _passwordHashService.hashPassword(plaintextPassword);
+    final userWithHash = user.copyWith(passwordHash: passwordHash);
+    await into(appUsers).insert(_toCompanion(userWithHash));
   }
 
   /// Updates a user's role and granular permissions within a specific [shopId].

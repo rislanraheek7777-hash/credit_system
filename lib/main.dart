@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
+import 'package:credit_system/core/data/local/app_database.dart';
+import 'package:credit_system/core/data/remote/postgres_executor.dart';
+import 'package:credit_system/core/data/secure_storage.dart';
+import 'package:credit_system/features/auth/data/daos/user_dao.dart';
+import 'package:credit_system/features/auth/data/services/auth_service.dart';
+import 'package:credit_system/features/auth/data/services/jwt_service.dart';
+import 'package:credit_system/features/auth/data/services/password_hash_service.dart';
+import 'package:credit_system/features/auth/presentation/login_screen.dart';
+import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/presentation/customer_search_screen.dart';
 
 void main() {
@@ -9,142 +17,273 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Credit System',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const AuthWrapper(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+/// Authentication wrapper that shows the login screen until the user
+/// is authenticated, then shows the main application.
+///
+/// On launch, attempts to restore a session from a cached JWT in secure
+/// storage. If no valid cached session exists (or `JWT_SECRET` is not
+/// available for local verification), shows the login screen.
+///
+/// The authenticated [AppUser] is supplied by [LoginScreen] after
+/// successful server-side or offline authentication. No identity is
+/// hardcoded — the shop ID, user ID, role, and permissions all come from
+/// the cryptographically verified JWT (online) or the authoritative
+/// local Drift record (offline).
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isAuthenticated = false;
+  AppUser? _currentUser;
+  bool _isOfflineOnly = false;
+  bool _isInitializing = true;
 
-  void _incrementCounter() {
+  late final AppDatabase _appDatabase;
+  late final UserDao _userDao;
+  late final AuthService _authService;
+
+  @override
+  void initState() {
+    super.initState();
+    _appDatabase = AppDatabase();
+    _userDao = UserDao(_appDatabase);
+    _authService = AuthService(
+      pg: PostgreSqlExecutor.offline(),
+      jwt: JwtService('placeholder-offline-restore'),
+      passwordHash: PasswordHashService(),
+      secureStorage: FlutterSecureStorageService(),
+    );
+    _checkExistingAuth();
+  }
+
+  @override
+  void dispose() {
+    _appDatabase.close();
+    super.dispose();
+  }
+
+  /// Checks for a cached session in secure storage and restores it if
+  /// valid.
+  ///
+  /// Session restoration verifies the JWT signature locally (issuer,
+  /// audience, expiration) using `JwtService`. If `JWT_SECRET` is not
+  /// available at build time, local JWT verification is not possible and
+  /// the login screen is shown instead.
+  ///
+  /// If the JWT is valid, looks up the user in local Drift `app_users`
+  /// and checks `is_active` and `session_version` match. Offline sessions
+  /// are marked as offline-only and must be re-validated against
+  /// PostgreSQL before any server-bound operation.
+  Future<void> _checkExistingAuth() async {
+    bool hasCachedToken = false;
+    try {
+      hasCachedToken = await _authService.hasCachedToken();
+    } catch (_) {
+      // SecureStorage may not be available on all platforms.
+    }
+
+    if (!hasCachedToken || !mounted) {
+      setState(() {
+        _isAuthenticated = false;
+        _isInitializing = false;
+      });
+      return;
+    }
+
+    final String? token = await _authService.readCachedToken();
+    if (token == null || token.isEmpty || !mounted) {
+      setState(() {
+        _isAuthenticated = false;
+        _isInitializing = false;
+      });
+      return;
+    }
+
+    // Verify JWT signature locally (no PostgreSQL contact).
+    Map<String, dynamic> claims;
+    try {
+      claims = _authService.verifyTokenLocally(token);
+    } catch (_) {
+      // Invalid JWT — clear cache and show login screen.
+      await _authService.clearCachedSession();
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+          _isInitializing = false;
+        });
+      }
+      return;
+    }
+
+    final userId = claims['sub'] as String?;
+    final shopId = claims['shop_id'] as String?;
+    final tokenSessionVersion = claims['session_version'] as int?;
+    final role = claims['role'] as String?;
+
+    if (userId == null ||
+        userId.trim().isEmpty ||
+        shopId == null ||
+        shopId.trim().isEmpty ||
+        tokenSessionVersion == null ||
+        tokenSessionVersion < 1 ||
+        role == null ||
+        role.trim().isEmpty) {
+      await _authService.clearCachedSession();
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+          _isInitializing = false;
+        });
+      }
+      return;
+    }
+
+    // Look up the user in local Drift app_users to check is_active and
+    // session_version. Enforce tenant boundary: the local record must
+    // belong to the shop embedded in the JWT.
+    AppUser? localUser;
+    try {
+      localUser = await _userDao.getUserById(userId);
+      if (localUser != null && localUser.shopId != shopId) {
+        localUser = null;
+      }
+    } catch (_) {
+      // Local Drift query failed — cannot restore session offline.
+      await _authService.clearCachedSession();
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+          _isInitializing = false;
+        });
+      }
+      return;
+    }
+
+    if (localUser == null || !mounted) {
+      await _authService.clearCachedSession();
+      setState(() {
+        _isAuthenticated = false;
+        _isInitializing = false;
+      });
+      return;
+    }
+    final user = localUser; // Safe: null checked above
+
+    if (!user.isActive) {
+      await _authService.clearCachedSession();
+      setState(() {
+        _isAuthenticated = false;
+        _isInitializing = false;
+      });
+      return;
+    }
+
+    if (user.sessionVersion != tokenSessionVersion) {
+      await _authService.clearCachedSession();
+      setState(() {
+        _isAuthenticated = false;
+        _isInitializing = false;
+      });
+      return;
+    }
+
+    // Session restored successfully from cache.
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _isAuthenticated = true;
+      _currentUser = user;
+      _isOfflineOnly = true;
+      _isInitializing = false;
+    });
+  }
+
+  /// Called by [LoginScreen] after successful authentication.
+  ///
+  /// Stores the authenticated [AppUser] (with trusted shop ID, role, and
+  /// session version from the database record) and transitions to the main
+  /// application. No identity is hardcoded.
+  void _onAuthenticated(AppUser user, bool isOfflineOnly) {
+    setState(() {
+      _isAuthenticated = true;
+      _currentUser = user;
+      _isOfflineOnly = isOfflineOnly;
+      _isInitializing = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add),
-            tooltip: 'Register Customer',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CustomerRegistrationScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: 'Search Customers',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CustomerSearchScreen(
-                    shopId: 'shop-default',
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+    if (_isInitializing) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_isAuthenticated || _currentUser == null) {
+      return LoginScreen(onAuthenticated: _onAuthenticated);
+    }
+
+    return MainApp(
+      shopId: _currentUser!.shopId,
+      currentUser: _currentUser!,
+      isOfflineOnly: _isOfflineOnly,
+    );
+  }
+
+  /// Returns the currently authenticated user.
+  ///
+  /// The role, shop ID, and permissions are all derived from the
+  /// authenticated session — never hardcoded.
+  AppUser get currentUser {
+    if (_currentUser == null) {
+      throw StateError(
+        'No authenticated user. Call _onAuthenticated first.',
+      );
+    }
+    return _currentUser!;
+  }
+
+  /// Returns whether the current session was established offline only.
+  ///
+  /// Offline sessions must be re-validated against PostgreSQL before any
+  /// server-bound operation.
+  bool get isOfflineOnly => _isOfflineOnly;
+}
+
+/// Main application shell shown after authentication.
+class MainApp extends StatelessWidget {
+  final String shopId;
+  final AppUser currentUser;
+  final bool isOfflineOnly;
+
+  const MainApp({
+    super.key,
+    required this.shopId,
+    required this.currentUser,
+    this.isOfflineOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Credit System',
+      theme: ThemeData(
+        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+      home: CustomerSearchScreen(shopId: shopId, currentUser: currentUser),
     );
   }
 }

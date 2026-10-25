@@ -125,6 +125,58 @@ GRANT USAGE  ON SCHEMA public              TO cs_audit_admin;
 GRANT SELECT ON TABLE  public.audit_events TO cs_audit_admin;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- §AUDIT-WRITE  SECURITY DEFINER audit-event insertion function
+--
+-- cs_app holds SELECT-only on audit_events (least-privilege). Audit writes go
+-- through this SECURITY DEFINER function owned by cs_audit_writer (which holds
+-- INSERT on audit_events). The function runs with cs_audit_writer's table
+-- privileges but uses the caller's session settings, including
+-- app.current_shop_id set by the trusted application tier. FORCE RLS on
+-- audit_events still applies, so the function can only insert rows for the
+-- tenant context established by the caller.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.cs_record_audit_event(
+    p_shop_id uuid,
+    p_event_category integer,
+    p_action_type text,
+    p_actor_id uuid,
+    p_target_entity_type text,
+    p_target_entity_id uuid,
+    p_pre_state_json jsonb,
+    p_post_state_json jsonb,
+    p_reason text,
+    p_client_ip text,
+    p_user_agent text
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$
+BEGIN
+    INSERT INTO public.audit_events (
+        shop_id, event_category, action_type, actor_id,
+        target_entity_type, target_entity_id,
+        pre_state_json, post_state_json, reason,
+        client_ip, user_agent, server_timestamp
+    ) VALUES (
+        p_shop_id, p_event_category, p_action_type, p_actor_id,
+        p_target_entity_type, p_target_entity_id,
+        p_pre_state_json, p_post_state_json, p_reason,
+        p_client_ip, p_user_agent, NOW()
+    );
+END;
+$$;
+
+ALTER FUNCTION public.cs_record_audit_event(
+    uuid, integer, text, uuid, text, uuid, jsonb, jsonb, text, text, text
+) OWNER TO cs_audit_writer;
+
+GRANT EXECUTE ON FUNCTION public.cs_record_audit_event(
+    uuid, integer, text, uuid, text, uuid, jsonb, jsonb, text, text, text
+) TO cs_app;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- §CONTEXT  TENANT CONTEXT FUNCTIONS
 --
 -- SECURITY ARCHITECTURE & TRUST BOUNDARY:
@@ -328,7 +380,7 @@ SET search_path = pg_catalog
 AS $$
 BEGIN
     RAISE EXCEPTION
-        'Audit trail records are append-only and cannot be modified or deleted. Operation=%, Table=audit_events', TG_OP
+        'Audit trail records are strictly immutable and cannot be updated or deleted. Operation=%, Table=audit_events', TG_OP
         USING ERRCODE = 'insufficient_privilege';
 END;
 $$;

@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/data/local/connection/database_connection.dart';
+import 'package:credit_system/features/customers/domain/models/loan.dart';
 
 void main() {
   late AppDatabase db;
@@ -18,8 +19,8 @@ void main() {
   });
 
   group('AppDatabase - Local Drift Foundations & Schema v7 Tests', () {
-    test('schema version is 8 and all tables exist', () {
-      expect(db.schemaVersion, equals(8));
+    test('schema version is 19 and all tables exist', () {
+      expect(db.schemaVersion, equals(19));
       expect(
         db.allTables.map((t) => t.actualTableName),
         containsAll([
@@ -29,6 +30,11 @@ void main() {
           'customers',
           'customer_photo_exceptions',
           'loans',
+          'loan_corrections',
+          'loan_ledger_entries',
+          'due_date_extensions',
+          'customer_follow_ups',
+          'loan_resolutions',
         ]),
       );
     });
@@ -994,8 +1000,10 @@ void main() {
           principalCents: 500000,
           balanceCents: 500000,
           status: 'active',
+          workflowStatus: LoanWorkflowStatus.pendingDisbursement.value,
           dueDate: now.add(const Duration(days: 30)),
           createdAt: now,
+          correctionPending: false,
         ),
       );
 
@@ -1144,6 +1152,10 @@ void main() {
           .getSingle();
       expect(existingLoan.status, equals('active'));
       expect(existingLoan.customerId, equals('cust-v7-existing'));
+      // Story 4.1 (schema v12): loans that predate the disbursement workflow
+      // were already payable under the Story 2.5 model, so the migration
+      // backfills them to 'disbursed' rather than blocking their payments.
+      expect(existingLoan.workflowStatus, equals('disbursed'));
 
       // Verify inserting a user with password_hash set works after migration
       final now = DateTime.now().toUtc();
@@ -1167,6 +1179,194 @@ void main() {
             ..where((u) => u.id.equals('user-v8-new')))
           .getSingle();
       expect(newUser.passwordHash, equals('scrypt:hashed-password'));
+
+      await upgradedDb.close();
+    });
+
+    test('MIGRATION: verifies upgrade from schema version 12 to 13 rebuilds the '
+        'loans table, preserves balances and keeps child foreign keys intact',
+        () async {
+      // A v12 database that already holds a loan and a collateral item bound
+      // to it. The child row is what exercises the foreign-key safety of the
+      // loans table rebuild.
+      final rawSqliteDb = sqlite.sqlite3.openInMemory();
+      rawSqliteDb.execute('''
+        CREATE TABLE "shops" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "name" TEXT NOT NULL,
+          "currency_code" TEXT NOT NULL DEFAULT 'LKR',
+          "timezone" TEXT NOT NULL DEFAULT 'Asia/Colombo',
+          "business_address" TEXT,
+          "contact_phone" TEXT,
+          "contact_email" TEXT,
+          "registration_number" TEXT,
+          "logo_uri" TEXT,
+          "receipt_header_notes" TEXT,
+          "receipt_footer_notes" TEXT,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL
+        );
+        CREATE TABLE "app_users" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
+          "username" TEXT NOT NULL,
+          "full_name" TEXT NOT NULL,
+          "role" TEXT NOT NULL,
+          "is_active" INTEGER NOT NULL DEFAULT 1,
+          "session_version" INTEGER NOT NULL DEFAULT 1,
+          "permissions" TEXT,
+          "password_hash" TEXT,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL
+        );
+        CREATE TABLE "sync_queue" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
+          "idempotency_key" TEXT NOT NULL,
+          "entity_type" TEXT NOT NULL,
+          "entity_id" TEXT NOT NULL,
+          "action_type" TEXT NOT NULL,
+          "payload_json" TEXT NOT NULL,
+          "status" TEXT NOT NULL DEFAULT 'pending_server_ack',
+          "retry_count" INTEGER NOT NULL DEFAULT 0,
+          "last_error" TEXT,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER,
+          UNIQUE ("shop_id", "idempotency_key")
+        );
+        CREATE UNIQUE INDEX "idx_sync_queue_idempotency" ON "sync_queue" ("shop_id", "idempotency_key");
+        CREATE TABLE "customers" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
+          "full_name" TEXT NOT NULL,
+          "nic" TEXT NOT NULL,
+          "phone" TEXT NOT NULL,
+          "address" TEXT NOT NULL,
+          "photo_uri" TEXT,
+          "photo_hash" TEXT,
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL
+        );
+        CREATE TABLE "loans" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
+          "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
+          "principal_cents" INTEGER NOT NULL,
+          "balance_cents" INTEGER NOT NULL,
+          "status" TEXT NOT NULL DEFAULT 'active',
+          "workflow_status" TEXT NOT NULL DEFAULT 'pending_disbursement',
+          "due_date" INTEGER NOT NULL,
+          "created_at" INTEGER NOT NULL,
+          "settled_at" INTEGER
+        );
+        CREATE TABLE "collateral_items" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
+          "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
+          "loan_id" TEXT REFERENCES "loans" ("id") ON DELETE RESTRICT,
+          "item_reference_id" TEXT NOT NULL,
+          "category" TEXT NOT NULL,
+          "description" TEXT NOT NULL,
+          "condition_grade" TEXT NOT NULL,
+          "weight_milligrams" INTEGER NOT NULL,
+          "estimated_value_cents" INTEGER NOT NULL,
+          "photo_uri" TEXT,
+          "photo_hash" TEXT,
+          "custody_status" TEXT NOT NULL DEFAULT 'in_custody',
+          "created_at" INTEGER NOT NULL,
+          "updated_at" INTEGER NOT NULL
+        );
+        PRAGMA user_version = 12;
+      ''');
+
+      final nowEpoch = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+      rawSqliteDb.execute('''
+        INSERT INTO "shops" ("id", "name", "currency_code", "timezone", "created_at", "updated_at")
+        VALUES ('shop-v12', 'V12 Shop', 'LKR', 'Asia/Colombo', $nowEpoch, $nowEpoch);
+      ''');
+      rawSqliteDb.execute('''
+        INSERT INTO "app_users" ("id", "shop_id", "username", "full_name", "role", "is_active", "session_version", "permissions", "password_hash", "created_at", "updated_at")
+        VALUES ('user-v12', 'shop-v12', 'v12.staff', 'V12 Staff', 'manager', 1, 1, NULL, NULL, $nowEpoch, $nowEpoch);
+      ''');
+      rawSqliteDb.execute('''
+        INSERT INTO "customers" ("id", "shop_id", "full_name", "nic", "phone", "address", "created_at", "updated_at")
+        VALUES ('cust-v12', 'shop-v12', 'V12 Customer', '198512345678', '+94 77 123 4567', '45 Park Road', $nowEpoch, $nowEpoch);
+      ''');
+      rawSqliteDb.execute('''
+        INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
+        VALUES ('loan-v12', 'shop-v12', 'cust-v12', 500000, 500000, 'active', 'pending_disbursement', $nowEpoch, $nowEpoch);
+      ''');
+      rawSqliteDb.execute('''
+        INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
+        VALUES ('coll-v12', 'shop-v12', 'cust-v12', 'loan-v12', 'COLL-V12-001', 'gold', '22K gold necklace', 'Good', 5500, 1500000, 'in_custody', $nowEpoch, $nowEpoch);
+      ''');
+
+      // Foreign keys are enabled exactly as they are on a real device
+      // connection (see AppDatabaseConnection.openSandboxedConnection, which
+      // sets `PRAGMA foreign_keys = ON` in the connection setup callback).
+      // Without this the `collateral_items.loan_id -> loans` RESTRICT
+      // constraint is never enforced during the migration, which is exactly
+      // why this test used to pass while the v12 -> v13 rebuild failed on a
+      // device.
+      final executor = NativeDatabase.opened(
+        rawSqliteDb,
+        setup: (db) => db.execute('PRAGMA foreign_keys = ON;'),
+      );
+      final upgradedDb = AppDatabase.forTesting(executor);
+
+      // The pre-existing loan survived the rebuild with its financial
+      // balances, statuses and due date unchanged.
+      final loan = await (upgradedDb.select(upgradedDb.loans)
+            ..where((l) => l.id.equals('loan-v12')))
+          .getSingle();
+      expect(loan.principalCents, equals(500000));
+      expect(loan.balanceCents, equals(500000),
+          reason: 'The migration must not change financial balances.');
+      expect(loan.status, equals('active'));
+      expect(loan.workflowStatus, equals('pending_disbursement'));
+
+      // The new columns exist and are empty for a pre-existing agreement.
+      expect(loan.termPresetDays, isNull);
+      expect(loan.customDueDate, isNull);
+      expect(loan.disbursedAt, isNull);
+      expect(loan.disbursedByUserId, isNull);
+      expect(loan.cancelledAt, isNull);
+      expect(loan.cancellationReason, isNull);
+
+      // The child foreign key into "loans" survived the table rebuild.
+      final item = await (upgradedDb.select(upgradedDb.collateralItems)
+            ..where((c) => c.id.equals('coll-v12')))
+          .getSingle();
+      expect(item.loanId, equals('loan-v12'),
+          reason: 'Rebuilding the parent table must keep child rows bound.');
+
+      // The loans indexes were recreated.
+      final loanIndexRows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'loans';").get();
+      final loanIndexNames = loanIndexRows.map((r) => r.read<String>('name')).toList();
+      expect(loanIndexNames, containsAll([
+        'idx_loans_shop_id',
+        'idx_loans_shop_customer',
+        'idx_loans_shop_status',
+        'idx_loans_shop_customer_status',
+      ]));
+
+      // The rebuilt table accepts a disbursement record.
+      final now = DateTime.now().toUtc();
+      await (upgradedDb.update(upgradedDb.loans)
+            ..where((l) => l.id.equals('loan-v12')))
+          .write(LoansCompanion(
+        workflowStatus: const Value('disbursed'),
+        disbursedAt: Value(now),
+        disbursedByUserId: const Value('user-v12'),
+        termPresetDays: const Value(30),
+      ));
+
+      final disbursed = await (upgradedDb.select(upgradedDb.loans)
+            ..where((l) => l.id.equals('loan-v12')))
+          .getSingle();
+      expect(disbursed.workflowStatus, equals('disbursed'));
+      expect(disbursed.disbursedAt, isNotNull);
+      expect(disbursed.termPresetDays, equals(30));
 
       await upgradedDb.close();
     });

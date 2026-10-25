@@ -1,0 +1,1523 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
+import 'package:meta/meta.dart';
+import '../../../../core/data/local/app_database.dart';
+import '../../../../core/data/local/tables/app_users_table.dart';
+import '../../../../core/data/local/tables/loan_corrections_table.dart';
+import '../../../../core/data/local/tables/loan_ledger_entries_table.dart';
+import '../../../../core/data/local/tables/loans_table.dart';
+import '../../../../core/data/local/tables/payments_table.dart';
+import '../../../../core/data/local/tables/shops_table.dart';
+import '../../../../core/data/local/tables/sync_queue_table.dart';
+import '../../../../core/money/money.dart';
+import '../../../../core/permissions/app_permission.dart';
+import '../../../../core/permissions/authorization_guard.dart';
+import '../../../../features/auth/domain/models/app_user.dart';
+import '../../../../features/customers/domain/models/loan.dart';
+import 'package:uuid/uuid.dart';
+
+part 'correction_dao.g.dart';
+
+/// Data Access Officer for controlled financial correction requests (Story 5.5).
+///
+/// All queries are strictly scoped to [shopId] to enforce tenant isolation.
+/// A correction request can only be created, approved, or rejected within its
+/// owning shop.
+///
+/// Writes use `attachedDatabase.transaction()` with `BEGIN IMMEDIATE` semantics
+/// (Drift default), so the correction record, the loan lock/balance update,
+/// and the local audit/sync queue entry commit or roll back together — no
+/// partial state is ever visible (PRD FR-22).
+///
+/// The original payment record referenced by a correction is never overwritten
+/// or deleted (PRD FR-23 / Story 5.5 AC-3).
+///
+/// NOTE (open accounting decision): The compensating financial entry for an
+/// approved correction is not posted to a separate ledger table. The
+/// `correctionAmountCents` is recorded explicitly on the correction row and
+/// `resultingBalanceCents` snapshots the loan balance after the adjustment.
+/// The exact business-rule meaning of `correctionAmountCents` (full original
+/// payment vs. only the excess) and the placement of an immutable compensating
+/// entry require Product Owner / Architect approval before this path is
+/// considered complete. See the Story 5.5 open-decisions record.
+@DriftAccessor(
+  tables: [Loans, Payments, LoanCorrections, LoanLedgerEntries, SyncQueue, Shops, AppUsers],
+)
+class CorrectionDao extends DatabaseAccessor<AppDatabase>
+    with _$CorrectionDaoMixin {
+  CorrectionDao(super.db);
+
+  /// `entity_type` used by the local audit/sync queue for corrections.
+  static const String correctionEntityType = 'correction';
+
+  /// `action_type` used when a correction is requested.
+  static const String requestCorrectionActionType = 'request_correction';
+
+  /// `action_type` used when a correction is approved by the Shop Owner.
+  static const String approveCorrectionActionType = 'approve_correction';
+
+  /// `action_type` used when a correction is rejected by the Shop Owner.
+  static const String rejectCorrectionActionType = 'reject_correction';
+
+  /// `entity_type` used by the local audit/sync queue for manual balance
+  /// adjustments.
+  static const String adjustmentEntityType = 'adjustment';
+
+  /// `action_type` used when a Shop Owner records a manual balance adjustment.
+  static const String adjustBalanceActionType = 'adjust_balance';
+
+  /// Audit event name for manual balance adjustments (PRD FR-31, category 7).
+  static const String adjustmentAuditEvent = 'adjust_balance';
+
+  /// Audit event name for correction requests and decisions (PRD FR-31).
+  static const String correctionAuditEvent = 'correction_request';
+
+  /// Converts a Drift [LoanCorrectionEntry] row into a domain [LoanCorrection].
+  LoanCorrection _toDomain(LoanCorrectionEntry entry) {
+    return LoanCorrection(
+      id: entry.id,
+      shopId: entry.shopId,
+      loanId: entry.loanId,
+      originalPaymentId: entry.originalPaymentId,
+      requestedByUserId: entry.requestedByUserId,
+      createdAt: entry.createdAt,
+      correctionAmountCents: entry.correctionAmountCents,
+      reason: entry.reason,
+      status: LoanCorrectionStatus.fromValue(entry.status),
+      reviewedByUserId: entry.reviewedByUserId,
+      reviewedAt: entry.reviewedAt,
+      rejectionReason: entry.rejectionReason,
+      resultingBalanceCents: entry.resultingBalanceCents,
+      updatedAt: entry.updatedAt,
+    );
+  }
+
+  /// Converts a Drift [LoanLedgerEntryEntry] row into a domain
+  /// [LoanLedgerEntry].
+  LoanLedgerEntry _toDomainLedger(LoanLedgerEntryEntry entry) {
+    return LoanLedgerEntry(
+      id: entry.id,
+      shopId: entry.shopId,
+      loanId: entry.loanId,
+      originalPaymentId: entry.originalPaymentId,
+      correctionId: entry.correctionId,
+      entryType: LoanLedgerEntryType.fromValue(entry.entryType),
+      amountCents: entry.amountCents,
+      preBalanceCents: entry.preBalanceCents,
+      postBalanceCents: entry.postBalanceCents,
+      reason: entry.reason,
+      recordedByUserId: entry.recordedByUserId,
+      recordedAt: entry.recordedAt,
+      createdAt: entry.createdAt,
+    );
+  }
+
+  /// Submits a correction request for a payment on [loanId].
+  ///
+  /// Steps:
+  /// 1. Authorization: actor must be active and hold `requestCorrections`.
+  /// 2. Input validation: idempotency key, loan id, amount and reason must be
+  ///    present; amount must be positive.
+  /// 3. Eligibility: the loan must exist in the actor's shop and must not
+  ///    already have a pending correction (the correction lock).
+  /// 4. Atomic transaction:
+  ///    a. Insert idempotency guard row in `sync_queue` (unique constraint on
+  ///       `(shop_id, idempotency_key)` prevents duplicates).
+  ///    b. Set `correctionPending = true` on the loan (activates the lock).
+  ///    c. Insert the `pending_approval` correction row.
+  ///    d. Insert the local audit/sync queue entry.
+  ///
+  /// Returns the requested [LoanCorrection].
+  ///
+  /// Throws [PermissionDeniedException] when the actor is deactivated or does
+  /// not hold `requestCorrections`.
+  /// Throws [ArgumentError] when [idempotencyKey], [loanId], [reason] is
+  /// blank, or [amount] is not positive.
+  /// Throws [StateError] when the loan does not exist in the actor's shop or
+  /// when a correction is already pending for that loan.
+  Future<LoanCorrection> requestCorrection({
+    required AppUser actor,
+    required String idempotencyKey,
+    required String loanId,
+    required String? originalPaymentId,
+    required Money amount,
+    required String reason,
+    required DateTime requestedAt,
+  }) async {
+    // --- Authorization: require an active user with requestCorrections ---
+    if (!actor.isActive) {
+      throw const PermissionDeniedException(
+        'Access denied: User account is deactivated.',
+      );
+    }
+    AuthorizationGuard.checkPermission(
+      isActive: actor.isActive,
+      effectivePermissions: actor.effectivePermissions,
+      permission: AppPermission.requestCorrections,
+      actionDescription: 'request a loan correction',
+    );
+
+    // --- Input validation ---
+    final key = idempotencyKey.trim();
+    if (key.isEmpty) {
+      throw ArgumentError.value(
+        idempotencyKey,
+        'idempotencyKey',
+        'idempotencyKey cannot be empty',
+      );
+    }
+    if (loanId.trim().isEmpty) {
+      throw ArgumentError.value(
+        loanId,
+        'loanId',
+        'loanId cannot be empty',
+      );
+    }
+    if (amount.minorUnits <= 0) {
+      throw ArgumentError.value(
+        amount.minorUnits,
+        'amount',
+        'Correction amount must be a positive value in minor units',
+      );
+    }
+    final cleanReason = reason.trim();
+    if (cleanReason.isEmpty) {
+      throw ArgumentError.value(
+        reason,
+        'reason',
+        'A mandatory business explanation is required for a correction request',
+      );
+    }
+
+    // --- Idempotency fast path ---
+    final claimed = await _findIdempotencyClaim(actor.shopId, key);
+    if (claimed != null) {
+      return _resolveRecordedCorrection(
+        shopId: actor.shopId,
+        idempotencyKey: key,
+        claim: claimed,
+      );
+    }
+
+    // --- The loan must exist in the actor's own shop ---
+    final loan = await loanDaoGetById(actor.shopId, loanId);
+    if (loan == null) {
+      throw StateError(
+        'Cannot request correction: loan ID "$loanId" not found in shop '
+        '"${actor.shopId}".',
+      );
+    }
+
+    // --- A correction must not already be pending for this loan ---
+    if (loan.correctionPending) {
+      throw StateError(
+        'Cannot request correction: loan ID "$loanId" already has a pending '
+        'correction request. Payments are blocked until the existing request '
+        'is approved or rejected.',
+      );
+    }
+
+    // --- Original payment, when supplied, must belong to this loan/shop ---
+    if (originalPaymentId != null && originalPaymentId.isNotEmpty) {
+      final payment = await (select(payments)
+            ..where((p) =>
+                p.shopId.equals(actor.shopId) &
+                p.id.equals(originalPaymentId) &
+                p.loanId.equals(loanId)))
+          .getSingleOrNull();
+      if (payment == null) {
+        throw StateError(
+          'Cannot request correction: payment ID "$originalPaymentId" not '
+          'found for loan ID "$loanId" in shop "${actor.shopId}".',
+        );
+      }
+    }
+
+    final now = requestedAt.toUtc();
+    final correctionId = const Uuid().v4();
+    var duplicated = false;
+
+    await attachedDatabase.transaction(() async {
+      // --- Re-read the loan inside the transaction to detect concurrent
+      //     corrections/payments that changed the lock state. ---
+      final currentLoan = await loanDaoGetById(actor.shopId, loanId);
+      if (currentLoan == null) {
+        throw StateError(
+          'Cannot request correction: loan ID "$loanId" not found in shop '
+          '"${actor.shopId}".',
+        );
+      }
+      if (currentLoan.correctionPending) {
+        throw StateError(
+          'Cannot request correction: loan ID "$loanId" already has a pending '
+          'correction request.',
+        );
+      }
+
+      // --- Idempotency guard row (written first so concurrent submissions
+      //     with the same key cannot produce a second correction) ---
+      final guard = await into(syncQueue).insertReturningOrNull(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          idempotencyKey: key,
+          entityType: correctionEntityType,
+          entityId: correctionId,
+          actionType: requestCorrectionActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': 6,
+            'auditEvent': correctionAuditEvent,
+            'actorId': actor.id,
+            'loanId': loanId,
+            'originalPaymentId': originalPaymentId,
+            'amountCents': amount.minorUnits,
+            'reason': cleanReason,
+            'requestedAt': now.toIso8601String(),
+            'shopId': actor.shopId,
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+
+      if (guard == null) {
+        duplicated = true;
+        return;
+      }
+
+      // --- Activate the correction lock on the loan ---
+      final affected = await (update(loans)
+            ..where((l) =>
+                l.shopId.equals(actor.shopId) &
+                l.id.equals(loanId) &
+                l.correctionPending.equals(false)))
+          .write(LoansCompanion(
+        correctionPending: Value(true),
+      ));
+
+      if (affected == 0) {
+        // Another writer modified the loan first. Roll back this transaction.
+        throw StateError(
+          'Unable to request correction: the loan state changed concurrently '
+          'for loan ID "$loanId".',
+        );
+      }
+
+      // --- Insert the correction request row ---
+      await into(loanCorrections).insert(
+        LoanCorrectionsCompanion.insert(
+          id: correctionId,
+          shopId: actor.shopId,
+          loanId: loanId,
+          originalPaymentId: Value(originalPaymentId),
+          requestedByUserId: actor.id,
+          correctionAmountCents: amount.minorUnits,
+          reason: cleanReason,
+          status: Value('pending_approval'),
+          reviewedByUserId: const Value.absent(),
+          reviewedAt: const Value.absent(),
+          rejectionReason: const Value.absent(),
+          resultingBalanceCents: const Value.absent(),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      // --- Local audit/sync queue entry ---
+      await into(syncQueue).insert(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          idempotencyKey: const Uuid().v4(),
+          entityType: correctionEntityType,
+          entityId: correctionId,
+          actionType: requestCorrectionActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': 6,
+            'auditEvent': correctionAuditEvent,
+            'actorId': actor.id,
+            'loanId': loanId,
+            'originalPaymentId': originalPaymentId,
+            'amountCents': amount.minorUnits,
+            'reason': cleanReason,
+            'requestedAt': now.toIso8601String(),
+            'shopId': actor.shopId,
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+      );
+    });
+
+    if (duplicated) {
+      return _resolveRecordedCorrection(
+        shopId: actor.shopId,
+        idempotencyKey: key,
+      );
+    }
+
+    final created = await getCorrectionById(actor.shopId, correctionId);
+    if (created == null) {
+      throw StateError('Failed to retrieve newly created correction $correctionId.');
+    }
+    return created;
+  }
+
+  /// Approves a pending correction request (Shop Owner only).
+  ///
+  /// Steps:
+  /// 1. Authorization: actor must be an active Shop Owner.
+  /// 2. Eligibility: the correction must exist in the actor's shop, belong to
+  ///    a loan in that shop, and be in `pending_approval` status.
+  /// 3. Atomic transaction:
+  ///    a. Insert idempotency guard row in `sync_queue`.
+  ///    b. Conditionally transition the correction to `approved` (WHERE status
+  ///       = 'pending_approval'), recording the reviewer, decision timestamp
+  ///       and resulting balance snapshot.
+  ///    c. Lift the correction lock and apply the balance adjustment on the
+  ///       loan (`balanceCents += correctionAmountCents`).
+  ///    d. Insert the local audit/sync queue entry.
+  ///
+  /// Rejection of a duplicate/already-decided request is refused with
+  /// [StateError] so a correction cannot be approved twice.
+  ///
+  /// NOTE (open accounting decision): The balance adjustment applies
+  /// `correctionAmountCents` to the loan balance. The exact business-rule
+  /// meaning of `correctionAmountCents` (full original payment vs. only the
+  /// excess) and any separate immutable compensating ledger entry require
+  /// Product Owner / Architect approval before this path is considered
+  /// complete.
+  ///
+  /// Returns the approved [LoanCorrection].
+  ///
+  /// Throws [PermissionDeniedException] when the actor is not an active
+  /// Shop Owner.
+  /// Throws [ArgumentError] when [idempotencyKey] or [correctionId] is blank.
+  /// Throws [StateError] when the correction does not exist in the actor's
+  /// shop, is not pending, or has already been decided.
+  Future<LoanCorrection> approveCorrection({
+    required AppUser actor,
+    required String idempotencyKey,
+    required String correctionId,
+    required DateTime reviewedAt,
+  }) async {
+    // --- Authorization: require an active Shop Owner ---
+    if (!actor.isActive) {
+      throw const PermissionDeniedException(
+        'Access denied: User account is deactivated.',
+      );
+    }
+    AuthorizationGuard.checkOwnerAdministrativeAction(
+      isActive: actor.isActive,
+      actorRole: actor.role,
+      actionDescription: 'approve a correction request',
+    );
+
+    // --- Input validation ---
+    final key = idempotencyKey.trim();
+    if (key.isEmpty) {
+      throw ArgumentError.value(
+        idempotencyKey,
+        'idempotencyKey',
+        'idempotencyKey cannot be empty',
+      );
+    }
+    if (correctionId.trim().isEmpty) {
+      throw ArgumentError.value(
+        correctionId,
+        'correctionId',
+        'correctionId cannot be empty',
+      );
+    }
+
+    // --- Idempotency fast path ---
+    final claimed = await _findIdempotencyClaim(actor.shopId, key);
+    if (claimed != null) {
+      return _resolveRecordedCorrection(
+        shopId: actor.shopId,
+        idempotencyKey: key,
+        claim: claimed,
+      );
+    }
+
+    final now = reviewedAt.toUtc();
+    var duplicated = false;
+
+    await attachedDatabase.transaction(() async {
+      // --- The correction must exist in the actor's own shop and be pending ---
+      final correction = await (select(loanCorrections)
+            ..where((c) =>
+                c.shopId.equals(actor.shopId) &
+                c.id.equals(correctionId) &
+                c.status.equals('pending_approval')))
+          .getSingleOrNull();
+      if (correction == null) {
+        final existing = await (select(loanCorrections)
+              ..where((c) =>
+                  c.shopId.equals(actor.shopId) & c.id.equals(correctionId)))
+            .getSingleOrNull();
+        if (existing == null) {
+          throw StateError(
+            'Cannot approve correction: correction ID "$correctionId" not '
+            'found in shop "${actor.shopId}".',
+          );
+        }
+        throw StateError(
+          'Cannot approve correction: correction ID "$correctionId" is not '
+          'pending (current status: ${existing.status}).',
+        );
+      }
+
+      // --- Idempotency guard row ---
+      final guard = await into(syncQueue).insertReturningOrNull(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          idempotencyKey: key,
+          entityType: correctionEntityType,
+          entityId: correctionId,
+          actionType: approveCorrectionActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': 7,
+            'auditEvent': correctionAuditEvent,
+            'action': 'approve',
+            'actorId': actor.id,
+            'correctionId': correctionId,
+            'loanId': correction.loanId,
+            'amountCents': correction.correctionAmountCents,
+            'reviewedAt': now.toIso8601String(),
+            'shopId': actor.shopId,
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+
+      if (guard == null) {
+        duplicated = true;
+        return;
+      }
+
+      // --- Load the loan inside the transaction ---
+      final loan = await loanDaoGetById(actor.shopId, correction.loanId);
+      if (loan == null) {
+        throw StateError(
+          'Cannot approve correction: loan ID "${correction.loanId}" not '
+          'found in shop "${actor.shopId}".',
+        );
+      }
+
+      final newBalanceCents = loan.balanceCents + correction.correctionAmountCents;
+
+      // --- Record the immutable compensating debit ledger entry ---
+      //
+      // PRD FR-22: an approved reversal records "a linked compensating debit
+      // transaction" while "the original payment transaction is permanently
+      // preserved without modification or deletion." This entry is the
+      // immutable financial record of the reversal; it posts within the same
+      // transaction as the loan balance, correction record, lock lift, and
+      // sync journal so none of them can diverge on failure.
+      await into(loanLedgerEntries).insert(
+        LoanLedgerEntriesCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          loanId: correction.loanId,
+          originalPaymentId: Value(correction.originalPaymentId),
+          correctionId: Value(correctionId),
+          entryType: 'compensating_debit',
+          amountCents: correction.correctionAmountCents,
+          preBalanceCents: loan.balanceCents,
+          postBalanceCents: newBalanceCents,
+          reason: correction.reason,
+          recordedByUserId: actor.id,
+          recordedAt: now,
+          createdAt: now,
+        ),
+      );
+
+      // --- Conditionally approve the correction (only if still pending) ---
+      final correctedAffected = await (update(loanCorrections)
+            ..where((c) =>
+                c.shopId.equals(actor.shopId) &
+                c.id.equals(correctionId) &
+                c.status.equals('pending_approval')))
+          .write(LoanCorrectionsCompanion(
+        status: Value('approved'),
+        reviewedByUserId: Value(actor.id),
+        reviewedAt: Value(now),
+        rejectionReason: const Value.absent(),
+        resultingBalanceCents: Value(newBalanceCents),
+        updatedAt: Value(now),
+      ));
+
+      if (correctedAffected == 0) {
+        // Another writer decided this correction first. Roll back.
+        throw StateError(
+          'Cannot approve correction: correction ID "$correctionId" was '
+          'already decided by a concurrent request.',
+        );
+      }
+
+      // --- Lift the correction lock and apply the balance adjustment ---
+      final loanAffected = await (update(loans)
+            ..where((l) =>
+                l.shopId.equals(actor.shopId) &
+                l.id.equals(correction.loanId) &
+                l.correctionPending.equals(true)))
+          .write(LoansCompanion(
+        balanceCents: Value(newBalanceCents),
+        correctionPending: Value(false),
+      ));
+
+      if (loanAffected == 0) {
+        // The lock was already lifted by a concurrent writer. Roll back the
+        // correction approval to keep state consistent.
+        throw StateError(
+          'Cannot approve correction: the correction lock on loan ID '
+          '"${correction.loanId}" was already lifted concurrently.',
+        );
+      }
+
+      // --- Local audit/sync queue entry ---
+      await into(syncQueue).insert(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          idempotencyKey: const Uuid().v4(),
+          entityType: correctionEntityType,
+          entityId: correctionId,
+          actionType: approveCorrectionActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': 7,
+            'auditEvent': correctionAuditEvent,
+            'action': 'approve',
+            'actorId': actor.id,
+            'correctionId': correctionId,
+            'loanId': correction.loanId,
+            'amountCents': correction.correctionAmountCents,
+            'previousBalanceCents': loan.balanceCents,
+            'newBalanceCents': newBalanceCents,
+            'reviewedAt': now.toIso8601String(),
+            'shopId': actor.shopId,
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+      );
+    });
+
+    if (duplicated) {
+      return _resolveRecordedCorrection(
+        shopId: actor.shopId,
+        idempotencyKey: key,
+      );
+    }
+
+    final approved = await getCorrectionById(actor.shopId, correctionId);
+    if (approved == null) {
+      throw StateError('Failed to retrieve approved correction $correctionId.');
+    }
+    return approved;
+  }
+
+  /// Rejects a pending correction request (Shop Owner only).
+  ///
+  /// Steps:
+  /// 1. Authorization: actor must be an active Shop Owner.
+  /// 2. Eligibility: the correction must exist in the actor's shop, belong to
+  ///    a loan in that shop, and be in `pending_approval` status.
+  /// 3. Atomic transaction:
+  ///    a. Insert idempotency guard row in `sync_queue`.
+  ///    b. Conditionally transition the correction to `rejected`, recording the
+  ///       mandatory rejection reason, reviewer and decision timestamp.
+  ///    c. Lift the correction lock on the loan. The loan balance is NOT
+  ///       altered.
+  ///    d. Insert the local audit/sync queue entry.
+  ///
+  /// Returns the rejected [LoanCorrection].
+  ///
+  /// Throws [PermissionDeniedException] when the actor is not an active
+  /// Shop Owner.
+  /// Throws [ArgumentError] when [idempotencyKey], [correctionId] or
+  /// [rejectionReason] is blank.
+  /// Throws [StateError] when the correction does not exist in the actor's
+  /// shop, is not pending, or has already been decided.
+  Future<LoanCorrection> rejectCorrection({
+    required AppUser actor,
+    required String idempotencyKey,
+    required String correctionId,
+    required String rejectionReason,
+    required DateTime reviewedAt,
+  }) async {
+    // --- Authorization: require an active Shop Owner ---
+    if (!actor.isActive) {
+      throw const PermissionDeniedException(
+        'Access denied: User account is deactivated.',
+      );
+    }
+    AuthorizationGuard.checkOwnerAdministrativeAction(
+      isActive: actor.isActive,
+      actorRole: actor.role,
+      actionDescription: 'reject a correction request',
+    );
+
+    // --- Input validation ---
+    final key = idempotencyKey.trim();
+    if (key.isEmpty) {
+      throw ArgumentError.value(
+        idempotencyKey,
+        'idempotencyKey',
+        'idempotencyKey cannot be empty',
+      );
+    }
+    if (correctionId.trim().isEmpty) {
+      throw ArgumentError.value(
+        correctionId,
+        'correctionId',
+        'correctionId cannot be empty',
+      );
+    }
+    final cleanRejectionReason = rejectionReason.trim();
+    if (cleanRejectionReason.isEmpty) {
+      throw ArgumentError.value(
+        rejectionReason,
+        'rejectionReason',
+        'A mandatory rejection reason is required',
+      );
+    }
+
+    // --- Idempotency fast path ---
+    final claimed = await _findIdempotencyClaim(actor.shopId, key);
+    if (claimed != null) {
+      return _resolveRecordedCorrection(
+        shopId: actor.shopId,
+        idempotencyKey: key,
+        claim: claimed,
+      );
+    }
+
+    final now = reviewedAt.toUtc();
+    var duplicated = false;
+
+    await attachedDatabase.transaction(() async {
+      // --- The correction must exist in the actor's own shop and be pending ---
+      final correction = await (select(loanCorrections)
+            ..where((c) =>
+                c.shopId.equals(actor.shopId) &
+                c.id.equals(correctionId) &
+                c.status.equals('pending_approval')))
+          .getSingleOrNull();
+      if (correction == null) {
+        final existing = await (select(loanCorrections)
+              ..where((c) =>
+                  c.shopId.equals(actor.shopId) & c.id.equals(correctionId)))
+            .getSingleOrNull();
+        if (existing == null) {
+          throw StateError(
+            'Cannot reject correction: correction ID "$correctionId" not '
+            'found in shop "${actor.shopId}".',
+          );
+        }
+        throw StateError(
+          'Cannot reject correction: correction ID "$correctionId" is not '
+          'pending (current status: ${existing.status}).',
+        );
+      }
+
+      // --- Idempotency guard row ---
+      final guard = await into(syncQueue).insertReturningOrNull(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          idempotencyKey: key,
+          entityType: correctionEntityType,
+          entityId: correctionId,
+          actionType: rejectCorrectionActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': 7,
+            'auditEvent': correctionAuditEvent,
+            'action': 'reject',
+            'actorId': actor.id,
+            'correctionId': correctionId,
+            'loanId': correction.loanId,
+            'rejectionReason': cleanRejectionReason,
+            'reviewedAt': now.toIso8601String(),
+            'shopId': actor.shopId,
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+
+      if (guard == null) {
+        duplicated = true;
+        return;
+      }
+
+      // --- Conditionally reject the correction (only if still pending) ---
+      final rejectedAffected = await (update(loanCorrections)
+            ..where((c) =>
+                c.shopId.equals(actor.shopId) &
+                c.id.equals(correctionId) &
+                c.status.equals('pending_approval')))
+          .write(LoanCorrectionsCompanion(
+        status: Value('rejected'),
+        reviewedByUserId: Value(actor.id),
+        reviewedAt: Value(now),
+        rejectionReason: Value(cleanRejectionReason),
+        resultingBalanceCents: const Value.absent(),
+        updatedAt: Value(now),
+      ));
+
+      if (rejectedAffected == 0) {
+        throw StateError(
+          'Cannot reject correction: correction ID "$correctionId" was '
+          'already decided by a concurrent request.',
+        );
+      }
+
+      // --- Lift the correction lock. Balance is intentionally unchanged. ---
+      final loanAffected = await (update(loans)
+            ..where((l) =>
+                l.shopId.equals(actor.shopId) &
+                l.id.equals(correction.loanId) &
+                l.correctionPending.equals(true)))
+          .write(LoansCompanion(
+        correctionPending: Value(false),
+      ));
+
+      if (loanAffected == 0) {
+        throw StateError(
+          'Cannot reject correction: the correction lock on loan ID '
+          '"${correction.loanId}" was already lifted concurrently.',
+        );
+      }
+
+      // --- Local audit/sync queue entry ---
+      await into(syncQueue).insert(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          idempotencyKey: const Uuid().v4(),
+          entityType: correctionEntityType,
+          entityId: correctionId,
+          actionType: rejectCorrectionActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': 7,
+            'auditEvent': correctionAuditEvent,
+            'action': 'reject',
+            'actorId': actor.id,
+            'correctionId': correctionId,
+            'loanId': correction.loanId,
+            'rejectionReason': cleanRejectionReason,
+            'reviewedAt': now.toIso8601String(),
+            'shopId': actor.shopId,
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+      );
+    });
+
+    if (duplicated) {
+      return _resolveRecordedCorrection(
+        shopId: actor.shopId,
+        idempotencyKey: key,
+      );
+    }
+
+    final rejected = await getCorrectionById(actor.shopId, correctionId);
+    if (rejected == null) {
+      throw StateError('Failed to retrieve rejected correction $correctionId.');
+    }
+    return rejected;
+  }
+
+  /// Records a Shop Owner manual balance adjustment (debit or credit) on [loanId].
+  ///
+  /// PRD FR-22: manual balance adjustments are controlled, immutable ledger
+  /// entries linked to the loan. A debit increases the outstanding balance;
+  /// a credit decreases it. The original payment history is never altered.
+  ///
+  /// Steps:
+  /// 1. Authorization: actor must be an active Shop Owner.
+  /// 2. Input validation: idempotency key, loan id, amount and reason must be
+  ///    present; amount must be positive; adjustment type must be a manual
+  ///    adjustment (not `compensating_debit`).
+  /// 3. Eligibility: the loan must exist in the actor's shop and must not
+  ///    have a pending correction (the Story 5.3/5.5 correction lock blocks
+  ///    balance-changing transactions against an unverified balance).
+  /// 4. Atomic transaction:
+  ///    a. Insert idempotency guard row in `sync_queue` (unique constraint on
+  ///       `(shop_id, idempotency_key)` prevents duplicates).
+  ///    b. Insert the immutable ledger entry (`adjustment_debit` or
+  ///       `adjustment_credit`) with pre/post balance snapshot.
+  ///    c. Conditionally update the loan balance (WHERE correction_pending =
+  ///       false).
+  ///    d. Insert the local audit/sync queue entry.
+  ///
+  /// Returns the created [LoanLedgerEntry].
+  ///
+  /// Throws [PermissionDeniedException] when the actor is deactivated or is
+  /// not a Shop Owner.
+  /// Throws [ArgumentError] when [idempotencyKey], [loanId] or [reason] is
+  /// blank, when [amount] is not positive, or when [adjustmentType] is
+  /// `compensating_debit`.
+  /// Throws [StateError] when the loan does not exist in the actor's shop,
+  /// when a correction is pending on the loan, when a credit would make the
+  /// balance negative, or when the loan state changed concurrently.
+  Future<LoanLedgerEntry> adjustBalance({
+    required AppUser actor,
+    required String idempotencyKey,
+    required String loanId,
+    required Money amount,
+    required LoanLedgerEntryType adjustmentType,
+    required String reason,
+    required DateTime recordedAt,
+  }) async {
+    // --- Authorization: require an active Shop Owner ---
+    if (!actor.isActive) {
+      throw const PermissionDeniedException(
+        'Access denied: User account is deactivated.',
+      );
+    }
+    AuthorizationGuard.checkOwnerAdministrativeAction(
+      isActive: actor.isActive,
+      actorRole: actor.role,
+      actionDescription: 'adjust a loan balance',
+    );
+
+    // --- Input validation ---
+    final key = idempotencyKey.trim();
+    if (key.isEmpty) {
+      throw ArgumentError.value(
+        idempotencyKey,
+        'idempotencyKey',
+        'idempotencyKey cannot be empty',
+      );
+    }
+    if (loanId.trim().isEmpty) {
+      throw ArgumentError.value(
+        loanId,
+        'loanId',
+        'loanId cannot be empty',
+      );
+    }
+    if (amount.minorUnits <= 0) {
+      throw ArgumentError.value(
+        amount.minorUnits,
+        'amount',
+        'Adjustment amount must be a positive value in minor units',
+      );
+    }
+    // Manual adjustments use adjustment_debit / adjustment_credit only;
+    // compensating_debit is reserved for approved corrections.
+    if (adjustmentType == LoanLedgerEntryType.compensatingDebit) {
+      throw ArgumentError.value(
+        adjustmentType,
+        'adjustmentType',
+        'compensating_debit is reserved for approved corrections; use '
+            'requestCorrection/approveCorrection instead.',
+      );
+    }
+    final cleanReason = reason.trim();
+    if (cleanReason.isEmpty) {
+      throw ArgumentError.value(
+        reason,
+        'reason',
+        'A mandatory business rationale is required for a balance adjustment',
+      );
+    }
+
+    // --- Idempotency fast path ---
+    final claimed = await _findIdempotencyClaim(actor.shopId, key);
+    if (claimed != null) {
+      return _resolveRecordedAdjustment(
+        shopId: actor.shopId,
+        idempotencyKey: key,
+        claim: claimed,
+      );
+    }
+
+    final now = recordedAt.toUtc();
+    var duplicated = false;
+    final adjustmentId = const Uuid().v4();
+
+    await attachedDatabase.transaction(() async {
+      // --- The loan must exist in the actor's own shop ---
+      final loan = await loanDaoGetById(actor.shopId, loanId);
+      if (loan == null) {
+        throw StateError(
+          'Cannot adjust balance: loan ID "$loanId" not found in shop '
+          '"${actor.shopId}".',
+        );
+      }
+
+      // --- Story 5.3 / 5.5 correction lock: while a correction is pending,
+      //     balance adjustments are blocked against the unverified balance. ---
+      if (loan.correctionPending) {
+        throw StateError(
+          'Cannot adjust balance: loan ID "$loanId" has a pending correction '
+          'request. Balance adjustments are blocked until the correction is '
+          'approved or rejected.',
+        );
+      }
+
+      // --- Compute the new balance based on adjustment type ---
+      int newBalanceCents;
+      switch (adjustmentType) {
+        case LoanLedgerEntryType.adjustmentDebit:
+          newBalanceCents = loan.balanceCents + amount.minorUnits;
+          break;
+        case LoanLedgerEntryType.adjustmentCredit:
+          newBalanceCents = loan.balanceCents - amount.minorUnits;
+          if (newBalanceCents < 0) {
+            throw StateError(
+              'Cannot adjust balance: credit of ${amount.minorUnits} would '
+              'make the balance of loan ID "$loanId" negative '
+              '(current balance: ${loan.balanceCents}).',
+            );
+          }
+          break;
+        case LoanLedgerEntryType.compensatingDebit:
+          // Unreachable: rejected above, but keep the switch exhaustive.
+          throw ArgumentError.value(
+            adjustmentType,
+            'adjustmentType',
+            'Unsupported adjustment type.',
+          );
+      }
+
+      // --- Idempotency guard row ---
+      final guard = await into(syncQueue).insertReturningOrNull(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          idempotencyKey: key,
+          entityType: adjustmentEntityType,
+          entityId: loanId,
+          actionType: adjustBalanceActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': 7,
+            'auditEvent': adjustmentAuditEvent,
+            'action': 'adjust_balance',
+            'actorId': actor.id,
+            'loanId': loanId,
+            'adjustmentType': adjustmentType.value,
+            'amountCents': amount.minorUnits,
+            'reason': cleanReason,
+            'recordedAt': now.toIso8601String(),
+            'shopId': actor.shopId,
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+
+      if (guard == null) {
+        // Another submission with the same idempotency key already claimed it.
+        duplicated = true;
+        return;
+      }
+
+      // --- Record the immutable ledger entry ---
+      await into(loanLedgerEntries).insert(
+        LoanLedgerEntriesCompanion.insert(
+          id: adjustmentId,
+          shopId: actor.shopId,
+          loanId: loanId,
+          originalPaymentId: const Value.absent(),
+          correctionId: const Value.absent(),
+          entryType: adjustmentType.value,
+          amountCents: amount.minorUnits,
+          preBalanceCents: loan.balanceCents,
+          postBalanceCents: newBalanceCents,
+          reason: cleanReason,
+          recordedByUserId: actor.id,
+          recordedAt: now,
+          createdAt: now,
+        ),
+      );
+
+      // --- Conditionally update the loan balance ---
+      final affected = await (update(loans)
+            ..where((l) =>
+                l.shopId.equals(actor.shopId) &
+                l.id.equals(loanId) &
+                l.correctionPending.equals(false)))
+        .write(LoansCompanion(
+      balanceCents: Value(newBalanceCents),
+    ));
+
+      if (affected == 0) {
+        // Another writer modified the loan first. Roll back this transaction.
+        throw StateError(
+          'Unable to adjust balance: the loan state changed concurrently '
+          'for loan ID "$loanId".',
+        );
+      }
+
+      // --- Local audit/sync queue entry ---
+      await into(syncQueue).insert(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: actor.shopId,
+          idempotencyKey: const Uuid().v4(),
+          entityType: adjustmentEntityType,
+          entityId: adjustmentId,
+          actionType: adjustBalanceActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': 7,
+            'auditEvent': adjustmentAuditEvent,
+            'action': 'adjust_balance',
+            'actorId': actor.id,
+            'loanId': loanId,
+            'adjustmentType': adjustmentType.value,
+            'amountCents': amount.minorUnits,
+            'previousBalanceCents': loan.balanceCents,
+            'newBalanceCents': newBalanceCents,
+            'recordedAt': now.toIso8601String(),
+            'shopId': actor.shopId,
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+      );
+    });
+
+    if (duplicated) {
+      return _resolveRecordedAdjustment(
+        shopId: actor.shopId,
+        idempotencyKey: key,
+      );
+    }
+
+    final created = await getLedgerEntryById(actor.shopId, adjustmentId);
+    if (created == null) {
+      throw StateError('Failed to retrieve newly created ledger entry $adjustmentId.');
+    }
+    return created;
+  }
+
+  /// Retrieves a ledger entry by id strictly scoped within [shopId].
+  Future<LoanLedgerEntry?> getLedgerEntryById(
+    String shopId,
+    String ledgerEntryId,
+  ) async {
+    final entry = await (select(loanLedgerEntries)
+          ..where((e) =>
+              e.shopId.equals(shopId) & e.id.equals(ledgerEntryId)))
+        .getSingleOrNull();
+    return entry != null ? _toDomainLedger(entry) : null;
+  }
+
+  /// Retrieves all ledger entries for a loan strictly scoped within [shopId].
+  Future<List<LoanLedgerEntry>> getLedgerEntriesByLoan(
+    String shopId,
+    String loanId, {
+    int? limit,
+  }) async {
+    final query = select(loanLedgerEntries)
+      ..where((e) => e.shopId.equals(shopId) & e.loanId.equals(loanId))
+      ..orderBy([(e) => OrderingTerm.desc(e.createdAt)]);
+    if (limit != null) {
+      query.limit(limit);
+    }
+    final entries = await query.get();
+    return entries.map(_toDomainLedger).toList(growable: false);
+  }
+
+  /// Resolves the outcome of a balance adjustment already recorded under
+  /// [idempotencyKey].
+  Future<LoanLedgerEntry> _resolveRecordedAdjustment({
+    required String shopId,
+    required String idempotencyKey,
+    SyncQueueRecord? claim,
+  }) async {
+    final claimed =
+        claim ?? await _findIdempotencyClaim(shopId, idempotencyKey);
+
+    if (claimed == null ||
+        claimed.entityType != adjustmentEntityType ||
+        claimed.actionType != adjustBalanceActionType) {
+      throw StateError(
+        'Idempotency key "$idempotencyKey" is already in use by another '
+        'operation.',
+      );
+    }
+
+    // Reconstruct the adjustment fingerprint from the queued payload so the
+    // existing ledger entry created for this intent can be located exactly.
+    final payload = jsonDecode(claimed.payloadJson) as Map<dynamic, dynamic>;
+    final entryType = payload['adjustmentType'] as String?;
+    final amountCents = payload['amountCents'] as int?;
+    final recordedByUserId = payload['actorId'] as String?;
+    final reason = payload['reason'] as String?;
+
+    if (entryType == null || amountCents == null || recordedByUserId == null) {
+      throw StateError(
+        'Idempotency key "$idempotencyKey" references an incomplete '
+        'adjustment record.',
+      );
+    }
+
+    // The guard row references the affected loan (entityId = loanId).
+    final query = select(loanLedgerEntries)
+          ..where((e) =>
+              e.shopId.equals(shopId) &
+              e.loanId.equals(claimed.entityId) &
+              e.entryType.equals(entryType) &
+              e.amountCents.equals(amountCents) &
+              e.reason.equals(reason ?? '') &
+              e.recordedByUserId.equals(recordedByUserId))
+        ..orderBy([(e) => OrderingTerm.desc(e.createdAt)]);
+    final entry = await query.getSingleOrNull();
+    if (entry == null) {
+      throw StateError(
+        'Idempotency key "$idempotencyKey" references a missing ledger entry.',
+      );
+    }
+    return _toDomainLedger(entry);
+  }
+
+  /// Retrieves a correction by id strictly scoped within [shopId].
+  Future<LoanCorrection?> getCorrectionById(String shopId, String correctionId) async {
+    final entry = await (select(loanCorrections)
+          ..where((c) =>
+              c.shopId.equals(shopId) & c.id.equals(correctionId)))
+        .getSingleOrNull();
+    return entry != null ? _toDomain(entry) : null;
+  }
+
+  /// Retrieves all corrections for [loanId] strictly scoped within [shopId].
+  Future<List<LoanCorrection>> getCorrectionsByLoan(
+    String shopId,
+    String loanId, {
+    int? limit,
+  }) async {
+    final query = select(loanCorrections)
+      ..where((c) => c.shopId.equals(shopId) & c.loanId.equals(loanId))
+      ..orderBy([(c) => OrderingTerm.desc(c.createdAt)]);
+    if (limit != null) {
+      query.limit(limit);
+    }
+    final entries = await query.get();
+    return entries.map(_toDomain).toList(growable: false);
+  }
+
+  /// Retrieves all corrections in [shopId] matching [status].
+  Future<List<LoanCorrection>> getCorrectionsByStatus(
+    String shopId,
+    String status, {
+    int? limit,
+  }) async {
+    final query = select(loanCorrections)
+      ..where((c) => c.shopId.equals(shopId) & c.status.equals(status))
+      ..orderBy([(c) => OrderingTerm.desc(c.createdAt)]);
+    if (limit != null) {
+      query.limit(limit);
+    }
+    final entries = await query.get();
+    return entries.map(_toDomain).toList(growable: false);
+  }
+
+  /// Returns the local audit/sync record that claims [idempotencyKey] within
+  /// [shopId], or `null` when the key has not been used yet.
+  Future<SyncQueueRecord?> _findIdempotencyClaim(
+    String shopId,
+    String idempotencyKey,
+  ) async {
+    final query = select(syncQueue)
+      ..where((s) =>
+          s.shopId.equals(shopId) & s.idempotencyKey.equals(idempotencyKey));
+    return query.getSingleOrNull();
+  }
+
+  /// Resolves the outcome of a correction operation already recorded under
+  /// [idempotencyKey].
+  Future<LoanCorrection> _resolveRecordedCorrection({
+    required String shopId,
+    required String idempotencyKey,
+    SyncQueueRecord? claim,
+  }) async {
+    final claimed =
+        claim ?? await _findIdempotencyClaim(shopId, idempotencyKey);
+
+    if (claimed == null ||
+        claimed.entityType != correctionEntityType ||
+        (claimed.actionType != requestCorrectionActionType &&
+            claimed.actionType != approveCorrectionActionType &&
+            claimed.actionType != rejectCorrectionActionType)) {
+      throw StateError(
+        'Idempotency key "$idempotencyKey" is already in use by another '
+        'operation.',
+      );
+    }
+
+    final correction =
+        await getCorrectionById(shopId, claimed.entityId);
+    if (correction == null) {
+      throw StateError(
+        'Idempotency key "$idempotencyKey" references a missing correction.',
+      );
+    }
+
+    // Only return the resolved result when the recorded operation matches the
+    // requested action and the correction really is in the expected state.
+    final action = claimed.actionType;
+    if (action == approveCorrectionActionType &&
+        correction.status != LoanCorrectionStatus.approved) {
+      throw StateError(
+        'Idempotency key "$idempotencyKey" refers to an approval that did not '
+        'complete for correction "${claimed.entityId}".',
+      );
+    }
+    if (action == rejectCorrectionActionType &&
+        correction.status != LoanCorrectionStatus.rejected) {
+      throw StateError(
+        'Idempotency key "$idempotencyKey" refers to a rejection that did not '
+        'complete for correction "${claimed.entityId}".',
+      );
+    }
+
+    return correction;
+  }
+
+  /// Helper to fetch a loan by id within a shop (avoids constructing a second
+  /// DAO inside each transaction branch).
+  Future<Loan?> loanDaoGetById(String shopId, String loanId) async {
+    final entry = await (select(loans)
+          ..where((l) => l.shopId.equals(shopId) & l.id.equals(loanId)))
+        .getSingleOrNull();
+    if (entry == null) return null;
+    return Loan(
+      id: entry.id,
+      shopId: entry.shopId,
+      customerId: entry.customerId,
+      principalCents: entry.principalCents,
+      balanceCents: entry.balanceCents,
+      status: LoanStatus.fromValue(entry.status),
+      workflowStatus: LoanWorkflowStatus.fromValue(entry.workflowStatus),
+      dueDate: entry.dueDate,
+      createdAt: entry.createdAt,
+      settledAt: entry.settledAt,
+      termPresetDays: entry.termPresetDays,
+      customDueDate: entry.customDueDate,
+      disbursedAt: entry.disbursedAt,
+      disbursedByUserId: entry.disbursedByUserId,
+      cancelledAt: entry.cancelledAt,
+      cancellationReason: entry.cancellationReason,
+      correctionPending: entry.correctionPending,
+    );
+  }
+}
+
+/// Status of a loan correction request (Story 5.5).
+enum LoanCorrectionStatus {
+  pendingApproval('pending_approval'),
+  approved('approved'),
+  rejected('rejected');
+
+  final String value;
+  const LoanCorrectionStatus(this.value);
+
+  static LoanCorrectionStatus fromValue(String value) {
+    for (final status in LoanCorrectionStatus.values) {
+      if (status.value == value) {
+        return status;
+      }
+    }
+    throw ArgumentError.value(
+      value,
+      'value',
+      'Invalid LoanCorrectionStatus string representation',
+    );
+  }
+}
+
+/// Clean architecture domain entity representing a loan correction request
+/// (Story 5.5).
+@immutable
+class LoanCorrection {
+  final String id;
+  final String shopId;
+  final String loanId;
+  final String? originalPaymentId;
+  final String requestedByUserId;
+  final DateTime createdAt;
+  final int correctionAmountCents;
+  final String reason;
+  final LoanCorrectionStatus status;
+  final String? reviewedByUserId;
+  final DateTime? reviewedAt;
+  final String? rejectionReason;
+  final int? resultingBalanceCents;
+  final DateTime updatedAt;
+
+  const LoanCorrection({
+    required this.id,
+    required this.shopId,
+    required this.loanId,
+    this.originalPaymentId,
+    required this.requestedByUserId,
+    required this.createdAt,
+    required this.correctionAmountCents,
+    required this.reason,
+    required this.status,
+    this.reviewedByUserId,
+    this.reviewedAt,
+    this.rejectionReason,
+    this.resultingBalanceCents,
+    required this.updatedAt,
+  });
+
+  bool get isPending => status == LoanCorrectionStatus.pendingApproval;
+  bool get isApproved => status == LoanCorrectionStatus.approved;
+  bool get isRejected => status == LoanCorrectionStatus.rejected;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is LoanCorrection &&
+        other.id == id &&
+        other.shopId == shopId &&
+        other.loanId == loanId &&
+        other.originalPaymentId == originalPaymentId &&
+        other.requestedByUserId == requestedByUserId &&
+        other.createdAt == createdAt &&
+        other.correctionAmountCents == correctionAmountCents &&
+        other.reason == reason &&
+        other.status == status &&
+        other.reviewedByUserId == reviewedByUserId &&
+        other.reviewedAt == reviewedAt &&
+        other.rejectionReason == rejectionReason &&
+        other.resultingBalanceCents == resultingBalanceCents &&
+        other.updatedAt == updatedAt;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        shopId,
+        loanId,
+        originalPaymentId,
+        requestedByUserId,
+        createdAt,
+        correctionAmountCents,
+        reason,
+        status,
+        reviewedByUserId,
+        reviewedAt,
+        rejectionReason,
+        resultingBalanceCents,
+        updatedAt,
+      );
+}
+
+/// Kind of financial ledger entry (Story 5.5, PRD FR-22).
+enum LoanLedgerEntryType {
+  compensatingDebit('compensating_debit'),
+  adjustmentDebit('adjustment_debit'),
+  adjustmentCredit('adjustment_credit');
+
+  final String value;
+  const LoanLedgerEntryType(this.value);
+
+  static LoanLedgerEntryType fromValue(String value) {
+    for (final type in LoanLedgerEntryType.values) {
+      if (type.value == value) {
+        return type;
+      }
+    }
+    throw ArgumentError.value(
+      value,
+      'value',
+      'Invalid LoanLedgerEntryType string representation',
+    );
+  }
+}
+
+/// Clean architecture domain entity representing an immutable financial
+/// ledger entry (Story 5.5, PRD FR-22).
+///
+/// A compensating debit entry records a payment reversal: it adds the
+/// reversed amount back to the outstanding balance while the original
+/// payment record is permanently preserved. Manual adjustments
+/// (`adjustmentDebit`, `adjustmentCredit`) share the same vocabulary.
+@immutable
+class LoanLedgerEntry {
+  final String id;
+  final String shopId;
+  final String loanId;
+  final String? originalPaymentId;
+  final String? correctionId;
+  final LoanLedgerEntryType entryType;
+  final int amountCents;
+  final int preBalanceCents;
+  final int postBalanceCents;
+  final String reason;
+  final String recordedByUserId;
+  final DateTime recordedAt;
+  final DateTime createdAt;
+
+  const LoanLedgerEntry({
+    required this.id,
+    required this.shopId,
+    required this.loanId,
+    this.originalPaymentId,
+    this.correctionId,
+    required this.entryType,
+    required this.amountCents,
+    required this.preBalanceCents,
+    required this.postBalanceCents,
+    required this.reason,
+    required this.recordedByUserId,
+    required this.recordedAt,
+    required this.createdAt,
+  });
+
+  bool get isCompensatingDebit => entryType == LoanLedgerEntryType.compensatingDebit;
+  bool get isAdjustmentDebit => entryType == LoanLedgerEntryType.adjustmentDebit;
+  bool get isAdjustmentCredit => entryType == LoanLedgerEntryType.adjustmentCredit;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is LoanLedgerEntry &&
+        other.id == id &&
+        other.shopId == shopId &&
+        other.loanId == loanId &&
+        other.originalPaymentId == originalPaymentId &&
+        other.correctionId == correctionId &&
+        other.entryType == entryType &&
+        other.amountCents == amountCents &&
+        other.preBalanceCents == preBalanceCents &&
+        other.postBalanceCents == postBalanceCents &&
+        other.reason == reason &&
+        other.recordedByUserId == recordedByUserId &&
+        other.recordedAt == recordedAt &&
+        other.createdAt == createdAt;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        shopId,
+        loanId,
+        originalPaymentId,
+        correctionId,
+        entryType,
+        amountCents,
+        preBalanceCents,
+        postBalanceCents,
+        reason,
+        recordedByUserId,
+        recordedAt,
+        createdAt,
+      );
+}

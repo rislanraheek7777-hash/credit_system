@@ -18,6 +18,20 @@ enum PhotoExceptionStatus {
   final String value;
   const PhotoExceptionStatus(this.value);
 
+  /// Human-readable display label.
+  String get displayName {
+    switch (this) {
+      case PhotoExceptionStatus.pendingOwnerApproval:
+        return 'Pending Owner Approval';
+      case PhotoExceptionStatus.approved:
+        return 'Approved';
+      case PhotoExceptionStatus.rejected:
+        return 'Rejected';
+      case PhotoExceptionStatus.consumed:
+        return 'Consumed';
+    }
+  }
+
   /// Resolves a [PhotoExceptionStatus] from its canonical database string.
   static PhotoExceptionStatus fromString(String val) {
     for (final status in PhotoExceptionStatus.values) {

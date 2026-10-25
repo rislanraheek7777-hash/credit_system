@@ -420,9 +420,11 @@ The system must decouple loan agreement creation from confirmed cash disbursemen
     - *Test Case 5 (Custom Date Blocked on Delay):* Agreement created 2026-10-10 with custom date 2026-10-15. Disbursement attempted on 2026-10-15 (same day) or 2026-10-16 (past due) -> Disbursement confirmation is programmatically blocked with a validation error requiring a valid future date.
   - **Cash-Out Reporting:** Daily cash-out reports strictly include only confirmed disbursements, preventing undisbursed principal from inflating cash flow reports.
   - **Cancellation of Undisbursed Agreements:** An agreement in `Pending Disbursement` can be cancelled by authorized staff with a mandatory reason, transitioning to `Financial Status: Cancelled / Undisbursed`, `Overall Workflow Status: Cancelled`. Both creation and cancellation are preserved in the append-only, tamper-resistant audit trail.
+  - **No Automatic Cancellation or Expiry:** An agreement awaiting disbursement is **never cancelled automatically**. There is no timeout and no auto-expiry. An abandoned agreement is cancelled **manually by the Shop Owner** with a mandatory reason. To keep abandoned agreements visible without mutating them, the system surfaces a **non-destructive worklist** of agreements still awaiting disbursement; the worklist reports an agreement and never changes its state.
+  - **Collateral Custody of a Cancelled Agreement:** The pledged items of a cancelled agreement **remain in the shop's custody** and are **not** automatically released to the customer. Cancelling an agreement changes the agreement's own state; it is not a collateral return, and no item custody transition is performed as part of the cancellation.
 * **Business Rules & Permissions:** Disbursement requires `Confirm Loan Disbursement` permission; cancellation requires Shop Owner role.
-* **Audit Requirements:** Logs disbursement confirmation and cancellation with timestamps, user IDs, calculated due date, and reasons in the append-only, tamper-resistant audit trail.
-* **Open Decisions:** `[OPEN DECISION: TIMEOUT/AUTO-EXPIRY POLICY FOR ABANDONED PENDING-DISBURSEMENT LOANS]` (whether undisbursed loans expire automatically after X hours or require manual cancellation).
+* **Audit Requirements:** Logs disbursement confirmation and cancellation with timestamps, user IDs, calculated due date, and reasons in the append-only, tamper-resistant audit trail. The disbursement confirmation is recorded under FR-31 category 4; the cancellation of an undisbursed agreement is recorded under FR-31 category 2 with action type `cancel_loan_agreement`.
+* **Resolved Decisions:** The former `[OPEN DECISION: TIMEOUT/AUTO-EXPIRY POLICY FOR ABANDONED PENDING-DISBURSEMENT LOANS]` is **resolved** by the rules above: manual Shop Owner cancellation only, no auto-expiry, non-destructive worklist for abandoned agreements. The age threshold at which an agreement is surfaced on that worklist remains an open operational setting and is not fixed by this requirement.
 
 #### FR-20: Loan Agreement Documentation & Initial Slip Generation
 The system generates printable and exportable (PDF) loan documentation, distinguishing between pre-disbursement review drafts and executed disbursement vouchers. Realizes UJ-1.
@@ -623,7 +625,7 @@ The system must maintain an append-only, tamper-resistant audit trail recording 
 * **Consequences (testable):**
   - **Mandatory Event Catalog:** The system programmatically generates an immutable audit entry for every instance of:
     1. Customer creation and profile edits.
-    2. Loan agreement origination.
+    2. Loan agreement origination and cancellation.
     3. Collateral registration and item detail edits.
     4. Confirmed cash disbursement.
     5. Payment recording (partial and full settlement).
@@ -638,6 +640,9 @@ The system must maintain an append-only, tamper-resistant audit trail recording 
     14. Security events (unauthorized access attempts, cross-tenant violations).
   - **Record Attributes:** Every audit entry records: Event ID, Tenant ID, Event Category, Action Type, Actor User ID, Target Entity Reference, Pre-State Snapshot, Post-State Snapshot, Business Reason (where mandatory), Client IP / User-Agent, and Server Timestamp.
   - **Immutability:** Audit records are write-once; no user (including Shop Owner and Platform Administrator) possesses permissions to edit, overwrite, or delete audit records.
+  - **Canonical Event Catalogue Authority:** The numbered catalogue above is the **single authoritative event-category contract** for the whole system. Any implementation-side category list — including the `AuditService` taxonomy — **must align to these ordinals and labels** and must never define an independent numbering. The mapping from an event category to its meaning is maintained in exactly **one canonical source**, so that an ordinal can never carry two meanings. Adding a fifteenth category requires an explicit PRD amendment together with a server migration that widens the `event_category` range check; the range check is never widened silently.
+  - **Action Types Within a Category:** `action_type` distinguishes individual events that share one category. Category 2 (`Loan agreement origination and cancellation`) is the parent of the action types `loan_agreement_origination`, `cancel_loan_agreement` and `loan_term_reagreed`. The cancellation of an undisbursed agreement is recorded as **category 2 with action type `cancel_loan_agreement`**; it is **not** recorded under category 4 (`Confirmed cash disbursement`), because no cash was disbursed.
+  - **Offline Capture and Authoritative Append:** An event that occurs while the shop is offline is first recorded **locally** in an append-only local queue and is appended to the server-side `audit_events` table upon synchronization. A local record is **not** by itself an authoritative audit entry — the authoritative entry is the row in `audit_events`. The local store's durability and synchronization behaviour is specified by the architecture, not by this requirement.
 * **Business Rules & Permissions:** System-wide automated capture; viewing audit logs requires `View Audit Logs` permission (or Shop Owner role).
 * **Audit Requirements:** Self-auditing append-only log.
 

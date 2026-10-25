@@ -3,11 +3,15 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:credit_system/core/data/local/app_database.dart';
+import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/core/storage/photo_storage_service.dart';
+import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/data/daos/customer_photo_exception_dao.dart';
 import 'package:credit_system/features/customers/domain/models/customer.dart';
+import 'package:credit_system/features/customers/domain/models/customer_photo_exception.dart';
 import 'package:credit_system/features/customers/domain/services/customer_photo_compressor.dart';
+import 'package:credit_system/features/customers/domain/services/customer_photo_exception_service.dart';
 import 'package:credit_system/features/customers/domain/services/customer_registration_service.dart';
 
 /// Mask a NIC for display: show first 4 and last 4 characters, masking the middle.
@@ -41,11 +45,22 @@ Uint8List _createSamplePhotoBytes() {
 /// - Atomic customer + SyncQueue event insertion on confirmation
 /// - Shop-scoped validation and cross-shop data leakage prevention
 class CustomerRegistrationScreen extends StatefulWidget {
-  const CustomerRegistrationScreen({super.key, this.database});
+  const CustomerRegistrationScreen({
+    super.key,
+    this.database,
+    this.currentUser,
+    this.storageService,
+  });
 
   /// Optional injected [AppDatabase] for testing. When omitted, the screen
   /// opens its own database connection via `AppDatabase()`.
   final AppDatabase? database;
+
+  /// Optional authenticated user performing the registration.
+  final AppUser? currentUser;
+
+  /// Optional injected [PhotoStorageService] for hermetic test storage.
+  final PhotoStorageService? storageService;
 
   @override
   State<CustomerRegistrationScreen> createState() =>
@@ -65,6 +80,9 @@ class _CustomerRegistrationScreenState
   final _photoExceptionIdController = TextEditingController();
   final _confirmingStaffIdController = TextEditingController();
 
+  Uint8List? _capturedPhotoBytes;
+  CustomerPhotoException? _pendingPhotoException;
+
   bool _isLoading = false;
   String? _statusMessage;
   bool _isSuccess = false;
@@ -77,17 +95,17 @@ class _CustomerRegistrationScreenState
       customerDao: CustomerDao(db),
       exceptionDao: CustomerPhotoExceptionDao(db),
       compressor: const CustomerPhotoCompressor(),
-      storageService: const PhotoStorageService(),
+      storageService: widget.storageService ?? const PhotoStorageService(),
       db: db,
     );
   }
 
   /// Returns a compressible photo byte list, or null when a photo exception
-  /// ID is provided (Story 2.3 path).
+  /// ID is provided (Story 2.3 path) or when no photo has been captured.
   Uint8List? _resolvePhotoBytes() {
     final exceptionId = _photoExceptionIdController.text.trim();
     if (exceptionId.isNotEmpty) return null;
-    return _createSamplePhotoBytes();
+    return _capturedPhotoBytes;
   }
 
   Future<void> _register({required bool confirmSharedPhone}) async {
@@ -133,7 +151,9 @@ class _CustomerRegistrationScreenState
         });
       }
 
-      await db.close();
+      if (widget.database == null) {
+        await db.close();
+      }
     } on DuplicateNicException catch (e) {
       if (mounted) {
         setState(() {
@@ -210,6 +230,313 @@ class _CustomerRegistrationScreenState
     });
 
     await _register(confirmSharedPhone: true);
+  }
+
+  Future<void> _showRequestPhotoExceptionDialog() async {
+    final customerId = _idController.text.trim();
+    final shopId = _shopIdController.text.trim();
+    final nic = _nicController.text.trim();
+
+    if (customerId.isEmpty || shopId.isEmpty || nic.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please fill Customer ID, Shop ID, and NIC before requesting a photo exception.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final reasonController = TextEditingController();
+    final confirmedReason = await showDialog<String?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Request Customer Photo Exception'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Mandatory documented business justification for KYC photo exception (e.g. Camera hardware failure; manual physical NIC copy verified). Requires Shop Owner approval.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('photo_exception_reason_field'),
+                controller: reasonController,
+                autofocus: true,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Justification Reason',
+                  hintText:
+                      'e.g. Camera hardware failure; manual physical NIC copy verified',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              key: const Key('submit_exception_request_button'),
+              onPressed: reasonController.text.trim().isEmpty
+                  ? null
+                  : () => Navigator.of(context).pop(reasonController.text.trim()),
+              child: const Text('Submit Request'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmedReason == null || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final db = widget.database ?? AppDatabase();
+      final exceptionDao = CustomerPhotoExceptionDao(db);
+      final exceptionService = CustomerPhotoExceptionService(
+        exceptionDao: exceptionDao,
+        db: db,
+      );
+
+      final requester = widget.currentUser ??
+          AppUser(
+            id: _confirmingStaffIdController.text.trim().isNotEmpty
+                ? _confirmingStaffIdController.text.trim()
+                : 'staff-counter',
+            shopId: shopId,
+            username: 'counter.staff',
+            fullName: 'Counter Staff',
+            role: AppRole.cashier,
+          );
+
+      final exception = await exceptionService.requestPhotoException(
+        shopId: shopId,
+        targetCustomerId: customerId,
+        customerNic: nic,
+        requester: requester,
+        reason: confirmedReason,
+      );
+
+      if (mounted) {
+        setState(() {
+          _photoExceptionIdController.text = exception.id;
+          _pendingPhotoException = exception;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Photo exception requested (ID: ${exception.id}); awaiting Shop Owner approval.',
+            ),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  Widget _buildPhotoSection() {
+    return Container(
+      key: const Key('customer_photo_section'),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _capturedPhotoBytes != null
+              ? Colors.green.shade400
+              : Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Customer Photograph (Mandatory KYC)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              if (_capturedPhotoBytes != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Photo Attached',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_capturedPhotoBytes != null) ...[
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  _capturedPhotoBytes!,
+                  key: const Key('customer_photo_preview'),
+                  height: 160,
+                  width: 160,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                'Preview: ${(_capturedPhotoBytes!.length / 1024).toStringAsFixed(1)} KB (Ready for compression)',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  key: const Key('retake_photo_button'),
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Retake'),
+                  onPressed: () {
+                    setState(() {
+                      _capturedPhotoBytes = _createSamplePhotoBytes();
+                    });
+                  },
+                ),
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  key: const Key('clear_photo_button'),
+                  icon: const Icon(Icons.delete_outline,
+                      size: 16, color: Colors.red),
+                  label:
+                      const Text('Clear', style: TextStyle(color: Colors.red)),
+                  onPressed: () {
+                    setState(() {
+                      _capturedPhotoBytes = null;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ] else ...[
+            Container(
+              height: 110,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                    color: Colors.grey.shade300, style: BorderStyle.solid),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.camera_alt_outlined, size: 36, color: Colors.grey),
+                  SizedBox(height: 6),
+                  Text(
+                    'No photograph captured',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    key: const Key('capture_photo_button'),
+                    icon: const Icon(Icons.camera_alt, size: 18),
+                    label: const Text('Capture Photo'),
+                    onPressed: () {
+                      setState(() {
+                        _capturedPhotoBytes = _createSamplePhotoBytes();
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('upload_photo_button'),
+                    icon: const Icon(Icons.upload_file, size: 18),
+                    label: const Text('Upload File'),
+                    onPressed: () {
+                      setState(() {
+                        _capturedPhotoBytes = _createSamplePhotoBytes();
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton.icon(
+                key: const Key('request_photo_exception_button'),
+                icon: const Icon(Icons.lock_clock, size: 16, color: Colors.amber),
+                label: const Text(
+                  'Hardware/Physical Issue? Request Photo Exception',
+                  style: TextStyle(color: Colors.amber, fontSize: 12),
+                ),
+                onPressed: _showRequestPhotoExceptionDialog,
+              ),
+            ),
+          ],
+          if (_pendingPhotoException != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.amber, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Photo Exception Request Pending Owner Approval (ID: ${_pendingPhotoException!.id}). Profile registration remains blocked until approved.',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.amber.shade900),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -403,6 +730,9 @@ class _CustomerRegistrationScreenState
                     ? 'Address is required'
                     : null,
               ),
+              const SizedBox(height: 12),
+
+              _buildPhotoSection(),
               const SizedBox(height: 12),
 
               TextFormField(

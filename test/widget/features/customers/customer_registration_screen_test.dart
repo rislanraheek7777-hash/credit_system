@@ -2,12 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
 
-/// Mask helper mirrored from the screen under test.
-String _maskNic(String nic) {
-  if (nic.length <= 8) return nic;
-  return '${nic.substring(0, 4)}****${nic.substring(nic.length - 4)}';
-}
-
 void main() {
   testWidgets('CustomerRegistrationScreen renders with required fields',
       (WidgetTester tester) async {

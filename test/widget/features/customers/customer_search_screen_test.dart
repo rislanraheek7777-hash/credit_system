@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:credit_system/features/auth/domain/models/app_user.dart';
+import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/customers/presentation/customer_search_screen.dart';
 
 void main() {
@@ -8,7 +10,17 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: CustomerSearchScreen(shopId: 'shop-123'),
+        home: CustomerSearchScreen(
+          shopId: 'shop-123',
+          currentUser: AppUser(
+            id: 'user-1',
+            shopId: 'shop-123',
+            username: 'testuser',
+            fullName: 'Test User',
+            role: AppRole.manager,
+            isActive: true,
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -23,7 +35,17 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: CustomerSearchScreen(shopId: 'shop-123'),
+        home: CustomerSearchScreen(
+          shopId: 'shop-123',
+          currentUser: AppUser(
+            id: 'user-1',
+            shopId: 'shop-123',
+            username: 'testuser',
+            fullName: 'Test User',
+            role: AppRole.manager,
+            isActive: true,
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();

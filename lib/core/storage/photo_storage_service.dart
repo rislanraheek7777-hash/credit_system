@@ -95,19 +95,19 @@ class PhotoStorageService {
     final targetFile = File(p.join(baseDir.path, relativePath));
     final parentDir = targetFile.parent;
 
-    if (!await parentDir.exists()) {
-      await parentDir.create(recursive: true);
+    if (!parentDir.existsSync()) {
+      parentDir.createSync(recursive: true);
     }
 
     // Write to a temporary file first, then atomically replace
     final tempFile = File('${targetFile.path}.tmp_${DateTime.now().microsecondsSinceEpoch}');
     try {
-      await tempFile.writeAsBytes(bytes, flush: true);
-      await tempFile.rename(targetFile.path);
+      tempFile.writeAsBytesSync(bytes, flush: true);
+      tempFile.renameSync(targetFile.path);
     } catch (e) {
-      if (await tempFile.exists()) {
+      if (tempFile.existsSync()) {
         try {
-          await tempFile.delete();
+          tempFile.deleteSync();
         } catch (_) {}
       }
       throw PhotoStorageException('Failed to write photo file to disk: $e');
@@ -120,8 +120,8 @@ class PhotoStorageService {
   Future<void> deletePhotoIfExists(String relativePath) async {
     try {
       final file = await resolveRelativePath(relativePath);
-      if (await file.exists()) {
-        await file.delete();
+      if (file.existsSync()) {
+        file.deleteSync();
       }
     } catch (_) {
       // Best-effort cleanup

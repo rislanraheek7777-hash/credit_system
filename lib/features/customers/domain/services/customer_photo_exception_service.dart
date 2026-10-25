@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/data/local/app_database.dart';
 import '../../../../core/permissions/app_permission.dart';
 import '../../../../core/permissions/authorization_guard.dart';
 import '../../../auth/domain/models/app_user.dart';
@@ -15,10 +19,12 @@ import '../models/customer_photo_exception.dart';
 /// - Single-Use Consumption: Consumed atomically upon customer registration.
 class CustomerPhotoExceptionService {
   final CustomerPhotoExceptionDao exceptionDao;
+  final AppDatabase? db;
   final Uuid _uuid;
 
   CustomerPhotoExceptionService({
     required this.exceptionDao,
+    this.db,
     Uuid? uuid,
   }) : _uuid = uuid ?? const Uuid();
 
@@ -87,6 +93,32 @@ class CustomerPhotoExceptionService {
 
     // 5. Persist
     await exceptionDao.createException(exception);
+
+    if (db != null) {
+      await db!.into(db!.syncQueue).insert(
+        SyncQueueCompanion.insert(
+          id: _uuid.v4(),
+          shopId: shopId,
+          idempotencyKey: _uuid.v4(),
+          entityType: 'customer_photo_exception',
+          entityId: exception.id,
+          actionType: 'request_customer_photo_exception',
+          payloadJson: jsonEncode({
+            'auditCategory': 1,
+            'auditEvent': 'customer_photo_exception_requested',
+            'actorId': requester.id,
+            'targetCustomerId': exception.targetCustomerId,
+            'customerNic': exception.customerNic,
+            'reason': trimmedReason,
+            'shopId': shopId,
+            'timestamp': now.toIso8601String(),
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+      );
+    }
+
     return exception;
   }
 
@@ -151,6 +183,34 @@ class CustomerPhotoExceptionService {
     );
 
     await exceptionDao.updateException(approved);
+
+    if (db != null) {
+      await db!.into(db!.syncQueue).insert(
+        SyncQueueCompanion.insert(
+          id: _uuid.v4(),
+          shopId: shopId,
+          idempotencyKey: _uuid.v4(),
+          entityType: 'customer_photo_exception',
+          entityId: approved.id,
+          actionType: 'approve_customer_photo_exception',
+          payloadJson: jsonEncode({
+            'auditCategory': 1,
+            'auditEvent': 'customer_photo_exception_approved',
+            'actorId': approver.id,
+            'requesterId': existing.requestedByUserId,
+            'targetCustomerId': existing.targetCustomerId,
+            'customerNic': existing.customerNic,
+            'reason': existing.requestReason,
+            'reviewNotes': trimmedNotes,
+            'shopId': shopId,
+            'timestamp': now.toIso8601String(),
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+      );
+    }
+
     return approved;
   }
 
@@ -215,6 +275,34 @@ class CustomerPhotoExceptionService {
     );
 
     await exceptionDao.updateException(rejected);
+
+    if (db != null) {
+      await db!.into(db!.syncQueue).insert(
+        SyncQueueCompanion.insert(
+          id: _uuid.v4(),
+          shopId: shopId,
+          idempotencyKey: _uuid.v4(),
+          entityType: 'customer_photo_exception',
+          entityId: rejected.id,
+          actionType: 'reject_customer_photo_exception',
+          payloadJson: jsonEncode({
+            'auditCategory': 1,
+            'auditEvent': 'customer_photo_exception_rejected',
+            'actorId': reviewer.id,
+            'requesterId': existing.requestedByUserId,
+            'targetCustomerId': existing.targetCustomerId,
+            'customerNic': existing.customerNic,
+            'reason': existing.requestReason,
+            'reviewNotes': trimmedNotes,
+            'shopId': shopId,
+            'timestamp': now.toIso8601String(),
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+      );
+    }
+
     return rejected;
   }
 

@@ -2,11 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
+import 'package:credit_system/core/permissions/app_permission.dart';
+import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/overdue_dao.dart';
 import 'package:credit_system/features/customers/domain/models/customer_masking.dart';
 import 'package:credit_system/features/customers/domain/models/customer.dart';
 import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/domain/models/loan_term.dart';
+import 'package:credit_system/features/customers/presentation/payment_screen.dart';
 
 /// Customer profile screen implementing Story 2.5 AC-2 and AC-3.
 ///
@@ -21,16 +26,20 @@ class CustomerProfileScreen extends StatefulWidget {
     super.key,
     required this.shopId,
     required this.customerId,
-    this.canViewSensitive = false,
+    required this.currentUser,
+    this.canViewSensitive,
     this.database,
   });
 
   final String shopId;
   final String customerId;
 
+  /// The authenticated actor viewing the profile.
+  final AppUser currentUser;
+
   /// Whether the viewer possesses [viewSensitiveCustomerData] permission.
-  /// When false, NIC/phone/address are masked per Story 2.5 AC-1.
-  final bool canViewSensitive;
+  /// When null, automatically evaluated from [currentUser].
+  final bool? canViewSensitive;
 
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
@@ -47,6 +56,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   List<Loan> _loans = [];
   bool _isLoading = true;
   String? _error;
+
+  /// The shop's operational time zone.
+  ///
+  /// The due date is persisted as the UTC instant of shop-local midnight of
+  /// the agreed calendar date, so it must be rendered in the shop's own zone
+  /// to show the date that was actually agreed (Story 4.3 AC-2).
+  ShopTimeZone _shopTimeZone = ShopTimeZone.defaultTimeZone();
 
   @override
   void initState() {
@@ -73,14 +89,18 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         widget.shopId,
         widget.customerId,
       );
+      final shopTimeZone = await OverdueDao(db).resolveShopTimeZone(widget.shopId);
 
-      await db.close();
+      if (widget.database == null) {
+        await db.close();
+      }
 
       if (!mounted) return;
 
       setState(() {
         _customer = customer;
         _loans = loans;
+        _shopTimeZone = shopTimeZone;
         _isLoading = false;
       });
     } catch (e) {
@@ -159,19 +179,37 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         return Colors.orange.withValues(alpha: 0.15);
       case LoanStatus.settled:
         return Colors.grey.withValues(alpha: 0.15);
+      case LoanStatus.cancelled:
+        return Colors.red.withValues(alpha: 0.15);
     }
   }
 
   void _proceedToLoanAction(BuildContext context, Loan loan) {
-    // Placeholder for loan action navigation (payment, detail, collateral return)
-    // These are handled by later stories (5.x, 6.x). For Story 2.5, we simply
-    // confirm the selection was made.
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Selected loan: ${loan.id.substring(0, loan.id.length.clamp(0, 8))}...'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    // Navigate to payment screen for eligible loans (disbursed, active/overdue,
+    // balance > 0). For other loan states, show a snackbar.
+    if (loan.isDisbursed &&
+        (loan.status == LoanStatus.active || loan.status == LoanStatus.overdue) &&
+        loan.balanceCents > 0) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => PaymentScreen(
+            shopId: widget.shopId,
+            loanId: loan.id,
+            currentUser: widget.currentUser,
+            database: widget.database,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Loan ${loan.id.substring(0, loan.id.length.clamp(0, 8))} is not eligible for payment.',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -213,6 +251,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     final overdueLoans = _loans.where((l) => l.status == LoanStatus.overdue).toList();
     final settledLoans = _loans.where((l) => l.status == LoanStatus.settled).toList();
 
+    final effectiveCanViewSensitive = widget.canViewSensitive ??
+        (widget.currentUser.hasPermission(AppPermission.viewSensitiveCustomerData) ||
+            widget.currentUser.role.isOwner);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Customer Profile'),
@@ -222,14 +264,14 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Photo thumbnail
+            // Photo thumbnail (Story 2.6: masked/placeholder when lacking permission)
             Center(
               child: CircleAvatar(
                 radius: 50,
-                backgroundImage: customer.photoUri != null
+                backgroundImage: effectiveCanViewSensitive && customer.photoUri != null
                     ? FileImage(File(customer.photoUri!))
                     : null,
-                child: customer.photoUri == null
+                child: (!effectiveCanViewSensitive || customer.photoUri == null)
                     ? const Icon(Icons.person, size: 50)
                     : null,
               ),
@@ -246,15 +288,15 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Contact summary (masked per RBAC)
+            // Contact summary (masked per RBAC, Story 2.6)
             Text(
-              'NIC: ${widget.canViewSensitive ? customer.nic : maskNic(customer.nic)}',
+              'NIC: ${effectiveCanViewSensitive ? customer.nic : maskNic(customer.nic)}',
             ),
             Text(
-              'Phone: ${widget.canViewSensitive ? customer.phone : maskPhone(customer.phone)}',
+              'Phone: ${effectiveCanViewSensitive ? customer.phone : maskPhone(customer.phone)}',
             ),
             Text(
-              'Address: ${widget.canViewSensitive ? customer.address : kAddressWithheld}',
+              'Address: ${effectiveCanViewSensitive ? customer.address : kAddressWithheld}',
             ),
             const SizedBox(height: 24),
 
@@ -272,18 +314,21 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 title: 'Active',
                 loans: activeLoans,
                 color: Colors.green,
+                shopTimeZone: _shopTimeZone,
                 onTap: (loan) => _onLoanAction(context, loan),
               ),
               _LoanStatusSection(
                 title: 'Overdue',
                 loans: overdueLoans,
                 color: Colors.orange,
+                shopTimeZone: _shopTimeZone,
                 onTap: (loan) => _onLoanAction(context, loan),
               ),
               _LoanStatusSection(
                 title: 'Settled',
                 loans: settledLoans,
                 color: Colors.grey,
+                shopTimeZone: _shopTimeZone,
                 onTap: (loan) => _onLoanAction(context, loan),
               ),
             ],
@@ -299,12 +344,17 @@ class _LoanStatusSection extends StatelessWidget {
   final String title;
   final List<Loan> loans;
   final Color color;
+
+  /// The shop's operational time zone, used to render each due date as the
+  /// calendar date that was agreed.
+  final ShopTimeZone shopTimeZone;
   final ValueChanged<Loan> onTap;
 
   const _LoanStatusSection({
     required this.title,
     required this.loans,
     required this.color,
+    required this.shopTimeZone,
     required this.onTap,
   });
 
@@ -336,7 +386,7 @@ class _LoanStatusSection extends StatelessWidget {
               children: [
                 Text('Principal: ${loan.principalCents / 100}'),
                 Text('Balance: ${loan.balanceCents / 100}'),
-                Text('Due: ${loan.dueDate.toString().substring(0, 10)}'),
+                Text('Due: ${loan.dueDateAsCalendarDate(shopTimeZone)}'),
               ],
             ),
             trailing: Chip(
@@ -351,3 +401,4 @@ class _LoanStatusSection extends StatelessWidget {
     );
   }
 }
+

@@ -1,0 +1,1103 @@
+00:00 +0: loading C:/projects/credit_system/test/integration/support/postgres_executor_test.dart
+00:00 +0: C:/projects/credit_system/test/integration/support/postgres_executor_test.dart: PostgresExecutor parameter map conversion empty list yields empty map
+00:00 +1: C:/projects/credit_system/test/integration/support/postgres_executor_test.dart: PostgresExecutor parameter map conversion null yields empty map
+00:00 +2: C:/projects/credit_system/test/integration/support/postgres_executor_test.dart: PostgresExecutor parameter map conversion positional list converted to named map
+00:00 +3: C:/projects/credit_system/test/integration/support/postgres_executor_test.dart: Transaction executor nested behavior nested transaction returns same executor
+00:00 +4: C:/projects/credit_system/test/unit/core/data/local/database_connection_test.dart: AppDatabaseConnection - In-Memory and Sandboxed Execution openInMemoryConnection enables SQLite foreign keys by default
+00:00 +5: C:/projects/credit_system/test/unit/core/data/local/database_connection_test.dart: AppDatabaseConnection - In-Memory and Sandboxed Execution openSandboxedConnection creates file in specified directory and enables foreign keys
+00:00 +6: C:/projects/credit_system/test/unit/core/data/local/database_connection_test.dart: AppDatabaseConnection - In-Memory and Sandboxed Execution openConnection dispatches correctly based on inMemory parameter
+00:00 +7: C:/projects/credit_system/test/unit/core/data/local/database_connection_test.dart: Drift Table Contracts - SQLite Schema & Constraint Verification FOREIGN KEY: SyncQueue insertion fails if referenced shop does not exist
+00:00 +8: C:/projects/credit_system/test/unit/core/data/local/database_connection_test.dart: Drift Table Contracts - SQLite Schema & Constraint Verification FOREIGN KEY: SyncQueue insertion succeeds when referenced shop exists
+00:00 +9: C:/projects/credit_system/test/unit/core/data/local/database_connection_test.dart: Drift Table Contracts - SQLite Schema & Constraint Verification CHECK CONSTRAINT: SyncQueue rejects invalid status values
+00:00 +10: C:/projects/credit_system/test/unit/core/data/local/database_connection_test.dart: Drift Table Contracts - SQLite Schema & Constraint Verification CHECK CONSTRAINT: SyncQueue rejects negative retry_count
+00:00 +11: C:/projects/credit_system/test/unit/core/data/local/database_connection_test.dart: Drift Table Contracts - SQLite Schema & Constraint Verification UNIQUE CONSTRAINT: SyncQueue rejects duplicate idempotency_key within same shop
+00:00 +12: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests schema version is 7 and all tables exist
+00:00 +13: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests schema version is 7 and all tables exist
+00:00 +14: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests schema version is 7 and all tables exist
+00:00 +15: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests schema version is 7 and all tables exist
+00:00 +15 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests schema version is 7 and all tables exist [E]
+  Expected: <7>
+    Actual: <8>
+  
+  package:matcher                                          expect
+  package:flutter_test/src/widget_tester.dart 473:18       expect
+  test\unit\core\data\local\drift_database_test.dart 22:7  main.<fn>.<fn>
+  
+00:00 +15 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +16 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +17 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +18 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +19 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +20 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +21 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +22 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +23 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:01 +24 -1: C:/projects/credit_system/test/unit/core/database/converters/money_converter_test.dart: MoneyConverter - Direct Unit Tests serializes and deserializes positive money amounts without precision loss
+00:01 +25 -1: C:/projects/credit_system/test/unit/core/database/converters/money_converter_test.dart: MoneyConverter - Direct Unit Tests serializes and deserializes positive money amounts without precision loss
+00:01 +26 -1: C:/projects/credit_system/test/unit/core/database/converters/money_converter_test.dart: MoneyConverter - Direct Unit Tests serializes and deserializes positive money amounts without precision loss
+00:01 +27 -1: C:/projects/credit_system/test/unit/core/database/converters/money_converter_test.dart: MoneyConverter - Direct Unit Tests serializes and deserializes positive money amounts without precision loss
+00:01 +28 -1: C:/projects/credit_system/test/unit/core/database/converters/money_converter_test.dart: MoneyConverter - Direct Unit Tests serializes and deserializes positive money amounts without precision loss
+00:01 +29 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMERS (v4): inserts and queries customer profile in shop scope
+00:01 +30 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMERS (v4): inserts and queries customer profile in shop scope
+00:01 +31 -1: C:/projects/credit_system/test/unit/core/data/remote/postgres_migration_contract_test.dart: MigrationRunner - Logic, Checksum & Lifecycle Contract Tests TAMPER DETECTION: throws MigrationChecksumMismatchException if migration file changed post-application
+00:01 +32 -1: C:/projects/credit_system/test/unit/core/data/remote/postgres_migration_contract_test.dart: MigrationRunner - Logic, Checksum & Lifecycle Contract Tests TAMPER DETECTION: throws MigrationChecksumMismatchException if migration file changed post-application
+00:01 +33 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMER_PHOTO_EXCEPTIONS (v5): inserts and queries photo exception in shop scope
+00:01 +34 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMER_PHOTO_EXCEPTIONS (v5): inserts and queries photo exception in shop scope
+00:01 +35 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMER_PHOTO_EXCEPTIONS (v5): inserts and queries photo exception in shop scope
+00:01 +36 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMER_PHOTO_EXCEPTIONS (v5): inserts and queries photo exception in shop scope
+00:01 +37 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMER_PHOTO_EXCEPTIONS (v5): inserts and queries photo exception in shop scope
+00:01 +38 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMER_PHOTO_EXCEPTIONS (v5): inserts and queries photo exception in shop scope
+00:01 +39 -1: C:/projects/credit_system/test/unit/core/database/converters/money_converter_test.dart: NullableMoneyConverter - Null Handling & Invariants converts null values to and from SQL cleanly
+00:01 +40 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes
+00:01 +41 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes
+00:01 +42 -1: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:247:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +42 -2: C:/projects/credit_system/test/unit/core/database/converters/money_converter_test.dart: Drift / SQLite Real In-Memory Database Roundtrip Tests SQLite roundtrip stores and retrieves positive, negative, zero, and large values as exact 64-bit integers
+00:01 +42 -2: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:01 +43 -2: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes
+00:01 +44 -2: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+00:01 +45 -2: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:395:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +45 -3: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:01 +45 -3: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 3 to 7 preserves existing data and creates customers & photo exceptions with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:528:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +45 -4: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 3 to 7 preserves existing data and creates customers & photo exceptions with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:01 +45 -4: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 4 to 7 preserves existing data and creates photo exceptions with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:675:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+00:01 +46 -4: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 4 to 7 preserves existing data and creates photo exceptions with indexes
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +46 -5: C:/projects/credit_system/test/unit/core/money/money_test.dart: Money - Instantiation & Representation creates Money.zero with default and custom currency
+00:01 +46 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 4 to 7 preserves existing data and creates photo exceptions with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:01 +47 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+00:01 +48 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+00:01 +49 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+00:01 +50 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+00:01 +51 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+00:01 +52 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+00:01 +53 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+00:01 +54 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:812:38)
+00:01 +55 -5: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +55 -6: C:/projects/credit_system/test/unit/core/permissions/app_permission_test.dart: 14-Permission Catalog Completeness & Invariants (Story 1.7, FR-6, AD-6) catalog contains exactly the 14 approved operational permissions
+00:01 +55 -6: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:01 +56 -6: C:/projects/credit_system/test/unit/core/permissions/app_permission_test.dart: 14-Permission Catalog Completeness & Invariants (Story 1.7, FR-6, AD-6) catalog contains exactly the 14 approved operational permissions
+00:01 +57 -6: C:/projects/credit_system/test/unit/core/permissions/app_permission_test.dart: 14-Permission Catalog Completeness & Invariants (Story 1.7, FR-6, AD-6) catalog contains exactly the 14 approved operational permissions
+00:01 +58 -6: C:/projects/credit_system/test/unit/core/permissions/app_permission_test.dart: 14-Permission Catalog Completeness & Invariants (Story 1.7, FR-6, AD-6) catalog contains exactly the 14 approved operational permissions
+00:01 +59 -6: C:/projects/credit_system/test/unit/core/permissions/app_permission_test.dart: 14-Permission Catalog Completeness & Invariants (Story 1.7, FR-6, AD-6) catalog contains exactly the 14 approved operational permissions
+00:01 +60 -6: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes
+00:01 +61 -6: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes
+00:01 +62 -6: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+00:01 +63 -6: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+00:01 +64 -6: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+00:01 +65 -6: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:947:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +65 -7: C:/projects/credit_system/test/unit/core/permissions/app_permission_test.dart: Role Permission Templates (Story 1.7) Cashier role template has exactly the 6 required counter permissions
+00:01 +65 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:01 +66 -7: C:/projects/credit_system/test/unit/core/permissions/app_permission_test.dart: Role Permission Templates (Story 1.7) Cashier role template has exactly the 6 required counter permissions
+00:01 +67 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+00:01 +68 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+00:01 +69 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+00:01 +70 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+00:01 +71 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+00:01 +72 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+00:01 +73 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+00:01 +74 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+00:01 +75 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+00:01 +76 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +77 -7: C:/projects/credit_system/test/unit/core/money/money_test.dart: Money - Arithmetic Operations & Invariants absolute value
+00:01 +78 -7: C:/projects/credit_system/test/unit/core/money/money_test.dart: Money - Arithmetic Operations & Invariants detects integer overflow on extreme additions and subtractions
+00:01 +79 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: updates shop name and operational timezone
+00:01 +80 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: updates shop name and operational timezone
+00:01 +81 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: updates shop name and operational timezone
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+00:01 +82 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: updates shop name and operational timezone
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +83 -7: C:/projects/credit_system/test/unit/core/money/money_test.dart: Money - Comparisons & Equality implements value equality (== and hashCode)
+00:01 +84 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: inserts counter staff account with default session_version = 1
+00:01 +85 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: inserts counter staff account with default session_version = 1
+00:01 +86 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: inserts counter staff account with default session_version = 1
+00:01 +87 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: inserts counter staff account with default session_version = 1
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+00:01 +88 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: inserts counter staff account with default session_version = 1
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+00:01 +89 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: inserts counter staff account with default session_version = 1
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+00:01 +90 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: inserts counter staff account with default session_version = 1
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +91 -7: C:/projects/credit_system/test/unit/core/money/money_test.dart: Money - Presentation Formatting supports custom currency symbols
+00:01 +92 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: increments session_version to immediately revoke sessions (FR-5)
+00:01 +93 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: increments session_version to immediately revoke sessions (FR-5)
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +94 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests FOREIGN KEY: AppUsers insertion fails if referenced shop does not exist
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +95 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests UNIQUE CONSTRAINT: AppUsers blocks duplicate username within same shop tenant
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +96 -7: C:/projects/credit_system/test/unit/core/permissions/authorization_guard_test.dart: AuthorizationGuard - Deny-by-Default & Granular RBAC Tests (Story 1.7) DENY-BY-DEFAULT: denies action when permission toggle is absent
+00:02 +96 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SYNC_QUEUE: inserts, filters pending items, and confirms server acknowledgement
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:02 +97 -7: C:/projects/credit_system/test/unit/core/permissions/authorization_guard_test.dart: AuthorizationGuard - Deny-by-Default & Granular RBAC Tests (Story 1.7) DENY-BY-DEFAULT: denies action when permission toggle is absent
+00:02 +98 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SYNC_QUEUE: unique idempotency constraint blocks duplicate operations
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+00:02 +99 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SYNC_QUEUE: unique idempotency constraint blocks duplicate operations
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+00:02 +100 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SYNC_QUEUE: unique idempotency constraint blocks duplicate operations
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+00:02 +101 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests SYNC_QUEUE: unique idempotency constraint blocks duplicate operations
+This warning will only appear on debug builds.
+00:02 +102 -7: C:/projects/credit_system/test/unit/core/permissions/authorization_guard_test.dart: AuthorizationGuard - Deny-by-Default & Granular RBAC Tests (Story 1.7) All 14 permissions evaluate independently under AuthorizationGuard
+00:02 +103 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests FOREIGN KEY: Customers insertion fails if referenced shop does not exist
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:02 +104 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests UNIQUE CONSTRAINT: Customers blocks duplicate NIC within same shop, permits across different shops
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:02 +105 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests FOREIGN KEY: CustomerPhotoExceptions insertion fails if referenced shop does not exist
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:02 +106 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests FOREIGN KEY: CustomerPhotoExceptions insertion fails if requestedByUserId does not exist
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:02 +107 -7: C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests CHECK CONSTRAINT: CustomerPhotoExceptions blocks invalid status strings
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:02 +108 -7: C:/projects/credit_system/test/unit/core/storage/photo_storage_service_test.dart: PhotoStorageService - Local Sandboxed Storage Tests (Story 2.2) computes normalized relative photo path using forward slashes
+00:02 +109 -7: C:/projects/credit_system/test/unit/core/storage/photo_storage_service_test.dart: PhotoStorageService - Local Sandboxed Storage Tests (Story 2.2) saves photo bytes to sandboxed tenant directory and returns relative path
+00:02 +110 -7: C:/projects/credit_system/test/unit/core/storage/photo_storage_service_test.dart: PhotoStorageService - Local Sandboxed Storage Tests (Story 2.2) strictly isolates photos by shopId and prevents collision between tenants
+00:02 +111 -7: C:/projects/credit_system/test/unit/core/storage/photo_storage_service_test.dart: PhotoStorageService - Local Sandboxed Storage Tests (Story 2.2) rejects path traversal attempts in shopId or customerId
+00:02 +112 -7: C:/projects/credit_system/test/unit/core/storage/photo_storage_service_test.dart: PhotoStorageService - Local Sandboxed Storage Tests (Story 2.2) rejects empty photo bytes
+00:02 +113 -7: C:/projects/credit_system/test/unit/core/storage/photo_storage_service_test.dart: PhotoStorageService - Local Sandboxed Storage Tests (Story 2.2) deletePhotoIfExists removes target file cleanly without throwing if missing
+00:02 +114 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Creation & Idempotency Key Invariants SyncQueueEntry.create generates canonical UUIDv4 id and idempotencyKey
+00:02 +115 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Creation & Idempotency Key Invariants IDEMPOTENCY INVARIANT: retry preserves exact same idempotencyKey across multiple attempts
+00:02 +116 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Creation & Idempotency Key Invariants VALIDATION: rejects malformed UUID identifiers
+00:02 +117 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Creation & Idempotency Key Invariants VALIDATION: rejects empty entityType or actionType
+00:02 +118 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Lifecycle & Status Transition Invariants pending_server_ack -> confirmed_by_server is valid and sets updatedAt
+00:02 +119 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Lifecycle & Status Transition Invariants markConfirmed on already confirmed entry is idempotent
+00:02 +120 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Lifecycle & Status Transition Invariants ILLEGAL TRANSITION: failed -> confirmed_by_server directly throws InvalidSyncStatusTransitionException
+00:02 +121 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Lifecycle & Status Transition Invariants ILLEGAL TRANSITION: confirmed_by_server cannot transition to failed
+00:02 +122 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Lifecycle & Status Transition Invariants ILLEGAL TRANSITION: confirmed_by_server cannot be retried
+00:02 +123 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Serialization & Malformed Input Handling toMap and fromMap serialize and deserialize cleanly
+00:02 +124 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Serialization & Malformed Input Handling fromMap parses raw JSON string in payload_json correctly
+00:02 +125 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Serialization & Malformed Input Handling fromMap throws FormatException when payload_json is malformed JSON
+00:02 +126 -7: C:/projects/credit_system/test/unit/core/sync/sync_queue_entry_test.dart: SyncQueueEntry - Diagnostic Privacy Protection DIAGNOSTIC PRIVACY: toString and toDiagnosticString strictly omit sensitive payload data
+00:02 +127 -7: C:/projects/credit_system/test/unit/features/auth/app_user_test.dart: AppUser Domain Model & Permission Invariant Tests (Story 1.7) creates valid Cashier user with default role permissions
+00:02 +128 -7: C:/projects/credit_system/test/unit/features/auth/app_user_test.dart: AppUser Domain Model & Permission Invariant Tests (Story 1.7) creates valid Custom user with explicitly assigned permissions
+00:02 +129 -7: C:/projects/credit_system/test/unit/features/auth/app_user_test.dart: AppUser Domain Model & Permission Invariant Tests (Story 1.7) SESSION REVOCATION CONTRACT: isSessionValid strictly requires active account and matching session version
+00:02 +130 -7: C:/projects/credit_system/test/unit/features/auth/app_user_test.dart: AppUser Domain Model & Permission Invariant Tests (Story 1.7) VALIDATION: rejects invalid or empty invariants
+00:03 +131 -7: C:/projects/credit_system/test/unit/features/auth/app_user_test.dart: AppUser Domain Model & Permission Invariant Tests (Story 1.7) SERIALIZATION: serializes and parses custom permissions cleanly
+00:03 +132 -7: C:/projects/credit_system/test/unit/features/auth/user_dao_test.dart: UserDao Local Persistence & Staff Administration Tests (Story 1.7) creates and retrieves counter staff with default cashier permissions
+00:03 +133 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer inserts record with normalized NIC and returns domain entity on query
+00:03 +134 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer inserts record with normalized NIC and returns domain entity on query
+00:03 +135 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer inserts record with normalized NIC and returns domain entity on query
+00:03 +136 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer inserts record with normalized NIC and returns domain entity on query
+00:03 +137 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer inserts record with normalized NIC and returns domain entity on query
+00:03 +138 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer inserts record with normalized NIC and returns domain entity on query
+00:03 +139 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer inserts record with normalized NIC and returns domain entity on query
+00:03 +140 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) rejects empty input bytes with PhotoCompressionException
+00:03 +141 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer blocks duplicate NIC within same shop via unique constraint
+00:03 +142 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) rejects corrupt or non-image data with PhotoCompressionException
+00:03 +143 -7: C:/projects/credit_system/test/unit/features/customers/customer_dao_test.dart: CustomerDao - Local CRUD & Persistence createCustomer allows identical NIC in different shop tenant
+00:03 +144 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +145 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +146 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +147 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +148 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +149 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +150 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +151 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +152 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +153 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +154 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:03 +155 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:04 +156 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:04 +157 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:04 +158 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:04 +159 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:04 +160 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:04 +161 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) preserves dimensions when longest edge is under 1600 pixels
+00:04 +162 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_exception_service_test.dart: CustomerPhotoExceptionService Workflow & RBAC Tests (Story 2.3) REQUEST: Authorized staff member can request photo exception with mandatory reason
+00:04 +163 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_exception_service_test.dart: CustomerPhotoExceptionService Workflow & RBAC Tests (Story 2.3) REQUEST: Authorized staff member can request photo exception with mandatory reason
+00:04 +164 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_exception_service_test.dart: CustomerPhotoExceptionService Workflow & RBAC Tests (Story 2.3) REQUEST: Authorized staff member can request photo exception with mandatory reason
+00:04 +165 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_exception_service_test.dart: CustomerPhotoExceptionService Workflow & RBAC Tests (Story 2.3) REQUEST: Authorized staff member can request photo exception with mandatory reason
+00:04 +166 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_exception_service_test.dart: CustomerPhotoExceptionService Workflow & RBAC Tests (Story 2.3) REQUEST: Authorized staff member can request photo exception with mandatory reason
+00:04 +167 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_exception_service_test.dart: CustomerPhotoExceptionService Workflow & RBAC Tests (Story 2.3) REQUEST: Authorized staff member can request photo exception with mandatory reason
+00:04 +168 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_exception_service_test.dart: CustomerPhotoExceptionService Workflow & RBAC Tests (Story 2.3) REQUEST: Authorized staff member can request photo exception with mandatory reason
+00:04 +169 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_exception_service_test.dart: CustomerPhotoExceptionService Workflow & RBAC Tests (Story 2.3) REQUEST: Authorized staff member can request photo exception with mandatory reason
+00:04 +170 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +171 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +172 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +173 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +174 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +175 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +176 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +177 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +178 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +179 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:04 +180 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +181 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +182 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +183 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +184 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +185 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +186 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +187 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +188 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +189 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +190 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +191 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +192 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +193 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +194 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +195 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +196 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +197 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +198 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +199 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +200 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +201 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +202 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +203 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +204 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +205 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +206 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +207 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +208 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +209 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +210 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +211 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +212 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +213 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +214 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +215 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +216 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:05 +217 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +218 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +219 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +220 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +221 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +222 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +223 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +224 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +225 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +226 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +227 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +228 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +229 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +230 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales high-resolution images so longest edge is exactly 1600 pixels
+00:06 +231 -7: C:/projects/credit_system/test/unit/features/customers/customer_registration_service_test.dart: CustomerRegistrationService - Duplicate Detection & Shared-Phone (Story 2.4) shared phone with confirmation creates customer and sync queue event atomically
+00:06 +232 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales tall portrait images so height is exactly 1600 pixels
+00:07 +233 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales tall portrait images so height is exactly 1600 pixels
+00:07 +234 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales tall portrait images so height is exactly 1600 pixels
+00:08 +235 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) downscales tall portrait images so height is exactly 1600 pixels
+00:08 +236 -7: C:/projects/credit_system/test/widget/features/customers/customer_registration_screen_test.dart: CustomerRegistrationScreen renders with required fields
+00:09 +237 -7: C:/projects/credit_system/test/widget/features/customers/customer_registration_screen_test.dart: CustomerRegistrationScreen renders with required fields
+00:09 +238 -7: C:/projects/credit_system/test/widget/features/customers/customer_registration_screen_test.dart: CustomerRegistrationScreen renders with required fields
+00:09 +239 -7: C:/projects/credit_system/test/widget/features/customers/customer_registration_screen_test.dart: CustomerRegistrationScreen renders with required fields
+00:09 +240 -7: C:/projects/credit_system/test/widget/features/customers/customer_registration_screen_test.dart: CustomerRegistrationScreen renders with required fields
+00:09 +241 -7: C:/projects/credit_system/test/widget/features/customers/customer_registration_screen_test.dart: CustomerRegistrationScreen renders with required fields
+00:09 +242 -7: C:/projects/credit_system/test/widget/features/customers/multi_loan_selection_test.dart: Multi-loan selection dialog appears for multiple loans
+00:09 +243 -7: C:/projects/credit_system/test/widget/features/customers/multi_loan_selection_test.dart: Multi-loan selection dialog appears for multiple loans
+00:10 +244 -7: C:/projects/credit_system/test/widget/features/customers/multi_loan_selection_test.dart: Multi-loan selection dialog appears for multiple loans
+00:10 +245 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:10 +246 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:10 +247 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:10 +248 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:10 +249 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:10 +250 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:11 +251 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:11 +252 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:11 +253 -7: C:/projects/credit_system/test/unit/features/customers/customer_photo_compressor_test.dart: CustomerPhotoCompressor - Compression & Resizing Pipeline Tests (Story 2.2) guarantees output file size strictly satisfies 500 KB hard limit
+00:11 +254 -7: C:/projects/credit_system/test/widget_test.dart: Counter increments smoke test
+00:11 +255 -7: C:/projects/credit_system/test/widget_test.dart: Counter increments smoke test
+00:12 +256 -7: Some tests failed.
+
+Failing tests:
+  C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes
+  C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes
+  C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 3 to 7 preserves existing data and creates customers & photo exceptions with indexes
+  C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 4 to 7 preserves existing data and creates photo exceptions with indexes
+  ... and 3 more

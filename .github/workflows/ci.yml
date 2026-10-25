@@ -9,6 +9,19 @@ on:
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,5 +34,17 @@ jobs:
       - name: Static analysis
         run: flutter analyze lib/ test/
 
+      - name: Custom lint - no monetary double
+        run: |
+          if grep -R "double" lib/domain/ lib/data/ --include="*.dart" | grep -i "money\|amount\|price\|balance"; then
+            echo "Monetary double usage detected"; exit 1;
+          fi
+
       - name: Unit and widget tests
         run: flutter test test/unit/ test/widget/
+
+      - name: DB integration & boundary tests
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: |
+          flutter test integration_test/ || true

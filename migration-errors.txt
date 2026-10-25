@@ -1,0 +1,863 @@
+00:00 +0: loading C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart
+00:00 +0: AppDatabase - Local Drift Foundations & Schema v7 Tests schema version is 7 and all tables exist
+00:00 +0 -1: AppDatabase - Local Drift Foundations & Schema v7 Tests schema version is 7 and all tables exist [E]
+  Expected: <7>
+    Actual: <8>
+  
+  package:matcher                                          expect
+  package:flutter_test/src/widget_tester.dart 473:18       expect
+  test\unit\core\data\local\drift_database_test.dart 22:7  main.<fn>.<fn>
+  
+00:00 +0 -1: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS (v2): supports all 7 nullable profile and receipt branding fields
+00:00 +1 -1: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS (v3): supports nullable permissions column for custom roles
+00:00 +2 -1: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMERS (v4): inserts and queries customer profile in shop scope
+00:00 +3 -1: AppDatabase - Local Drift Foundations & Schema v7 Tests CUSTOMER_PHOTO_EXCEPTIONS (v5): inserts and queries photo exception in shop scope
+00:00 +4 -1: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:247:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +4 -2: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:00 +4 -2: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:395:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +4 -3: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:00 +4 -3: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 3 to 7 preserves existing data and creates customers & photo exceptions with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:528:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +4 -4: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 3 to 7 preserves existing data and creates customers & photo exceptions with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:00 +4 -4: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 4 to 7 preserves existing data and creates photo exceptions with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:675:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +4 -5: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 4 to 7 preserves existing data and creates photo exceptions with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:00 +4 -5: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:812:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +4 -6: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 5 to 7 preserves existing data and adds the shared-phone index [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:00 +4 -6: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure>.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:947:38)
+#6      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#7      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#8      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +4 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 6 to 7 preserves existing data and adds loans table with indexes [E]
+  Unsupported operation: This method should not be called at runtime. Are you sure you re-ran the builder after changing your tables or databases?
+  package:drift/src/dsl/dsl.dart 35:3                                      _isGenerated
+  package:drift/src/dsl/table.dart 150:35                                  Table.text
+  package:credit_system/core/data/local/tables/app_users_table.dart 45:34  AppUsers.passwordHash
+  package:credit_system/core/data/local/app_database.dart 99:45            AppDatabase.migration.<fn>
+  
+00:00 +4 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: inserts and queries shop tenant profile with defaults
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +5 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests SHOPS: updates shop name and operational timezone
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +6 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: inserts counter staff account with default session_version = 1
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +7 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests APP_USERS: increments session_version to immediately revoke sessions (FR-5)
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +8 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests FOREIGN KEY: AppUsers insertion fails if referenced shop does not exist
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:00 +9 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests UNIQUE CONSTRAINT: AppUsers blocks duplicate username within same shop tenant
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +10 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests SYNC_QUEUE: inserts, filters pending items, and confirms server acknowledgement
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +11 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests SYNC_QUEUE: unique idempotency constraint blocks duplicate operations
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +12 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests FOREIGN KEY: Customers insertion fails if referenced shop does not exist
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +13 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests UNIQUE CONSTRAINT: Customers blocks duplicate NIC within same shop, permits across different shops
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +14 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests FOREIGN KEY: CustomerPhotoExceptions insertion fails if referenced shop does not exist
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +15 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests FOREIGN KEY: CustomerPhotoExceptions insertion fails if requestedByUserId does not exist
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +16 -7: AppDatabase - Local Drift Foundations & Schema v7 Tests CHECK CONSTRAINT: CustomerPhotoExceptions blocks invalid status strings
+WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:4265:36)
+#4      new AppDatabase.forTesting (package:credit_system/core/data/local/app_database.dart)
+#5      main.<anonymous closure> (file:///C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart:13:22)
+#6      Declarer._runSetUps.<anonymous closure> (package:test_api/src/backend/declarer.dart:434:61)
+#7      Future.forEach.<anonymous closure> (dart:async/future.dart:695:26)
+#8      Future.doWhile.<anonymous closure> (dart:async/future.dart:753:26)
+#9      StackZoneSpecification._registerUnaryCallback.<anonymous closure>.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:36)
+#10     StackZoneSpecification._run (package:stack_trace/src/stack_zone_specification.dart:207:15)
+#11     StackZoneSpecification._registerUnaryCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:127:24)
+#12     _rootRunUnary (dart:async/zone_root.dart:48:47)
+#13     _CustomZone.runUnary (dart:async/zone.dart:816:35)
+#14     _CustomZone.runUnaryGuarded (dart:async/zone.dart:710:7)
+#15     _CustomZone.bindUnaryCallbackGuarded.<anonymous closure> (dart:async/zone.dart:748:26)
+#16     Future.doWhile (dart:async/future.dart:770:18)
+#17     Future.forEach (dart:async/future.dart:693:12)
+#18     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:434:18)
+#19     Declarer._runSetUps (package:test_api/src/backend/declarer.dart:432:40)
+#20     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:21)
+#21     _rootRun (dart:async/zone_root.dart:35:13)
+#22     _CustomZone.run (dart:async/zone.dart:810:35)
+#23     _runZoned (dart:async/zone_api.dart:165:6)
+#24     runZoned (dart:async/zone_api.dart:91:10)
+#25     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#26     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#27     _rootRun (dart:async/zone_root.dart:35:13)
+#28     _CustomZone.run (dart:async/zone.dart:810:35)
+#29     _runZoned (dart:async/zone_api.dart:165:6)
+#30     runZoned (dart:async/zone_api.dart:91:10)
+#31     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#32     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +17 -7: Some tests failed.
+
+Failing tests:
+  C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 1 to 7 preserves existing data and creates customers and photo exceptions with indexes
+  C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 2 to 7 preserves existing data and adds permissions, customers & photo exceptions with indexes
+  C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 3 to 7 preserves existing data and creates customers & photo exceptions with indexes
+  C:/projects/credit_system/test/unit/core/data/local/drift_database_test.dart: AppDatabase - Local Drift Foundations & Schema v7 Tests MIGRATION: verifies upgrade from schema version 4 to 7 preserves existing data and creates photo exceptions with indexes
+  ... and 3 more

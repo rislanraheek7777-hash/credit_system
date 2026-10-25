@@ -3,6 +3,7 @@ import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/data/local/connection/database_connection.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/data/daos/user_dao.dart';
+import 'package:credit_system/features/auth/data/services/password_hash_service.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/shop/data/daos/shop_dao.dart';
 import 'package:credit_system/features/shop/domain/models/shop_profile.dart';
@@ -324,6 +325,95 @@ void main() {
       final unchanged = await userDao.getUserById('user-pw-004');
       expect(unchanged!.passwordHash, isNull);
       expect(unchanged.sessionVersion, equals(1));
+    });
+
+    test('CREATE USER WITH PASSWORD: hashes plaintext password before persistence', () async {
+      final user = AppUser(
+        id: 'user-pw-create-001',
+        shopId: 'shop-alpha-100',
+        username: 'staff.withpw',
+        fullName: 'Staff With Password',
+        role: AppRole.cashier,
+      );
+
+      const plaintext = 'InitialPassword123';
+      await userDao.createUserWithPassword(user, plaintext);
+
+      final retrieved = await userDao.getUserById('user-pw-create-001');
+      expect(retrieved, isNotNull);
+      expect(retrieved!.passwordHash, isNotNull);
+      expect(retrieved.passwordHash, isNot(plaintext)); // plaintext not stored
+
+      // The stored hash verifies the original password
+      final service = PasswordHashService();
+      expect(service.verifyPassword(plaintext, retrieved.passwordHash), isTrue);
+      expect(service.verifyPassword('wrong-password', retrieved.passwordHash), isFalse);
+    });
+
+    test('CREATE USER WITH PASSWORD: rejects empty plaintext password', () async {
+      final user = AppUser(
+        id: 'user-pw-create-002',
+        shopId: 'shop-alpha-100',
+        username: 'staff.nopw',
+        fullName: 'Staff No Password',
+        role: AppRole.cashier,
+      );
+
+      expect(
+        () => userDao.createUserWithPassword(user, ''),
+        throwsA(isA<PasswordHashException>()),
+      );
+    });
+
+    test('CREATE USER WITH PASSWORD: same username in same shop is rejected', () async {
+      final user1 = AppUser(
+        id: 'user-dup-001',
+        shopId: 'shop-alpha-100',
+        username: 'dup.user',
+        fullName: 'Duplicate User',
+        role: AppRole.cashier,
+      );
+      final user2 = AppUser(
+        id: 'user-dup-002',
+        shopId: 'shop-alpha-100',
+        username: 'dup.user',
+        fullName: 'Duplicate User Two',
+        role: AppRole.cashier,
+      );
+
+      await userDao.createUserWithPassword(user1, 'Password123');
+
+      expect(
+        () => userDao.createUserWithPassword(user2, 'Password456'),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('CREATE USER WITH PASSWORD: same username in different shop is allowed', () async {
+      final userAlpha = AppUser(
+        id: 'user-shop-001',
+        shopId: 'shop-alpha-100',
+        username: 'same.user',
+        fullName: 'Same User Alpha',
+        role: AppRole.cashier,
+      );
+      final userBeta = AppUser(
+        id: 'user-shop-002',
+        shopId: 'shop-beta-200',
+        username: 'same.user',
+        fullName: 'Same User Beta',
+        role: AppRole.cashier,
+      );
+
+      await userDao.createUserWithPassword(userAlpha, 'PasswordAlpha');
+      await userDao.createUserWithPassword(userBeta, 'PasswordBeta');
+
+      final alphaUser = await userDao.getUserById('user-shop-001');
+      final betaUser = await userDao.getUserById('user-shop-002');
+      expect(alphaUser!.username, equals('same.user'));
+      expect(betaUser!.username, equals('same.user'));
+      expect(alphaUser.shopId, equals('shop-alpha-100'));
+      expect(betaUser.shopId, equals('shop-beta-200'));
     });
   });
 }
