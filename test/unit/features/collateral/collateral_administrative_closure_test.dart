@@ -16,7 +16,7 @@ void main() {
   late CollateralDao collateralDao;
 
   const shopId = 'shop-closure-test';
-  const customerId = 'cust-closure-test';
+  const customerId = 1;
   const settledLoanId = 'loan-settled-01';
   const activeLoanId = 'loan-active-02';
 

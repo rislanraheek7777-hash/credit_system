@@ -50,8 +50,8 @@ void main() {
   });
 
   Future<void> seedOverdueLoan({
+    int customerId = 1,
     String loanId = 'loan-overdue-001',
-    String customerId = 'customer-overdue-001',
     int balanceCents = 500000,
     DateTime? dueDate,
   }) async {

@@ -26,7 +26,7 @@ class ReceiptService {
     required bool isFullSettlement,
     required DateTime recordedAt,
     required String recordedByUserId,
-    required String customerId,
+    required int customerId,
     required String customerName,
     required String customerNic,
     required String shopName,

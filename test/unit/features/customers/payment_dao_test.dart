@@ -16,7 +16,7 @@ import 'package:uuid/uuid.dart';
 
 const String shopId = 'pay-shop-1111-1111-1111-111111111101';
 const String otherShopId = 'pay-shop-1111-1111-1111-111111111102';
-const String customerId = 'pay-cust-1111-1111-1111-111111111101';
+const customerId = 1;
 const String managerId = 'pay-mgr-1111-1111-1111-111111111101';
 const String cashierId = 'pay-cash-1111-1111-1111-111111111101';
 const String loanId = 'pay-loan-1111-1111-1111-111111111101';
@@ -508,9 +508,9 @@ void main() {
       expect(receipt2.amountCents, receipt1.amountCents);
     });
 
-    test('schema version is 19 and payments table is accessible', () async {
-      // Verify the database is at schema version 19
-      expect(db.schemaVersion, 19);
+    test('schema version is 20 and payments table is accessible', () async {
+      // Verify the database is at schema version 20
+      expect(db.schemaVersion, 20);
 
       // Verify the payments table exists and is queryable
       final count = await db.customSelect(

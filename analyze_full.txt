@@ -1,0 +1,147 @@
+﻿
+┌─────────────────────────────────────────────────────────┐
+│ A new version of Flutter is available!                  │
+│                                                         │
+│ To update to the latest version, run "flutter upgrade". │
+└─────────────────────────────────────────────────────────┘
+Analyzing credit_system...                                      
+
+  error - The method '_CustomersPage' isn't defined for the type '_MainAppState'. Try correcting the name to the name of an existing method, or defining a method named '_CustomersPage' - lib\main.dart:54:27 - undefined_method
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: _DashboardPage.shopId - lib\main.dart:99:7 - must_be_immutable
+  error - Missing concrete implementation of 'StatelessWidget.build'. Try implementing the missing method, or make the class abstract - lib\main.dart:99:7 - non_abstract_class_inherits_abstract_member
+  error - Can't define a const constructor for a class with non-final fields. Try making all of the fields final, or removing the keyword 'const' from the constructor - lib\main.dart:104:9 - const_constructor_with_non_final_field
+  error - Expected a class member. Try placing this code inside a class member - lib\main.dart:111:9 - expected_class_member
+  error - Expected a class member. Try placing this code inside a class member - lib\main.dart:111:27 - expected_class_member
+   info - An uninitialized field should have an explicit type annotation. Try adding a type annotation - lib\main.dart:111:28 - prefer_typing_uninitialized_variables
+   info - Missing type annotation. Try adding a type annotation - lib\main.dart:111:28 - strict_top_level_inference
+  error - Expected to find ';' - lib\main.dart:111:28 - expected_token
+  error - The name 'shopId' is already defined. Try renaming one of the declarations - lib\main.dart:111:28 - duplicate_definition
+  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name. Try adding the name of the type of the variable or the keyword 'var' - lib\main.dart:111:28 - missing_const_final_var_or_type
+  error - Expected a class member. Try placing this code inside a class member - lib\main.dart:111:34 - expected_class_member
+  error - Unterminated string literal - lib\main.dart:111:36 - unterminated_string_literal
+warning - The declaration '_getTotalTransactions' isn't referenced. Try removing the declaration of '_getTotalTransactions' - lib\main.dart:112:13 - unused_element
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'int', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - lib\main.dart:112:13 - body_might_complete_normally
+  error - The body might complete normally, causing 'null' to be returned, but the return type, 'int', is a potentially non-nullable type. Try adding either a return or a throw statement at the end - lib\main.dart:113:11 - body_might_complete_normally
+  error - The method 'select' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named 'select' - lib\main.dart:118:19 - undefined_method
+  error - The method 'select' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named 'select' - lib\main.dart:124:19 - undefined_method
+  error - The method 'select' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named 'select' - lib\main.dart:130:22 - undefined_method
+  error - A value of type 'double' can't be assigned to a variable of type 'int'. Try changing the type of the variable, or casting the right-hand type to 'int' - lib\main.dart:133:17 - invalid_assignment
+  error - The method 'select' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named 'select' - lib\main.dart:140:22 - undefined_method
+  error - A value of type 'double' can't be assigned to a variable of type 'int'. Try changing the type of the variable, or casting the right-hand type to 'int' - lib\main.dart:143:19 - invalid_assignment
+warning - The annotation 'override' can only be used on fields, getters, methods, or setters - lib\main.dart:153:4 - invalid_annotation_target
+warning - The declaration 'build' isn't referenced. Try removing the declaration of 'build' - lib\main.dart:154:10 - unused_element
+  error - The method '_MetricCard' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named '_MetricCard' - lib\main.dart:184:15 - undefined_method
+  error - The method '_MetricCard' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named '_MetricCard' - lib\main.dart:191:15 - undefined_method
+  error - The method '_MetricCard' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named '_MetricCard' - lib\main.dart:202:15 - undefined_method
+  error - The method '_MetricCard' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named '_MetricCard' - lib\main.dart:209:15 - undefined_method
+  error - The method '_MetricCard' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named '_MetricCard' - lib\main.dart:220:15 - undefined_method
+  error - 'class' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:234:1 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:234:1 - missing_statement
+  error - Expected to find ';' - lib\main.dart:234:1 - expected_token
+  error - Undefined name 'class'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:234:1 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:234:7 - expected_token
+  error - Undefined name '_MetricCard'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:234:7 - undefined_identifier
+  error - 'extends' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:234:19 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:234:19 - missing_statement
+  error - Expected to find ';' - lib\main.dart:234:19 - expected_token
+  error - Undefined name 'extends'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:234:19 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:234:27 - expected_token
+  error - The name '_MetricCard' isn't a class. Try correcting the name to match an existing class - lib\main.dart:240:9 - creation_with_non_type
+   info - 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required. Try replacing the use of the deprecated member with the replacement - lib\main.dart:241:5 - deprecated_member_use
+  error - Expected to find ',' - lib\main.dart:241:14 - expected_token
+  error - The getter 'icon' isn't defined for the type '_DashboardPage'. Try importing the library that defines 'icon', correcting the name to the name of an existing getter, or defining a getter or field named 'icon' - lib\main.dart:241:19 - undefined_getter
+   info - 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required. Try replacing the use of the deprecated member with the replacement - lib\main.dart:242:5 - deprecated_member_use
+  error - Expected to find ',' - lib\main.dart:242:14 - expected_token
+  error - The getter 'label' isn't defined for the type '_DashboardPage'. Try importing the library that defines 'label', correcting the name to the name of an existing getter, or defining a getter or field named 'label' - lib\main.dart:242:19 - undefined_getter
+   info - 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required. Try replacing the use of the deprecated member with the replacement - lib\main.dart:243:5 - deprecated_member_use
+  error - Expected to find ',' - lib\main.dart:243:14 - expected_token
+  error - The getter 'value' isn't defined for the type '_DashboardPage'. Try importing the library that defines 'value', correcting the name to the name of an existing getter, or defining a getter or field named 'value' - lib\main.dart:243:19 - undefined_getter
+   info - 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required. Try replacing the use of the deprecated member with the replacement - lib\main.dart:244:5 - deprecated_member_use
+  error - Expected to find ',' - lib\main.dart:244:14 - expected_token
+  error - The getter 'color' isn't defined for the type '_DashboardPage'. Try importing the library that defines 'color', correcting the name to the name of an existing getter, or defining a getter or field named 'color' - lib\main.dart:244:19 - undefined_getter
+warning - The annotation 'override' can only be used on fields, getters, methods, or setters - lib\main.dart:247:4 - invalid_annotation_target
+warning - The declaration 'build' isn't referenced. Try removing the declaration of 'build' - lib\main.dart:248:10 - unused_element
+  error - The final variable 'icon' can't be read because it's potentially unassigned at this point. Ensure that it is assigned on necessary execution paths - lib\main.dart:269:22 - read_potentially_unassigned_final
+  error - The final variable 'color' can't be read because it's potentially unassigned at this point. Ensure that it is assigned on necessary execution paths - lib\main.dart:269:35 - read_potentially_unassigned_final
+  error - The final variable 'label' can't be read because it's potentially unassigned at this point. Ensure that it is assigned on necessary execution paths - lib\main.dart:273:21 - read_potentially_unassigned_final
+  error - The final variable 'value' can't be read because it's potentially unassigned at this point. Ensure that it is assigned on necessary execution paths - lib\main.dart:285:15 - read_potentially_unassigned_final
+  error - The final variable 'color' can't be read because it's potentially unassigned at this point. Ensure that it is assigned on necessary execution paths - lib\main.dart:289:24 - read_potentially_unassigned_final
+  error - 'class' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:301:1 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:301:1 - missing_statement
+  error - Expected to find ';' - lib\main.dart:301:1 - expected_token
+  error - Undefined name 'class'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:301:1 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:301:7 - expected_token
+  error - Undefined name '_CustomersPage'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:301:7 - undefined_identifier
+  error - 'extends' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:301:22 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:301:22 - missing_statement
+  error - Expected to find ';' - lib\main.dart:301:22 - expected_token
+  error - Undefined name 'extends'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:301:22 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:301:30 - expected_token
+  error - The name '_CustomersPage' isn't a class. Try correcting the name to match an existing class - lib\main.dart:305:9 - creation_with_non_type
+   info - 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required. Try replacing the use of the deprecated member with the replacement - lib\main.dart:306:5 - deprecated_member_use
+  error - Expected to find ',' - lib\main.dart:306:14 - expected_token
+   info - 'required' is deprecated and shouldn't be used. In Dart 2.12 and later, use the built-in `required` keyword to mark a named parameter as required. Try replacing the use of the deprecated member with the replacement - lib\main.dart:307:5 - deprecated_member_use
+  error - Expected to find ',' - lib\main.dart:307:14 - expected_token
+warning - The annotation 'override' can only be used on fields, getters, methods, or setters - lib\main.dart:310:4 - invalid_annotation_target
+warning - The declaration 'build' isn't referenced. Try removing the declaration of 'build' - lib\main.dart:311:10 - unused_element
+  error - The final variable 'shopId' can't be read because it's potentially unassigned at this point. Ensure that it is assigned on necessary execution paths - lib\main.dart:312:41 - read_potentially_unassigned_final
+  error - The final variable 'currentUser' can't be read because it's potentially unassigned at this point. Ensure that it is assigned on necessary execution paths - lib\main.dart:312:62 - read_potentially_unassigned_final
+warning - The declaration 'main' isn't referenced. Try removing the declaration of 'main' - lib\main.dart:316:6 - unused_element
+  error - The name 'MyApp' isn't a class. Try correcting the name to match an existing class - lib\main.dart:317:16 - creation_with_non_type
+  error - 'class' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:320:1 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:320:1 - missing_statement
+  error - Expected to find ';' - lib\main.dart:320:1 - expected_token
+  error - Undefined name 'class'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:320:1 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:320:7 - expected_token
+  error - Undefined name 'MyApp'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:320:7 - undefined_identifier
+  error - 'extends' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:320:13 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:320:13 - missing_statement
+  error - Expected to find ';' - lib\main.dart:320:13 - expected_token
+  error - Undefined name 'extends'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:320:13 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:320:21 - expected_token
+  error - The name 'MyApp' isn't a class. Try correcting the name to match an existing class - lib\main.dart:321:9 - creation_with_non_type
+warning - The annotation 'override' can only be used on fields, getters, methods, or setters - lib\main.dart:323:4 - invalid_annotation_target
+warning - The declaration 'build' isn't referenced. Try removing the declaration of 'build' - lib\main.dart:324:10 - unused_element
+  error - The name 'AuthWrapper' isn't a class. Try correcting the name to match an existing class - lib\main.dart:330:19 - creation_with_non_type
+  error - 'class' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:347:1 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:347:1 - missing_statement
+  error - Expected to find ';' - lib\main.dart:347:1 - expected_token
+  error - Undefined name 'class'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:347:1 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:347:7 - expected_token
+  error - Undefined name 'AuthWrapper'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:347:7 - undefined_identifier
+  error - 'extends' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:347:19 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:347:19 - missing_statement
+  error - Expected to find ';' - lib\main.dart:347:19 - expected_token
+  error - Undefined name 'extends'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:347:19 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:347:27 - expected_token
+  error - The name 'AuthWrapper' isn't a class. Try correcting the name to match an existing class - lib\main.dart:348:9 - creation_with_non_type
+warning - The annotation 'override' can only be used on fields, getters, methods, or setters - lib\main.dart:350:4 - invalid_annotation_target
+  error - The name 'AuthWrapper' isn't a type, so it can't be used as a type argument. Try correcting the name to an existing type, or defining a type named 'AuthWrapper' - lib\main.dart:351:9 - non_type_as_type_argument
+warning - The declaration 'createState' isn't referenced. Try removing the declaration of 'createState' - lib\main.dart:351:22 - unused_element
+  error - The method '_AuthWrapperState' isn't defined for the type '_DashboardPage'. Try correcting the name to the name of an existing method, or defining a method named '_AuthWrapperState' - lib\main.dart:351:39 - undefined_method
+  error - 'class' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:354:1 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:354:1 - missing_statement
+  error - Expected to find ';' - lib\main.dart:354:1 - expected_token
+  error - Undefined name 'class'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:354:1 - undefined_identifier
+  error - Expected to find ';' - lib\main.dart:354:7 - expected_token
+  error - Undefined name '_AuthWrapperState'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:354:7 - undefined_identifier
+  error - 'extends' can't be used as an identifier because it's a keyword. Try renaming this to be an identifier that isn't a keyword - lib\main.dart:354:25 - expected_identifier_but_got_keyword
+  error - Expected a statement - lib\main.dart:354:25 - missing_statement
+  error - Expected to find ';' - lib\main.dart:354:25 - expected_token
+  error - Undefined name 'extends'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:354:25 - undefined_identifier
+  error - The operator '<' isn't defined for the type 'Type'. Try defining the operator '<' - lib\main.dart:354:38 - undefined_operator
+  error - Undefined name 'AuthWrapper'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:354:39 - undefined_identifier
+  error - A comparison expression can't be an operand of another comparison expression. Try putting parentheses around one of the comparisons - lib\main.dart:354:50 - equality_cannot_be_equality_operand
+  error - Expected to find ',' - lib\main.dart:355:8 - expected_token
+  error - Undefined name '_isAuthenticated'. Try correcting the name to one that is defined, or defining the name - lib\main.dart:355:8 - undefined_identifier
+  error - Expected to find '}' - lib\main.dart:355:32 - expected_token
+  error - Expected to find ';' - lib\main.dart:567:1 - expected_token
+  error - Expected to find '}' - lib\main.dart:568:1 - expected_token
+
+flutter : 131 issues found. (ran in 5.7s)
+At line:1 char:33
++ cd 'C:/projects/credit_system'; flutter analyze 2>&1 | Out-File -Enco ...
++                                 ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (131 issues found. (ran in 5.7s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

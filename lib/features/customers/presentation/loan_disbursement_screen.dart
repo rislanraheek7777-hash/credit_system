@@ -250,9 +250,8 @@ class _LoanDisbursementScreenState extends State<LoanDisbursementScreen> {
       final customerDao = CustomerDao(db);
 
       final shop = await shopDao.getShopById(widget.shopId);
-      final customer = disbursedLoan.customerId.isNotEmpty
-          ? await customerDao.getCustomerById(widget.shopId, disbursedLoan.customerId)
-          : null;
+      final customer = await customerDao.getCustomerById(
+          widget.shopId, disbursedLoan.customerId);
 
       final service = DocumentGenerationServiceImpl();
 

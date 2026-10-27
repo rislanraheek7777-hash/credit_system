@@ -95,7 +95,25 @@ class _MockSqlExecutor implements SqlDatabaseExecutor {
   ]) async {
     _pg.executedStatements.add(sql);
     if (sql.contains('FROM app_users') && _pg.userExists) {
-      return [_pg.simulatedUser ?? _pg._defaultUser()];
+      final user = _pg.simulatedUser ?? _pg._defaultUser();
+      // Only enforce identifier matching for the login lookup query, which
+      // uses `username = @p0 OR email = @p0 OR phone = @p0`. Other queries
+      // (validateSession, revokeSession, etc.) pass different parameters.
+      final isLoginLookup = sql.contains('OR email = @p0') ||
+          sql.contains('OR phone = @p0');
+      if (isLoginLookup) {
+        final identifier =
+            (parameters != null && parameters.isNotEmpty) ? parameters.first : null;
+        if (identifier != null) {
+          final matches = user['username'] == identifier ||
+              user['email'] == identifier ||
+              user['phone'] == identifier;
+          if (!matches) {
+            return [];
+          }
+        }
+      }
+      return [user];
     }
     return [];
   }
@@ -245,6 +263,76 @@ void main() {
       );
       await expectLater(
         authService.authenticate('shop-uuid-456', 'staff.anura', ''),
+        throwsA(isA<AuthenticationException>()),
+      );
+    });
+
+    test('authenticate accepts an email identifier', () async {
+      const password = 'secure-password-123';
+      final hash = passwordHash.hashPassword(password);
+      mockPg.simulatedUser = {
+        'id': 'user-uuid-123',
+        'shop_id': 'shop-uuid-456',
+        'username': 'staff.anura',
+        'email': 'anura@example.com',
+        'full_name': 'Anura Kumara',
+        'role': 'cashier',
+        'is_active': true,
+        'session_version': 3,
+        'password_hash': hash,
+      };
+
+      final result = await authService.authenticate(
+        'shop-uuid-456',
+        'anura@example.com',
+        password,
+      );
+
+      expect(result.token, isNotEmpty);
+      expect(result.userId, equals('user-uuid-123'));
+    });
+
+    test('authenticate accepts a phone identifier', () async {
+      const password = 'secure-password-123';
+      final hash = passwordHash.hashPassword(password);
+      mockPg.simulatedUser = {
+        'id': 'user-uuid-123',
+        'shop_id': 'shop-uuid-456',
+        'username': 'staff.anura',
+        'phone': '+94771234567',
+        'full_name': 'Anura Kumara',
+        'role': 'cashier',
+        'is_active': true,
+        'session_version': 3,
+        'password_hash': hash,
+      };
+
+      final result = await authService.authenticate(
+        'shop-uuid-456',
+        '+94771234567',
+        password,
+      );
+
+      expect(result.token, isNotEmpty);
+      expect(result.userId, equals('user-uuid-123'));
+    });
+
+    test('authenticate rejects an unknown email/phone identifier', () async {
+      mockPg.userExists = true;
+      mockPg.simulatedUser = {
+        'id': 'user-uuid-123',
+        'shop_id': 'shop-uuid-456',
+        'username': 'staff.anura',
+        'email': 'anura@example.com',
+        'full_name': 'Anura Kumara',
+        'role': 'cashier',
+        'is_active': true,
+        'session_version': 3,
+        'password_hash': 'any',
+      };
+
+      await expectLater(
+        authService.authenticate('shop-uuid-456', 'nobody@example.com', 'password'),
         throwsA(isA<AuthenticationException>()),
       );
     });

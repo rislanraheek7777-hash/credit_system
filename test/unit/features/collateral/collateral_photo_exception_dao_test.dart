@@ -12,7 +12,7 @@ void main() {
   late CollateralDao collateralDao;
 
   const shopId = 'shop-uuid-exc';
-  const customerId = 'cust-uuid-exc';
+  const customerId = 1;
   const staffId = 'staff-uuid-exc';
   const ownerId = 'owner-uuid-exc';
   const itemId = 'coll-uuid-exc';

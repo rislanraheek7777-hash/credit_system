@@ -52,7 +52,7 @@ class Payments extends Table {
       text().references(AppUsers, #id, onDelete: KeyAction.restrict)();
 
   /// Customer borrower identifier (denormalized for receipt snapshot).
-  TextColumn get customerId => text()();
+  IntColumn get customerId => integer()();
 
   /// Customer full name at time of payment (masked per RBAC in UI layer).
   TextColumn get customerName => text()();

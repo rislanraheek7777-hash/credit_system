@@ -12,7 +12,7 @@ void main() {
   late AppDatabase db;
 
   const testShopId = 'shop-ui-masking-01';
-  const testCustomerId = 'cust-ui-001';
+  const testCustomerId = 1;
 
   final now = DateTime.now().toUtc();
 

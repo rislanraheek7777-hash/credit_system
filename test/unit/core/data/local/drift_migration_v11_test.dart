@@ -125,8 +125,10 @@ void main() {
       addTearDown(() async => db.close());
 
       final customer = await (db.select(db.customers)
-            ..where((c) => c.id.equals('cust-v10')))
+            ..where((c) => c.nic.equals('198512345678')))
           .getSingle();
+      expect(customer.id, equals(1),
+          reason: 'Legacy TEXT ids are remapped to rowids during v20.');
       expect(customer.fullName, equals('V10 Customer'));
       expect(customer.nic, equals('198512345678'));
 
@@ -187,12 +189,12 @@ void main() {
       await first.select(first.collateralItems).get();
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(19));
+      expect(readUserVersion(dbFile), equals(20));
 
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(19));
+      expect(second.schemaVersion, equals(20));
       final item = await (second.select(second.collateralItems)
             ..where((c) => c.id.equals('coll-v10-a')))
           .getSingle();
@@ -213,7 +215,7 @@ void main() {
       expect(await first.select(first.collateralItems).get(), hasLength(3));
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(19),
+      expect(readUserVersion(dbFile), equals(20),
           reason: 'Drift must record the new schema version after the '
               'migration committed.');
 
@@ -224,7 +226,7 @@ void main() {
       expect(
           await second.select(second.collateralPhotoExceptions).get(),
           hasLength(2));
-      expect(readUserVersion(dbFile), equals(19));
+      expect(readUserVersion(dbFile), equals(20));
     });
 
     test('repairs a database left half-migrated by a failed attempt',

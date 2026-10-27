@@ -13,7 +13,7 @@ import 'package:uuid/uuid.dart';
 
 const String shopAlphaId = 'review-shop-alpha-1111-1111-1111-111111111101';
 const String shopBetaId = 'review-shop-beta-1111-1111-1111-111111111102';
-const String customerAlphaId = 'review-cust-alpha-1111-1111-1111-111111111103';
+const customerAlphaId = 1;
 const String ownerAlphaId = 'review-owner-alpha-1111-1111-1111-111111111104';
 const String ownerBetaId = 'review-owner-beta-1111-1111-1111-111111111110';
 const String managerAlphaId = 'review-mgr-alpha-1111-1111-1111-111111111105';

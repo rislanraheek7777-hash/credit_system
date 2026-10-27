@@ -166,7 +166,7 @@ class Loan {
   final String shopId;
 
   /// Associated customer borrower.
-  final String customerId;
+  final int customerId;
 
   /// Original principal in minor units (cents).
   final int principalCents;
@@ -587,7 +587,7 @@ class Loan {
   Loan copyWith({
     String? id,
     String? shopId,
-    String? customerId,
+    int? customerId,
     int? principalCents,
     int? balanceCents,
     LoanStatus? status,

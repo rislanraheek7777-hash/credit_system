@@ -11,7 +11,7 @@ import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
 import 'package:credit_system/features/customers/presentation/correction_request_screen.dart';
 
 const String shopId = 'corr-ui-shop-1111-1111-1111-111111111101';
-const String customerId = 'corr-ui-cust-1111-1111-1111-111111111101';
+const customerId = 1;
 const String staffId = 'corr-ui-staff-1111-1111-1111-111111111101';
 const String cashierId = 'corr-ui-cash-1111-1111-1111-111111111102';
 const String loanId = 'corr-ui-loan-1111-1111-1111-111111111101';

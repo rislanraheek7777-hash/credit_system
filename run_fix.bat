@@ -1,0 +1,1 @@
+@python C:\projects\credit_system\fix_gen.py

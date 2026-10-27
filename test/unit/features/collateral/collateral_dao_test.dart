@@ -18,7 +18,7 @@ void main() {
   late AppUser cashier;
 
   const shopId = 'shop-uuid-collateral';
-  const customerId = 'cust-uuid-collateral';
+  const customerId = 1;
   const loanId = 'loan-uuid-collateral';
 
   setUp(() async {
@@ -217,7 +217,7 @@ void main() {
     });
 
     test('getCollateralItemsByCustomerId returns only items for that customer', () async {
-      const otherCustomerId = 'cust-other';
+      const otherCustomerId = 2;
       final now = DateTime.now().toUtc();
       // Seed the other customer first to satisfy FK constraint
       await db.into(db.customers).insert(
@@ -535,7 +535,7 @@ void main() {
       final item = CollateralItem(
         id: 'coll-dao-017',
         shopId: shopId,
-        customerId: 'nonexistent-customer',
+        customerId: 999, // no such customer row; FK must reject the insert
         itemReferenceId: 'COLL-DAO-017',
         category: CollateralItemCategory.gold,
         description: 'Test',

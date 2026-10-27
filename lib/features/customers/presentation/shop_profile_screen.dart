@@ -235,6 +235,15 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Shop Profile'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF6A1B9A), Color(0xFFAB47BC)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

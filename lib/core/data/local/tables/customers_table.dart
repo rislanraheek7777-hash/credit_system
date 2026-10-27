@@ -10,8 +10,8 @@ import 'shops_table.dart';
 @TableIndex(name: 'idx_customers_shop_nic', columns: {#shopId, #nic})
 @TableIndex(name: 'idx_customers_shop_phone', columns: {#shopId, #phone})
 class Customers extends Table {
-  /// Canonical UUIDv4 primary key.
-  TextColumn get id => text()();
+  /// Auto-increment primary key (hidden: system-generated).
+  IntColumn get id => integer().autoIncrement()();
 
   /// Tenant shop association (immutable foreign key boundary).
   TextColumn get shopId =>
@@ -40,9 +40,6 @@ class Customers extends Table {
 
   /// UTC last-update timestamp.
   DateTimeColumn get updatedAt => dateTime()();
-
-  @override
-  Set<Column> get primaryKey => {id};
 
   @override
   List<Set<Column>> get uniqueKeys => [

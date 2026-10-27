@@ -22,6 +22,12 @@ class AppUser {
   /// Unique username within this shop tenant boundary.
   final String username;
 
+  /// Optional email address, unique within this shop tenant boundary when set.
+  final String? email;
+
+  /// Optional phone number, unique within this shop tenant boundary when set.
+  final String? phone;
+
   /// Full display name of the staff member.
   final String fullName;
 
@@ -57,6 +63,8 @@ class AppUser {
     required this.id,
     required this.shopId,
     required this.username,
+    this.email,
+    this.phone,
     required this.fullName,
     required this.role,
     this.isActive = true,
@@ -152,6 +160,8 @@ class AppUser {
     String? id,
     String? shopId,
     String? username,
+    String? email,
+    String? phone,
     String? fullName,
     AppRole? role,
     bool? isActive,
@@ -165,6 +175,8 @@ class AppUser {
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
       username: username ?? this.username,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
       fullName: fullName ?? this.fullName,
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,

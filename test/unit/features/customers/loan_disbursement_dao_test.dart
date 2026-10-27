@@ -19,8 +19,8 @@ void main() {
 
   const shopAlphaId = '11111111-1111-1111-1111-111111111301';
   const shopBetaId = '11111111-1111-1111-1111-111111111302';
-  const customerAlphaId = '11111111-1111-1111-1111-111111111303';
-  const customerBetaId = '11111111-1111-1111-1111-111111111304';
+  const customerAlphaId = 11;
+  const customerBetaId = 12;
   const managerId = '11111111-1111-1111-1111-111111111305';
   const cashierId = '11111111-1111-1111-1111-111111111306';
   const itemId = 'coll-disb-1';

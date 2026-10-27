@@ -94,21 +94,20 @@ void main() {
 
       // And the Tier 1 constraints are genuinely absent from the version 13
       // schema: a row that the version 14 schema rejects is accepted here.
-      final now = DateTime.now().toUtc();
-      await db.into(db.loans).insert(LoansCompanion.insert(
-        id: 'loan-v13-tier1-violation',
-        shopId: 'shop-v13',
-        customerId: 'cust-v13',
-        principalCents: 500000,
-        balanceCents: 500000,
-        status: const Value('cancelled'),
-        workflowStatus: const Value('disbursed'),
-        cancelledAt: Value(now),
-        cancellationReason:
-            const Value('Customer abandoned the agreement'),
-        dueDate: now,
-        createdAt: now,
-      ));
+      // Written as raw SQL because this connection never migrates, so the
+      // on-disk schema still has TEXT customer ids.
+      final nowEpoch = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+      await db.customStatement('''
+        INSERT INTO loans (
+          id, shop_id, customer_id, principal_cents, balance_cents, status,
+          workflow_status, cancelled_at, cancellation_reason, due_date,
+          created_at
+        ) VALUES (
+          'loan-v13-tier1-violation', 'shop-v13', 'cust-v13', 500000, 500000,
+          'cancelled', 'disbursed', $nowEpoch,
+          'Customer abandoned the agreement', $nowEpoch, $nowEpoch
+        );
+      ''');
 
       expect(readUserVersion(dbFile), equals(13),
           reason: 'Reading the database must not change its schema version.');
@@ -128,9 +127,9 @@ void main() {
       await (db.select(db.loans)..where((l) => l.id.equals('loan-v13-pending')))
           .getSingle();
 
-      expect(readUserVersion(dbFile), equals(19),
-          reason: 'Opening a version 13 database must migrate it to 17.');
-      expect(db.schemaVersion, equals(19));
+      expect(readUserVersion(dbFile), equals(20),
+          reason: 'Opening a version 13 database must migrate it to 20.');
+      expect(db.schemaVersion, equals(20));
 
       // The version 13 agreements survive the rebuild with their values.
       final pending = await (db.select(db.loans)
@@ -181,14 +180,14 @@ void main() {
       await first.close();
 
       // The migration must have recorded the new schema version on disk.
-      expect(readUserVersion(dbFile), equals(19));
+      expect(readUserVersion(dbFile), equals(20));
 
       // Second launch on the same file: the migration must not run again and
       // the database must open cleanly.
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(19));
+      expect(second.schemaVersion, equals(20));
       final loan = await (second.select(second.loans)
             ..where((l) => l.id.equals('loan-v13-pending')))
           .getSingle();
@@ -210,7 +209,7 @@ void main() {
       expect(await first.select(first.loans).get(), hasLength(3));
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(19),
+      expect(readUserVersion(dbFile), equals(20),
           reason: 'Drift must record the new schema version after the '
               'migration committed.');
 
@@ -219,7 +218,7 @@ void main() {
 
       expect(await second.select(second.loans).get(), hasLength(3));
       expect(await second.select(second.collateralItems).get(), hasLength(3));
-      expect(readUserVersion(dbFile), equals(19));
+      expect(readUserVersion(dbFile), equals(20));
     });
 
     test('keeps every collateral item bound to its agreement', () async {
@@ -271,7 +270,7 @@ void main() {
         db.into(db.collateralItems).insert(CollateralItemsCompanion.insert(
           id: 'coll-dangling',
           shopId: 'shop-v13',
-          customerId: 'cust-v13',
+          customerId: 1,
           loanId: const Value('loan-does-not-exist'),
           itemReferenceId: 'COLL-DANGLING',
           category: 'gold',
@@ -388,7 +387,7 @@ void main() {
         updatedAt: now,
       ));
       await db.into(db.customers).insert(CustomerEntry(
-        id: 'cust-v14',
+        id: 1,
         shopId: 'shop-v14',
         fullName: 'V14 Customer',
         nic: '851234567V',
@@ -416,7 +415,7 @@ void main() {
         await db.into(db.loans).insert(LoansCompanion.insert(
           id: id,
           shopId: 'shop-v14',
-          customerId: 'cust-v14',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: Value(status),

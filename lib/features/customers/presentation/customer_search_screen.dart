@@ -8,9 +8,13 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/domain/models/customer_masking.dart';
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
+import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
 import 'package:credit_system/features/customers/presentation/shop_profile_screen.dart';
+import 'package:credit_system/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:credit_system/features/settings/presentation/settings_screen.dart';
 import 'package:credit_system/features/auth/presentation/staff_management_screen.dart';
 import 'package:credit_system/features/customers/presentation/overdue_screen.dart';
+import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
 
 /// Customer search screen implementing Story 2.5 AC-1.
 ///
@@ -105,9 +109,61 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => CustomerRegistrationScreen(
+                currentUser: widget.currentUser,
+              ),
+            ),
+          );
+        },
+        icon: const Icon(Icons.person_add),
+        label: const Text('Add Customer'),
+      ),
       appBar: AppBar(
         title: const Text('Search Customers'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.dashboard),
+            tooltip: 'Dashboard',
+            onPressed: () {
+              final db = AppDatabase();
+              final loanDao = LoanDao(db);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => DashboardScreen(
+                    loanDao: loanDao,
+                    shopId: widget.shopId,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => SettingsScreen(
+                    shopId: widget.shopId,
+                    currentUser: widget.currentUser,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.store),
             tooltip: 'Shop Profile',
@@ -241,7 +297,7 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
 
 /// Search result summary for display in the customer search list.
 class CustomerSearchResult {
-  final String id;
+  final int id;
   final String fullName;
   final String nic;
   final String phone;
@@ -253,5 +309,5 @@ class CustomerSearchResult {
     required this.nic,
     required this.phone,
     this.photoUri,
-  });
+  }) : assert(id >= 0); // Auto-increment ID must be non-negative
 }

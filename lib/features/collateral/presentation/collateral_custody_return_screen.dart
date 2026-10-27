@@ -39,7 +39,7 @@ class CollateralCustodyReturnScreen extends StatefulWidget {
   final AppUser currentUser;
 
   /// Optional customer scope: only this customer's items are displayed.
-  final String? customerId;
+  final int? customerId;
 
   /// Optional loan scope: only this loan's items are displayed.
   final String? loanId;
@@ -996,7 +996,7 @@ class _CollateralCustodyReturnScreenState
             const SizedBox(height: 8),
             Text(
               'Items scoped to shop ${widget.shopId.substring(0, 8)}... '
-              '${widget.loanId != null ? 'for loan ${widget.loanId!.substring(0, 8)}...' : widget.customerId != null ? 'for customer ${widget.customerId!.substring(0, 8)}...' : ''}',
+              '${widget.loanId != null ? 'for loan ${widget.loanId!.substring(0, 8)}...' : widget.customerId != null ? 'for customer ${widget.customerId}' : ''}',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 16),

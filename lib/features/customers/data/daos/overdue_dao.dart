@@ -240,7 +240,7 @@ class OverdueDao extends DatabaseAccessor<AppDatabase> with _$OverdueDaoMixin {
   Future<CustomerFollowUp> recordFollowUp({
     required AppUser actor,
     required String loanId,
-    required String customerId,
+    required int customerId,
     required FollowUpChannel channel,
     required String notes,
     DateTime? promisedPaymentDate,

@@ -30,10 +30,10 @@ class SharedPhoneDuplicateException implements Exception {
 /// Clean architecture domain entity representing a borrower customer profile (Story 2.1).
 @immutable
 class Customer {
-  /// Canonical UUID primary key.
-  final String id;
+  /// Auto-increment primary key assigned by the local database on insert.
+  final int id;
 
-  /// Associated shop tenant boundary.
+  /// Associated shop tenant boundary (auto-assigned from context).
   final String shopId;
 
   /// Full legal name of the customer.
@@ -71,9 +71,9 @@ class Customer {
     this.photoHash,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : nic = normalizeNic(nic),
-        createdAt = createdAt ?? DateTime.now().toUtc(),
-        updatedAt = updatedAt ?? DateTime.now().toUtc() {
+  }) : nic = normalizeNic(nic),
+       createdAt = createdAt ?? DateTime.now().toUtc(),
+       updatedAt = updatedAt ?? DateTime.now().toUtc() {
     _validate();
   }
 
@@ -143,8 +143,8 @@ class Customer {
   }
 
   void _validate() {
-    if (id.trim().isEmpty) {
-      throw CustomerValidationException('Customer ID cannot be empty');
+    if (id < 0) {
+      throw CustomerValidationException('Customer ID cannot be negative');
     }
     if (shopId.trim().isEmpty) {
       throw CustomerValidationException('Shop ID cannot be empty');
@@ -176,7 +176,7 @@ class Customer {
 
   /// Returns a copy of this [Customer] with the given fields replaced.
   Customer copyWith({
-    String? id,
+    int? id,
     String? shopId,
     String? fullName,
     String? nic,

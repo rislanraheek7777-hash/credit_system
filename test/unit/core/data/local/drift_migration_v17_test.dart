@@ -249,8 +249,8 @@ void main() {
             ..where((l) => l.id.equals('loan-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(19));
-      expect(db.schemaVersion, equals(19));
+      expect(readUserVersion(file), equals(20));
+      expect(db.schemaVersion, equals(20));
     });
 
     test('preserves existing loan data and sets correctionPending = false after upgrade', () async {
@@ -264,7 +264,7 @@ void main() {
             ..where((l) => l.id.equals('loan-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(19));
+      expect(readUserVersion(file), equals(20));
 
       // Existing loans keep their data and get correctionPending = false.
       final active = await (db.select(db.loans)
@@ -291,7 +291,7 @@ void main() {
             ..where((l) => l.id.equals('loan-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(19));
+      expect(readUserVersion(file), equals(20));
 
       // The corrections table exists and is usable.
       await db.into(db.loanCorrections).insertReturningOrNull(
@@ -356,7 +356,7 @@ void main() {
               paymentType: 'partial',
               recordedAt: DateTime.fromMillisecondsSinceEpoch(1793000000, isUtc: true),
               recordedByUserId: 'user-v16',
-              customerId: 'cust-v16',
+              customerId: 1,
               customerName: 'Bad',
               customerNic: 'Bad',
               shopName: 'Bad Shop',

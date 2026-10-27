@@ -58,8 +58,8 @@ void main() {
       // Trigger lazy open
       await db.customSelect('SELECT 1').get();
 
-      expect(readUserVersion(file), equals(19));
-      expect(db.schemaVersion, equals(19));
+      expect(readUserVersion(file), equals(20));
+      expect(db.schemaVersion, equals(20));
 
       // Verify the new tables exist
       final tables = await db.customSelect("SELECT name FROM sqlite_master WHERE type='table'").get();

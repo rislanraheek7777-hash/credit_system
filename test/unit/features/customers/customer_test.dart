@@ -101,7 +101,7 @@ void main() {
     test('Customer constructor normalizes NIC and enforces invariants', () {
       final now = DateTime.now().toUtc();
       final customer = Customer(
-        id: 'cust-1',
+        id: 1,
         shopId: 'shop-1',
         fullName: 'Sunil Shantha',
         nic: ' 851234567v ',
@@ -122,10 +122,10 @@ void main() {
     test('Customer constructor throws ArgumentError on invalid parameters', () {
       final now = DateTime.now().toUtc();
 
-      // Empty ID
+      // Negative ID (an empty id is not representable for an int)
       expect(
         () => Customer(
-          id: '',
+          id: -1,
           shopId: 'shop-1',
           fullName: 'Name',
           nic: '851234567V',
@@ -140,7 +140,7 @@ void main() {
       // Empty shopId
       expect(
         () => Customer(
-          id: 'c-1',
+          id: 1,
           shopId: '  ',
           fullName: 'Name',
           nic: '851234567V',
@@ -155,7 +155,7 @@ void main() {
       // Empty fullName
       expect(
         () => Customer(
-          id: 'c-1',
+          id: 1,
           shopId: 'shop-1',
           fullName: '   ',
           nic: '851234567V',
@@ -170,7 +170,7 @@ void main() {
       // Invalid NIC format
       expect(
         () => Customer(
-          id: 'c-1',
+          id: 1,
           shopId: 'shop-1',
           fullName: 'Name',
           nic: 'invalid-nic',
@@ -185,7 +185,7 @@ void main() {
       // Empty phone
       expect(
         () => Customer(
-          id: 'c-1',
+          id: 1,
           shopId: 'shop-1',
           fullName: 'Name',
           nic: '851234567V',
@@ -200,7 +200,7 @@ void main() {
       // Empty address
       expect(
         () => Customer(
-          id: 'c-1',
+          id: 1,
           shopId: 'shop-1',
           fullName: 'Name',
           nic: '851234567V',
@@ -215,7 +215,7 @@ void main() {
       // Full name exceeding 255 characters
       expect(
         () => Customer(
-          id: 'c-1',
+          id: 1,
           shopId: 'shop-1',
           fullName: 'A' * 256,
           nic: '851234567V',
@@ -230,7 +230,7 @@ void main() {
       // Phone exceeding 50 characters
       expect(
         () => Customer(
-          id: 'c-1',
+          id: 1,
           shopId: 'shop-1',
           fullName: 'Name',
           nic: '851234567V',
@@ -246,7 +246,7 @@ void main() {
     test('Customer.copyWith returns updated instance and validates new NIC', () {
       final now = DateTime.now().toUtc();
       final original = Customer(
-        id: 'cust-2',
+        id: 2,
         shopId: 'shop-1',
         fullName: 'Original Name',
         nic: '851234567V',
@@ -277,7 +277,7 @@ void main() {
     test('Customer equality and hashCode', () {
       final now = DateTime.now().toUtc();
       final c1 = Customer(
-        id: 'c-1',
+        id: 1,
         shopId: 'shop-1',
         fullName: 'A',
         nic: '851234567V',
@@ -287,7 +287,7 @@ void main() {
         updatedAt: now,
       );
       final c2 = Customer(
-        id: 'c-1',
+        id: 1,
         shopId: 'shop-1',
         fullName: 'A',
         nic: '851234567V',
@@ -297,7 +297,7 @@ void main() {
         updatedAt: now,
       );
       final c3 = Customer(
-        id: 'c-2',
+        id: 2,
         shopId: 'shop-1',
         fullName: 'A',
         nic: '851234567V',

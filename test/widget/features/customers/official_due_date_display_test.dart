@@ -29,7 +29,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// which is the pattern the Story 4.2 origination screen already uses.
 void main() {
   const shopId = '11111111-1111-1111-1111-111111111501';
-  const customerId = '11111111-1111-1111-1111-111111111503';
+  const customerId = 1;
   const managerId = '11111111-1111-1111-1111-111111111504';
 
   late AppDatabase db;

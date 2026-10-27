@@ -20,8 +20,8 @@ void main() {
 
   const shopAlphaId = '11111111-1111-1111-1111-111111111401';
   const shopBetaId = '11111111-1111-1111-1111-111111111402';
-  const customerAlphaId = '11111111-1111-1111-1111-111111111403';
-  const customerBetaId = '11111111-1111-1111-1111-111111111404';
+  const customerAlphaId = 1;
+  const customerBetaId = 2;
   const ownerId = '11111111-1111-1111-1111-111111111405';
   const cashierId = '11111111-1111-1111-1111-111111111406';
   const collateralItemId = 'coll-cancel-1';
@@ -133,7 +133,7 @@ void main() {
   /// item.
   Future<Loan> createPendingAgreement({
     String idempotencyKey = 'orig-key',
-    String customerId = customerAlphaId,
+    int customerId = customerAlphaId,
     Money principal = const Money(500000),
     int? termPresetDays,
   }) async {

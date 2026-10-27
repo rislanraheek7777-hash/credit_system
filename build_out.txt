@@ -1,0 +1,16 @@
+  0s drift_dev on 756 inputs; integration_test/boundary_test.dart
+  0s drift_dev on 756 inputs: 1 skipped; lib/core/auth/rbac_service.dart
+  3s drift_dev on 756 inputs: 2 skipped, 1 same; spent 3s analyzing; lib/core/data/local/connection/database_connection.dart
+  11s drift_dev on 756 inputs: 32 skipped, 4 same; spent 9s analyzing, 2s resolving; lib/features/auth/data/daos/user_dao.dart
+  13s drift_dev on 756 inputs: 41 skipped, 16 same; spent 11s analyzing, 2s resolving; lib/features/customers/data/daos/correction_dao.dart
+  15s drift_dev on 756 inputs: 41 skipped, 23 same; spent 12s analyzing, 3s resolving; lib/features/customers/data/services/receipt_pdf_service.dart
+  16s drift_dev on 756 inputs: 56 skipped, 33 same; spent 13s analyzing, 3s resolving; lib/features/customers/presentation/customer_registration_screen.dart
+  17s drift_dev on 756 inputs: 65 skipped, 1 output, 44 same; spent 14s analyzing, 3s resolving; test/unit/core/data/local/drift_migration_v11_test.dart
+  19s drift_dev on 756 inputs: 91 skipped, 1 output, 100 same; spent 15s analyzing, 3s resolving; lib/core/data/local/connection/database_connection.dart
+  20s drift_dev on 756 inputs: 130 skipped, 1 output, 120 same; spent 16s analyzing, 3s resolving; lib/features/customers/data/daos/payment_dao.dart
+  22s drift_dev on 756 inputs: 182 skipped, 2 output, 199 same; spent 17s analyzing, 3s resolving, 2s building; lib/core/data/local/app_database.dart.types.temp.dart
+  23s drift_dev on 756 inputs: 456 skipped, 2 output, 211 same, 87 no-op; spent 17s analyzing, 3s resolving, 3s building
+  0s source_gen:combining_builder on 378 inputs; integration_test/boundary_test.dart
+  0s source_gen:combining_builder on 378 inputs: 1 skipped; integration_test/boundary_test.dart.types.temp.dart
+  0s source_gen:combining_builder on 378 inputs: 365 skipped, 2 fixed, 11 same
+  Built with build_runner/aot in 27s; wrote 226 outputs.

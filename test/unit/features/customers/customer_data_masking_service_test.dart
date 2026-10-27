@@ -15,7 +15,7 @@ void main() {
 
   const testShopId = 'shop-masking-01';
   const testOtherShopId = 'shop-other-02';
-  const testCustomerId = 'cust-mask-001';
+  const testCustomerId = 1;
   const testSecret = 'test-secret-key-for-hmac-sha256-signing';
 
   final now = DateTime.now().toUtc();
@@ -238,7 +238,7 @@ void main() {
       final expiry15Min = DateTime.now().toUtc().add(const Duration(minutes: 15));
       final signedUrl = photoSigner.generateSignedUrl(
         shopId: testShopId,
-        customerId: testCustomerId,
+        customerId: testCustomerId.toString(),
         photoUri: customer.photoUri!,
         expiresAt: expiry15Min,
       );
@@ -249,7 +249,7 @@ void main() {
 
       final resolvedUri = await maskingService.authorizePhotoAccess(
         shopId: testShopId,
-        customerId: testCustomerId,
+        customerId: testCustomerId.toString(),
         photoUri: customer.photoUri!,
         expiresEpochSeconds: expires,
         signature: sig,
@@ -264,7 +264,7 @@ void main() {
       final pastExpiry = DateTime.now().toUtc().subtract(const Duration(seconds: 1));
       final signedUrl = photoSigner.generateSignedUrl(
         shopId: testShopId,
-        customerId: testCustomerId,
+        customerId: testCustomerId.toString(),
         photoUri: customer.photoUri!,
         expiresAt: pastExpiry,
       );
@@ -276,7 +276,7 @@ void main() {
       expect(
         () => maskingService.authorizePhotoAccess(
           shopId: testShopId,
-          customerId: testCustomerId,
+          customerId: testCustomerId.toString(),
           photoUri: customer.photoUri!,
           expiresEpochSeconds: expires,
           signature: sig,

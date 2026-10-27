@@ -415,5 +415,69 @@ void main() {
       expect(alphaUser.shopId, equals('shop-alpha-100'));
       expect(betaUser.shopId, equals('shop-beta-200'));
     });
+
+    test('login identifier: resolves user by username within shop', () async {
+      final user = AppUser(
+        id: 'user-login-001',
+        shopId: 'shop-alpha-100',
+        username: 'staff.login',
+        email: 'login@example.com',
+        phone: '+94771112222',
+        fullName: 'Login User',
+        role: AppRole.cashier,
+      );
+      await userDao.createUser(user);
+
+      final byUsername = await userDao.getUserByLoginIdentifier(
+        'shop-alpha-100',
+        'staff.login',
+      );
+      expect(byUsername, isNotNull);
+      expect(byUsername!.id, equals('user-login-001'));
+
+      final byEmail = await userDao.getUserByLoginIdentifier(
+        'shop-alpha-100',
+        'login@example.com',
+      );
+      expect(byEmail, isNotNull);
+      expect(byEmail!.id, equals('user-login-001'));
+
+      final byPhone = await userDao.getUserByLoginIdentifier(
+        'shop-alpha-100',
+        '+94771112222',
+      );
+      expect(byPhone, isNotNull);
+      expect(byPhone!.id, equals('user-login-001'));
+
+      final missing = await userDao.getUserByLoginIdentifier(
+        'shop-alpha-100',
+        'nobody@example.com',
+      );
+      expect(missing, isNull);
+    });
+
+    test('login identifier: global lookup resolves across shops', () async {
+      final user = AppUser(
+        id: 'user-global-001',
+        shopId: 'shop-beta-200',
+        username: 'global.user',
+        email: 'global@example.com',
+        fullName: 'Global User',
+        role: AppRole.cashier,
+      );
+      await userDao.createUser(user);
+
+      final resolved = await userDao.getUserByLoginIdentifierGlobal(
+        'global@example.com',
+      );
+      expect(resolved, isNotNull);
+      expect(resolved!.shopId, equals('shop-beta-200'));
+
+      final scopedMiss = await userDao.getUserByLoginIdentifier(
+        'shop-alpha-100',
+        'global@example.com',
+      );
+      expect(scopedMiss, isNull);
+    });
   });
 }

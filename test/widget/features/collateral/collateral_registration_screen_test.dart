@@ -14,7 +14,7 @@ void main() {
     final db = AppDatabase.forTesting(inMemoryExecutor);
 
     const shopId = 'shop-uuid-widget';
-    const customerId = 'cust-uuid-widget';
+    const customerId = 1;
 
     final now = DateTime.now().toUtc();
     await db.into(db.shops).insert(
@@ -96,7 +96,7 @@ void main() {
     final db = AppDatabase.forTesting(inMemoryExecutor);
 
     const shopId = 'shop-uuid-widget-2';
-    const customerId = 'cust-uuid-widget-2';
+    const customerId = 1;
 
     final now = DateTime.now().toUtc();
     await db.into(db.shops).insert(
@@ -159,7 +159,7 @@ void main() {
 
     await tester.enterText(textFields.at(0), 'COLL-001');
     await tester.enterText(textFields.at(1), shopId);
-    await tester.enterText(textFields.at(2), customerId);
+    await tester.enterText(textFields.at(2), customerId.toString());
     await tester.enterText(textFields.at(4), 'gold');
     await tester.enterText(textFields.at(5), 'Test item');
     await tester.enterText(textFields.at(6), 'Good');
@@ -186,7 +186,7 @@ void main() {
     final db = AppDatabase.forTesting(inMemoryExecutor);
 
     const shopId = 'shop-uuid-widget-3';
-    const customerId = 'cust-uuid-widget-3';
+    const customerId = 1;
 
     final now = DateTime.now().toUtc();
     await db.into(db.shops).insert(
@@ -249,7 +249,7 @@ void main() {
 
     await tester.enterText(textFields.at(0), 'COLL-002');
     await tester.enterText(textFields.at(1), shopId);
-    await tester.enterText(textFields.at(2), customerId);
+    await tester.enterText(textFields.at(2), customerId.toString());
     await tester.enterText(textFields.at(4), 'gold');
     await tester.enterText(textFields.at(5), 'Test item with photo');
     await tester.enterText(textFields.at(6), 'Good');
@@ -278,7 +278,7 @@ void main() {
     final db = AppDatabase.forTesting(inMemoryExecutor);
 
     const shopId = 'shop-uuid-widget-4';
-    const customerId = 'cust-uuid-widget-4';
+    const customerId = 1;
 
     final now = DateTime.now().toUtc();
     await db.into(db.shops).insert(
@@ -341,7 +341,7 @@ void main() {
 
     await tester.enterText(textFields.at(0), 'COLL-003');
     await tester.enterText(textFields.at(1), shopId);
-    await tester.enterText(textFields.at(2), customerId);
+    await tester.enterText(textFields.at(2), customerId.toString());
     await tester.enterText(textFields.at(4), 'electronics');
     await tester.enterText(textFields.at(5), 'Test item exception');
     await tester.enterText(textFields.at(6), 'Fair');

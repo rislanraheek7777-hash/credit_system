@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
+import 'package:credit_system/core/data/secure_storage.dart';
+import 'package:credit_system/core/permissions/app_permission.dart';
+import 'package:credit_system/features/auth/data/daos/user_dao.dart';
+import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/shop/data/daos/shop_dao.dart';
 import 'package:credit_system/features/shop/domain/models/shop_profile.dart';
 
@@ -29,13 +34,18 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
   final _businessAddressController = TextEditingController();
   final _contactPhoneController = TextEditingController();
   final _contactEmailController = TextEditingController();
+  final _ownerUsernameController = TextEditingController();
+  final _ownerEmailController = TextEditingController();
+  final _ownerPasswordController = TextEditingController();
+  final _ownerFullNameController = TextEditingController();
   final _registrationNumberController = TextEditingController();
-  final _timezoneController = TextEditingController(text: 'Asia/Colombo');
   final _currencyCodeController = TextEditingController(text: 'LKR');
+  final _timezoneController = TextEditingController(text: 'Asia/Colombo');
 
   bool _isLoading = false;
   String? _error;
   String? _successMessage;
+  String? _createdShopId;
 
   @override
   void dispose() {
@@ -43,6 +53,10 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
     _businessAddressController.dispose();
     _contactPhoneController.dispose();
     _contactEmailController.dispose();
+    _ownerUsernameController.dispose();
+    _ownerEmailController.dispose();
+    _ownerPasswordController.dispose();
+    _ownerFullNameController.dispose();
     _registrationNumberController.dispose();
     _timezoneController.dispose();
     _currencyCodeController.dispose();
@@ -62,7 +76,7 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
       final db = widget.database ?? AppDatabase();
       final shopDao = ShopDao(db);
 
-      final shopId = const Uuid().v4();
+      final shopId = const Uuid().v4().substring(0, 8);
       final now = DateTime.now().toUtc();
 
       final shop = ShopProfile(
@@ -88,6 +102,47 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
       );
 
       await shopDao.createShop(shop);
+
+      // Create initial shop owner account for login.
+      final userDao = UserDao(db);
+      final ownerUsernameRaw = _ownerUsernameController.text.trim();
+      final ownerEmail = _ownerEmailController.text.trim();
+      final ownerPassword = _ownerPasswordController.text;
+      final hasIdentifier = ownerUsernameRaw.isNotEmpty || ownerEmail.isNotEmpty;
+      if (hasIdentifier && ownerPassword.isNotEmpty) {
+        final ownerUsername = ownerUsernameRaw.isNotEmpty
+            ? ownerUsernameRaw
+            : ownerEmail;
+        final ownerUser = AppUser(
+          id: const Uuid().v4(),
+          shopId: shopId,
+          username: ownerUsername,
+          email: ownerEmail.isEmpty ? null : ownerEmail,
+          fullName: _ownerFullNameController.text.trim().isEmpty
+              ? 'Shop Owner'
+              : _ownerFullNameController.text.trim(),
+          role: AppRole.shopOwner,
+          isActive: true,
+          sessionVersion: 1,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await userDao.createUserWithPassword(ownerUser, ownerPassword);
+      }
+
+      // Allow immediate offline login for the newly created shop.
+      if (widget.database == null) {
+        try {
+          final secureStorage = FlutterSecureStorageService();
+          await secureStorage.write(
+            key: 'offline_session_expiry',
+            value: DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+          );
+        } catch (_) {
+          // Best-effort: offline login may require online auth later.
+        }
+      }
+
       if (widget.database == null) {
         await db.close();
       }
@@ -97,6 +152,7 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
         _isLoading = false;
         _successMessage =
             'Shop created successfully. Shop ID: $shopId. You can now log in.';
+        _createdShopId = shopId;
       });
     } catch (e) {
       if (!mounted) return;
@@ -165,6 +221,35 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
                   'log in using your shop ID.',
                   style: TextStyle(color: Colors.grey),
                 ),
+                const SizedBox(height: 16),
+                if (_createdShopId != null)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        await Clipboard.setData(
+                            ClipboardData(text: _createdShopId!));
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('Shop ID copied')),
+                        );
+                      },
+                      icon: const Icon(Icons.copy),
+                      label: const Text('Copy Shop ID'),
+                    ),
+                  ),
+                   const SizedBox(height: 8),
+                   SizedBox(
+                     width: double.infinity,
+                     child: ElevatedButton(
+                       onPressed: () {
+                         Navigator.of(context).pop();
+                       },
+                       child: const Text('Go to Login'),
+                     ),
+                   ),
+
               ] else ...[
                 TextFormField(
                   key: const Key('shop_creation_name_field'),
@@ -253,6 +338,50 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                 const SizedBox(height: 24),
+                 const Text('Owner Account (for login)',
+                     style: TextStyle(fontWeight: FontWeight.bold)),
+                 const SizedBox(height: 8),
+                 TextFormField(
+                   controller: _ownerFullNameController,
+                   decoration: const InputDecoration(
+                     labelText: 'Owner Full Name',
+                     border: OutlineInputBorder(),
+                   ),
+                 ),
+                 const SizedBox(height: 16),
+                 TextFormField(
+                   controller: _ownerUsernameController,
+                   decoration: const InputDecoration(
+                     labelText: 'Owner Username',
+                     border: OutlineInputBorder(),
+                   ),
+                   validator: (value) {
+                     return null;
+                   },
+                 ),
+                 const SizedBox(height: 16),
+                 TextFormField(
+                   controller: _ownerEmailController,
+                   decoration: const InputDecoration(
+                     labelText: 'Owner Email',
+                     border: OutlineInputBorder(),
+                   ),
+                 ),
+                 const SizedBox(height: 16),
+                 TextFormField(
+                   controller: _ownerPasswordController,
+                   decoration: const InputDecoration(
+                     labelText: 'Owner Password',
+                     border: OutlineInputBorder(),
+                   ),
+                   obscureText: true,
+                   validator: (value) {
+                     return null;
+                   },
+                 ),
+                 const SizedBox(height: 24),
+
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

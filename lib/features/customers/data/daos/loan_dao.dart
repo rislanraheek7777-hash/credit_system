@@ -104,9 +104,9 @@ class LoanDao extends DatabaseAccessor<AppDatabase> with _$LoanDaoMixin {
     if (loan.shopId.trim().isEmpty) {
       throw ArgumentError.value(loan.shopId, 'shopId', 'shopId cannot be empty');
     }
-    if (loan.customerId.trim().isEmpty) {
+    if (loan.customerId <= 0) {
       throw ArgumentError.value(
-          loan.customerId, 'customerId', 'customerId cannot be empty');
+          loan.customerId, 'customerId', 'customerId must be a positive integer');
     }
     await into(loans).insert(_toCompanion(loan));
   }
@@ -116,11 +116,10 @@ class LoanDao extends DatabaseAccessor<AppDatabase> with _$LoanDaoMixin {
   /// Returns loans ordered by due date ascending.
   Future<List<Loan>> getLoansByCustomerId(
     String shopId,
-    String customerId,
+    int customerId,
   ) async {
     final query = select(loans)
-      ..where((l) =>
-          l.shopId.equals(shopId) & l.customerId.equals(customerId))
+      ..where((l) => l.shopId.equals(shopId) & l.customerId.equals(customerId))
       ..orderBy([(l) => OrderingTerm.asc(l.dueDate)]);
     final entries = await query.get();
     return entries.map(_toDomain).toList();
@@ -143,7 +142,7 @@ class LoanDao extends DatabaseAccessor<AppDatabase> with _$LoanDaoMixin {
   /// Strictly scoped to [shopId] — loans in other shops are never returned.
   Future<List<Loan>> getLoansByCustomerAndStatus(
     String shopId,
-    String customerId,
+    int customerId,
     LoanStatus status,
   ) async {
     final query = select(loans)
@@ -217,7 +216,7 @@ class LoanDao extends DatabaseAccessor<AppDatabase> with _$LoanDaoMixin {
   Future<Loan> createLoanAgreement({
     required AppUser actor,
     required String idempotencyKey,
-    required String customerId,
+    required int customerId,
     required Money principal,
     required DateTime dueDate,
     required DateTime createdAt,

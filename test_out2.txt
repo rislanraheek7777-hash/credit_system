@@ -1,0 +1,24 @@
+00:00 +0: loading C:/projects/credit_system/test/unit/features/auth/auth_service_test.dart
+00:00 +0: AuthService - Server-Side Authentication (Story 1.8) authenticate verifies credentials against PostgreSQL and issues JWT
+00:04 +1: AuthService - Server-Side Authentication (Story 1.8) authenticate rejects invalid username
+00:04 +2: AuthService - Server-Side Authentication (Story 1.8) authenticate rejects wrong password
+00:08 +3: AuthService - Server-Side Authentication (Story 1.8) authenticate rejects inactive user
+00:11 +4: AuthService - Server-Side Authentication (Story 1.8) authenticate rejects user without password hash
+00:11 +5: AuthService - Server-Side Authentication (Story 1.8) authenticate rejects empty inputs
+00:11 +6: AuthService - Server-Side Authentication (Story 1.8) validateSession accepts a valid token with matching session version
+00:11 +7: AuthService - Server-Side Authentication (Story 1.8) validateSession rejects token with revoked session version
+00:11 +8: AuthService - Server-Side Authentication (Story 1.8) validateSession rejects token for deactivated user
+00:11 +9: AuthService - Server-Side Authentication (Story 1.8) validateSession rejects token for non-existent user
+00:11 +10: AuthService - Server-Side Authentication (Story 1.8) validateSession rejects token with missing role claim
+00:11 +11: AuthService - Server-Side Authentication (Story 1.8) validateSession accepts token with non-standard role claim
+00:11 +12: AuthService - Server-Side Authentication (Story 1.8) validateSession rejects invalid token signature
+00:11 +13: AuthService - Server-Side Authentication (Story 1.8) validateSession sets tenant context from trusted JWT claim
+00:11 +14: AuthService - Server-Side Authentication (Story 1.8) revokeSession deactivates user and increments session version
+00:11 +15: AuthService - Server-Side Authentication (Story 1.8) revokeSession throws StateError for non-existent user
+00:11 +16: AuthService - Server-Side Authentication (Story 1.8) authenticateOffline rejects when offline session expired
+00:11 +17: AuthService - Server-Side Authentication (Story 1.8) authenticateOffline rejects when no offline session recorded
+00:11 +18: AuthService - Server-Side Authentication (Story 1.8) authenticateOffline rejects shop mismatch
+00:11 +19: AuthService - Server-Side Authentication (Story 1.8) clearCachedSession clears JWT but does not deactivate account
+00:15 +20: AuthService - Server-Side Authentication (Story 1.8) validateSession rejects token with expired JWT
+00:15 +21: AuthService - Server-Side Authentication (Story 1.8) validateSession accepts token after offline authentication and reconnection
+00:22 +22: All tests passed!

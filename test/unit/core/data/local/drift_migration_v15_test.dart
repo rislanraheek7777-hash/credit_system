@@ -259,10 +259,10 @@ void main() {
 
       expect(
         readUserVersion(file),
-        equals(19),
+        equals(20),
         reason: 'Opening a version 14 database must migrate it to 15.',
       );
-      expect(db.schemaVersion, equals(19));
+      expect(db.schemaVersion, equals(20));
     });
 
     test(
@@ -278,7 +278,7 @@ void main() {
           db.loans,
         )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
 
-        expect(readUserVersion(file), equals(19));
+        expect(readUserVersion(file), equals(20));
 
         // All existing loans must have documentSnapshotId = NULL.
         // The column is nullable with no default, so old rows get NULL automatically.
@@ -322,7 +322,7 @@ void main() {
         db.loans,
       )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
 
-      expect(readUserVersion(file), equals(19));
+      expect(readUserVersion(file), equals(20));
 
       // Insert a new loan with a documentSnapshotId.
       await db
@@ -331,7 +331,7 @@ void main() {
             LoansCompanion.insert(
               id: 'loan-v15-new',
               shopId: 'shop-v14',
-              customerId: 'cust-v14',
+              customerId: 1,
               principalCents: 500000,
               balanceCents: 500000,
               status: Value('active'),
@@ -366,7 +366,7 @@ void main() {
       )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
 
       // Verify the migration ran and persisted version 15 on disk.
-      expect(readUserVersion(file), equals(19));
+      expect(readUserVersion(file), equals(20));
 
       await first.close();
 
@@ -374,8 +374,8 @@ void main() {
       final second = openWithDeviceSemantics(file);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(19));
-      expect(readUserVersion(file), equals(19));
+      expect(second.schemaVersion, equals(20));
+      expect(readUserVersion(file), equals(20));
 
       // Data must be intact after close/reopen.
       final loan = await (second.select(

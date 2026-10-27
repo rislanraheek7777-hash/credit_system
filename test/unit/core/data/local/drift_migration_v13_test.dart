@@ -103,10 +103,11 @@ void main() {
       final db = openWithDeviceSemantics(dbFile);
       addTearDown(() async => db.close());
 
-      // Customer data.
+      // Customer data. The legacy TEXT id is remapped to the rowid (1).
       final customer = await (db.select(db.customers)
-            ..where((c) => c.id.equals('cust-v12')))
+            ..where((c) => c.nic.equals('198512345678')))
           .getSingle();
+      expect(customer.id, equals(1));
       expect(customer.fullName, equals('V12 Customer'));
       expect(customer.nic, equals('198512345678'));
       expect(customer.phone, equals('+94 77 123 4567'));
@@ -149,14 +150,14 @@ void main() {
       await first.close();
 
       // The migration must have recorded the new schema version on disk.
-      expect(readUserVersion(dbFile), equals(19));
+      expect(readUserVersion(dbFile), equals(20));
 
       // Second launch on the same file: the migration must not run again and
       // the database must open cleanly.
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(19));
+      expect(second.schemaVersion, equals(20));
       final loan = await (second.select(second.loans)
             ..where((l) => l.id.equals('loan-v12')))
           .getSingle();
@@ -177,7 +178,7 @@ void main() {
       expect(await first.select(first.loans).get(), hasLength(1));
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(19),
+      expect(readUserVersion(dbFile), equals(20),
           reason: 'Drift must record the new schema version after the '
               'migration committed.');
 
@@ -186,7 +187,7 @@ void main() {
 
       expect(await second.select(second.loans).get(), hasLength(1));
       expect(await second.select(second.collateralItems).get(), hasLength(3));
-      expect(readUserVersion(dbFile), equals(19));
+      expect(readUserVersion(dbFile), equals(20));
     });
 
     test('repairs a database left half-migrated by a failed attempt',
@@ -231,7 +232,7 @@ void main() {
         db.into(db.collateralItems).insert(CollateralItemsCompanion.insert(
           id: 'coll-dangling',
           shopId: 'shop-v12',
-          customerId: 'cust-v12',
+          customerId: 1,
           loanId: const Value('loan-does-not-exist'),
           itemReferenceId: 'COLL-DANGLING',
           category: 'gold',

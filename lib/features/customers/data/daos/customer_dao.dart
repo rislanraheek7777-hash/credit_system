@@ -27,9 +27,13 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
   }
 
   /// Converts a domain [Customer] into a Drift [CustomersCompanion].
+  ///
+  /// The [id] field is intentionally absent so the database auto-generates the
+  /// auto-increment value on insert. On update, the ID is also absent to
+  /// preserve the existing record's primary key.
   CustomersCompanion _toCompanion(Customer customer) {
     return CustomersCompanion(
-      id: Value(customer.id),
+      id: const Value.absent(),
       shopId: Value(customer.shopId),
       fullName: Value(customer.fullName),
       nic: Value(Customer.normalizeNic(customer.nic)),
@@ -44,16 +48,19 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
 
   /// Inserts a new customer record into the local SQLite database.
   ///
+  /// The database assigns the auto-increment primary key; the generated
+  /// [Customer.id] is returned so callers can reference the persisted row.
+  ///
   /// Throws [sqlite.SqliteException] if a customer with the same NIC already exists
   /// in the same shop tenant (enforcing the `(shop_id, nic)` unique constraint).
-  Future<void> createCustomer(Customer customer) async {
-    await into(customers).insert(_toCompanion(customer));
+  Future<int> createCustomer(Customer customer) async {
+    return into(customers).insert(_toCompanion(customer));
   }
 
   /// Retrieves a customer by their [customerId] strictly scoped within [shopId].
   ///
   /// Returns `null` if the customer does not exist or belongs to another shop.
-  Future<Customer?> getCustomerById(String shopId, String customerId) async {
+  Future<Customer?> getCustomerById(String shopId, int customerId) async {
     final query = select(customers)
       ..where((c) => c.shopId.equals(shopId) & c.id.equals(customerId));
     final entry = await query.getSingleOrNull();

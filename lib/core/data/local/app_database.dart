@@ -107,7 +107,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -466,8 +466,232 @@ class AppDatabase extends _$AppDatabase {
               'ON "loan_administrative_closures" ("shop_id", "loan_id");',
             );
           }
-        },
-        beforeOpen: (OpeningDetails details) async {
+          if (from < 20) {
+            // Upgrade from Schema Version 19 to 20: add email/phone login identifiers.
+            //
+            // Guarded by PRAGMA table_info: `addColumn`/`CREATE INDEX` fail
+            // outright when `app_users` is absent (partially built or fixture
+            // databases), and the column add fails with "duplicate column" when
+            // an earlier upgrade path already added it.
+            final appUsersInfo =
+                await customSelect('PRAGMA table_info("app_users")').get();
+            if (appUsersInfo.isNotEmpty) {
+              bool hasColumn(String name) => appUsersInfo.any(
+                  (row) => row.read<String>('name') == name);
+              if (!hasColumn('email')) {
+                await m.addColumn(appUsers, appUsers.email);
+              }
+              if (!hasColumn('phone')) {
+                await m.addColumn(appUsers, appUsers.phone);
+              }
+              await customStatement(
+                'CREATE INDEX IF NOT EXISTS "idx_app_users_shop_email" '
+                'ON "app_users" ("shop_id", "email");',
+              );
+              await customStatement(
+                'CREATE INDEX IF NOT EXISTS "idx_app_users_shop_phone" '
+                'ON "app_users" ("shop_id", "phone");',
+              );
+            }
+
+            // Customer-identity integer id retype.
+            //
+            // `Customers.id` changes from a UUID TEXT primary key to an
+            // auto-increment INTEGER primary key, and every customer-identity
+            // column that references it (`loans.customer_id`,
+            // `collateral_items.customer_id`, `customer_follow_ups.customer_id`
+            // and the denormalized `payments.customer_id` snapshot) is retyped
+            // to INTEGER.
+            //
+            // Existing rows are preserved without data loss: each legacy
+            // customer row keeps its implicit rowid as its new integer id, and
+            // referencing columns are remapped from the legacy UUID through a
+            // temporary mapping table.
+            //
+            // Databases that reached the current table shapes through earlier
+            // `alterTable` rebuilds (or `createTable` calls on newer upgrade
+            // paths) already carry INTEGER customer ids, so every step below
+            // is guarded and only runs where legacy ids are genuinely present.
+            // Besides the declared column type, the guards also look at the
+            // stored values: an upgrade path that rebuilt a table with the
+            // current (INTEGER) declaration may still have copied legacy TEXT
+            // uuids into it, which SQLite keeps verbatim under INTEGER
+            // affinity. A failure inside this block rolls the whole migration
+            // back, leaving the database unchanged.
+            final foreignKeysEnabled =
+                (await customSelect('PRAGMA foreign_keys').getSingle())
+                    .read<bool>('foreign_keys');
+            final legacyAlterTableEnabled =
+                (await customSelect('PRAGMA legacy_alter_table').getSingle())
+                    .read<bool>('legacy_alter_table');
+            if (foreignKeysEnabled) {
+              await customStatement('PRAGMA foreign_keys = OFF;');
+            }
+            if (!legacyAlterTableEnabled) {
+              await customStatement('PRAGMA legacy_alter_table = ON;');
+            }
+
+            try {
+              await transaction(() async {
+                if (await _columnHasTextType('customers', 'id')) {
+                  // Rebuild `customers` with the INTEGER auto-increment primary
+              // key, reusing each legacy row's rowid as its new integer id.
+              //
+              // The rebuild follows SQLite's 12-step safe rebuild procedure
+              // (https://sqlite.org/lang_altertable.html#otheralter): foreign
+              // keys are switched off while the parent table is renamed and
+              // dropped (a device connection enforces them from the moment it
+              // opens), and `legacy_alter_table` keeps the rename from
+              // rewriting the child tables' `REFERENCES` clauses to point at
+              // the temporary table name.
+              await customStatement(
+                'DROP TABLE IF EXISTS "customers_v19_ids";',
+              );
+              await customStatement(
+                'ALTER TABLE "customers" RENAME TO "customers_v19_ids";',
+              );
+              await m.createTable(customers);
+              await customStatement(
+                'INSERT INTO "customers" '
+                    '("id", "shop_id", "full_name", "nic", "phone", "address", '
+                    '"photo_uri", "photo_hash", "created_at", "updated_at") '
+                    'SELECT "rowid", "shop_id", "full_name", "nic", "phone", '
+                    '"address", "photo_uri", "photo_hash", "created_at", '
+                    '"updated_at" FROM "customers_v19_ids";',
+              );
+              // Legacy UUID -> new integer id mapping used below to remap the
+              // referencing tables.
+              await customStatement(
+                'CREATE TEMP TABLE "_customer_id_remap" '
+                    '("old_id" TEXT PRIMARY KEY, "new_id" INTEGER NOT NULL);',
+              );
+              await customStatement(
+                'INSERT INTO "_customer_id_remap" ("old_id", "new_id") '
+                    'SELECT "id", "rowid" FROM "customers_v19_ids";',
+              );
+              await customStatement('DROP TABLE "customers_v19_ids";');
+              await _createCustomerIndexes();
+
+            } else if (await _columnHasTextData('loans', 'customer_id') ||
+                await _columnHasTextData('collateral_items', 'customer_id') ||
+                await _columnHasTextData(
+                    'customer_follow_ups', 'customer_id') ||
+                await _columnHasTextData('payments', 'customer_id')) {
+              // `customers` already carries INTEGER ids (an upgrade path that
+              // created it from the current definition) while a referencing
+              // table still holds legacy TEXT values copied by an earlier
+              // `alterTable` rebuild. Map those through the live customer
+              // rows; because the integer primary key is the rowid alias,
+              // `id` and `rowid` agree.
+              await customStatement(
+                'CREATE TEMP TABLE IF NOT EXISTS "_customer_id_remap" '
+                    '("old_id" TEXT PRIMARY KEY, "new_id" INTEGER NOT NULL);',
+              );
+              await customStatement(
+                'INSERT OR REPLACE INTO "_customer_id_remap" '
+                    '("old_id", "new_id") '
+                    'SELECT CAST("id" AS TEXT), "rowid" FROM "customers";',
+              );
+            }
+
+            if (await _columnHasTextType('loans', 'customer_id') ||
+                await _columnHasTextData('loans', 'customer_id')) {
+              await customStatement(
+                'DROP TABLE IF EXISTS "tmp_for_copy_loans";',
+              );
+              await customStatement(
+                'UPDATE "loans" SET "customer_id" = (SELECT "new_id" '
+                    'FROM "_customer_id_remap" '
+                    'WHERE "old_id" = "loans"."customer_id");',
+              );
+              if (await _columnHasTextType('loans', 'customer_id')) {
+                await m.alterTable(TableMigration(loans));
+                await _createLoanIndexes();
+              }
+            }
+
+            if (await _columnHasTextType('collateral_items', 'customer_id') ||
+                await _columnHasTextData('collateral_items', 'customer_id')) {
+              await customStatement(
+                'DROP TABLE IF EXISTS "tmp_for_copy_collateral_items";',
+              );
+              await customStatement(
+                'UPDATE "collateral_items" SET "customer_id" = (SELECT "new_id" '
+                    'FROM "_customer_id_remap" '
+                    'WHERE "old_id" = "collateral_items"."customer_id");',
+              );
+              if (await _columnHasTextType('collateral_items', 'customer_id')) {
+                await m.alterTable(TableMigration(collateralItems));
+                await _createCollateralIndexes();
+              }
+            }
+
+            if (await _columnHasTextType('customer_follow_ups', 'customer_id') ||
+                await _columnHasTextData('customer_follow_ups', 'customer_id')) {
+              await customStatement(
+                'DROP TABLE IF EXISTS "tmp_for_copy_customer_follow_ups";',
+              );
+              await customStatement(
+                'UPDATE "customer_follow_ups" SET "customer_id" = '
+                    '(SELECT "new_id" FROM "_customer_id_remap" '
+                    'WHERE "old_id" = "customer_follow_ups"."customer_id");',
+              );
+              if (await _columnHasTextType(
+                  'customer_follow_ups', 'customer_id')) {
+                await m.alterTable(TableMigration(customerFollowUps));
+                await customStatement(
+                  'CREATE INDEX IF NOT EXISTS "idx_customer_follow_ups_shop_id" '
+                      'ON "customer_follow_ups" ("shop_id");',
+                );
+                await customStatement(
+                  'CREATE INDEX IF NOT EXISTS "idx_customer_follow_ups_shop_loan" '
+                      'ON "customer_follow_ups" ("shop_id", "loan_id");',
+                );
+              }
+            }
+
+            if (await _columnHasTextType('payments', 'customer_id') ||
+                await _columnHasTextData('payments', 'customer_id')) {
+              await customStatement(
+                'DROP TABLE IF EXISTS "tmp_for_copy_payments";',
+              );
+              await customStatement(
+                'UPDATE "payments" SET "customer_id" = (SELECT "new_id" '
+                    'FROM "_customer_id_remap" '
+                    'WHERE "old_id" = "payments"."customer_id");',
+              );
+              if (await _columnHasTextType('payments', 'customer_id')) {
+                await m.alterTable(TableMigration(payments));
+                await customStatement(
+                  'CREATE INDEX IF NOT EXISTS "idx_payments_shop_id" '
+                      'ON "payments" ("shop_id");',
+                );
+                await customStatement(
+                  'CREATE INDEX IF NOT EXISTS "idx_payments_shop_loan" '
+                      'ON "payments" ("shop_id", "loan_id");',
+                );
+                await customStatement(
+                  'CREATE INDEX IF NOT EXISTS "idx_payments_receipt_number" '
+                      'ON "payments" ("shop_id", "receipt_number");',
+                );
+              }
+            }
+
+            await customStatement(
+              'DROP TABLE IF EXISTS "_customer_id_remap";',
+            );
+          });
+        } finally {
+          if (!legacyAlterTableEnabled) {
+            await customStatement('PRAGMA legacy_alter_table = OFF;');
+          }
+          if (foreignKeysEnabled) {
+            await customStatement('PRAGMA foreign_keys = ON;');
+          }
+        }
+      }
+    },
+    beforeOpen: (OpeningDetails details) async {
           // Guarantee SQLite foreign-key enforcement is active on every
           // connection.
           await customStatement('PRAGMA foreign_keys = ON;');
@@ -496,6 +720,64 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS "idx_loans_shop_customer_status" '
       'ON "loans" ("shop_id", "customer_id", "status");',
     );
+  }
+
+  /// Recreates the `customers` indexes idempotently.
+  ///
+  /// The v20 customer-id retype drops and rebuilds the `customers` table, so
+  /// its indexes must be recreated. `IF NOT EXISTS` keeps the step safe for
+  /// upgrade paths that created the table with the current definition.
+  Future<void> _createCustomerIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS "idx_customers_shop_id" '
+      'ON "customers" ("shop_id");',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS "idx_customers_shop_nic" '
+      'ON "customers" ("shop_id", "nic");',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS "idx_customers_shop_phone" '
+      'ON "customers" ("shop_id", "phone");',
+    );
+  }
+
+  /// Whether [column] of [table] currently has a TEXT-affinity type in the
+  /// live schema (read via PRAGMA).
+  ///
+  /// Used by the v20 customer-id retype to skip tables that already carry
+  /// INTEGER customer ids because they were created from the current table
+  /// definitions on an earlier upgrade path.
+  Future<bool> _columnHasTextType(String table, String column) async {
+    final info = await customSelect('PRAGMA table_info("$table")').get();
+    return info.any(
+      (row) =>
+          row.read<String>('name') == column &&
+          row.read<String>('type').toUpperCase().contains('TEXT'),
+    );
+  }
+
+  /// Whether [table].[column] currently stores at least one TEXT-affinity
+  /// *value*.
+  ///
+  /// An `alterTable` rebuild on an earlier upgrade path re-creates the table
+  /// with the current (INTEGER) declaration but copies legacy TEXT customer
+  /// uuids verbatim, which SQLite keeps under INTEGER affinity. The v20
+  /// customer-id retype uses this to remap those values even when the column
+  /// declaration already looks correct.
+  Future<bool> _columnHasTextData(String table, String column) async {
+    // Older upgrade paths predate some of these tables (and columns) entirely;
+    // probing a missing table/column with typeof() would throw "no such
+    // table/column" and abort the migration. PRAGMA table_info returns no rows
+    // for a missing table and never errors, so it doubles as the existence
+    // check for both.
+    final info = await customSelect('PRAGMA table_info("$table")').get();
+    final hasColumn = info.any((row) => row.read<String>('name') == column);
+    if (!hasColumn) return false;
+    final rows = await customSelect(
+      'SELECT 1 FROM "$table" WHERE typeof("$column") = \'text\' LIMIT 1;',
+    ).get();
+    return rows.isNotEmpty;
   }
 
   /// Recreates the `collateral_items` indexes idempotently.

@@ -14,7 +14,7 @@ import 'package:uuid/uuid.dart';
 
 const String shopId = 'corr-shop-1111-1111-1111-111111111101';
 const String otherShopId = 'corr-shop-1111-1111-1111-111111111102';
-const String customerId = 'corr-cust-1111-1111-1111-111111111101';
+const int customerId = 1;
 const String ownerId = 'corr-owner-1111-1111-1111-111111111101';
 const String managerId = 'corr-mgr-1111-1111-1111-111111111101';
 const String cashierId = 'corr-cash-1111-1111-1111-111111111101';

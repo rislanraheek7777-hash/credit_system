@@ -37,7 +37,7 @@ void main() {
     final db = AppDatabase.forTesting(inMemoryExecutor);
 
     const shopId = 'shop-123';
-    const customerId = 'cust-456';
+    const customerId = 1;
 
     final now = DateTime.now().toUtc();
     await db.into(db.shops).insert(
@@ -152,7 +152,7 @@ void main() {
     final db = AppDatabase.forTesting(inMemoryExecutor);
 
     const shopId = 'shop-123';
-    const customerId = 'cust-456';
+    const customerId = 1;
 
     final now = DateTime.now().toUtc();
     await db.into(db.shops).insert(

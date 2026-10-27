@@ -230,9 +230,10 @@ void main() {
         findsOneWidget,
       );
 
-      // Verify in database
+      // Verify in database. The customer's primary key is database-assigned,
+      // so the row is looked up by NIC.
       final customerDao = CustomerDao(db);
-      final customer = await customerDao.getCustomerById(testShopId, testCustomerId);
+      final customer = await customerDao.getCustomerByNic(testShopId, testNic);
       expect(customer, isNotNull);
       expect(customer!.fullName, equals('Kumara Silva'));
       expect(customer.photoUri, isNotNull);

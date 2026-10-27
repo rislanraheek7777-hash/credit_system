@@ -139,8 +139,8 @@ void main() {
 
       final created = await registrationService.registerCustomer(request);
 
-      // Verify domain entity returned
-      expect(created.id, equals('cust-valid-photo-1'));
+      // Verify domain entity returned (id assigned by the database)
+      expect(created.id, greaterThan(0));
       expect(created.photoUri, isNotNull);
       expect(created.photoHash, isNotNull);
       expect(created.photoUri, startsWith('photos/$shopAlphaId/customers/cust-valid-photo-1_'));
@@ -152,7 +152,7 @@ void main() {
       expect(await diskFile.length(), lessThanOrEqualTo(500 * 1024));
 
       // Verify database record has only metadata (no binary bytes)
-      final inDb = await customerDao.getCustomerById(shopAlphaId, 'cust-valid-photo-1');
+      final inDb = await customerDao.getCustomerById(shopAlphaId, created.id);
       expect(inDb, isNotNull);
       expect(inDb!.photoUri, equals(created.photoUri));
       expect(inDb.photoHash, equals(created.photoHash));
@@ -274,15 +274,15 @@ void main() {
 
       final created = await registrationService.registerCustomer(request);
 
-      // Verify domain customer created without photo
-      expect(created.id, equals('cust-exc-success-1'));
+      // Verify domain customer created without photo (id assigned by the database)
+      expect(created.id, greaterThan(0));
       expect(created.photoUri, isNull);
       expect(created.photoHash, isNull);
       expect(created.fullName, equals('Nimali Fernando'));
       expect(created.nic, equals('199012345678'));
 
       // Verify persistence in SQLite
-      final inDb = await customerDao.getCustomerById(shopAlphaId, 'cust-exc-success-1');
+      final inDb = await customerDao.getCustomerById(shopAlphaId, created.id);
       expect(inDb, isNotNull);
       expect(inDb!.photoUri, isNull);
       expect(inDb.photoHash, isNull);
@@ -524,7 +524,7 @@ void main() {
       // Pre-seed an existing customer with NIC 198012345678 to trigger unique constraint collision
       await customerDao.createCustomer(
         Customer(
-          id: 'cust-prior-collision',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Prior Registered Person',
           nic: '198012345678',
@@ -572,9 +572,13 @@ void main() {
       expect(exceptionAfterRollback, isNotNull);
       expect(exceptionAfterRollback!.status, equals(PhotoExceptionStatus.approved));
 
-      // Target customer was not created
-      final targetCustomerInDb = await customerDao.getCustomerById(shopAlphaId, 'cust-target-collision');
-      expect(targetCustomerInDb, isNull);
+      // Target customer was not created — only the pre-seeded row holds the NIC
+      final targetCustomers = await (db.select(db.customers)
+            ..where((c) => c.shopId.equals(shopAlphaId))
+            ..where((c) => c.nic.equals('198012345678')))
+          .get();
+      expect(targetCustomers, hasLength(1));
+      expect(targetCustomers.single.fullName, equals('Prior Registered Person'));
     });
 
     test('ATOMIC CAS RACE PROTECTION: concurrent attempts to consume same approved exception reject the second', () async {
@@ -693,11 +697,14 @@ void main() {
       // The existing customer must still be the only one with that NIC
       final existing = await customerDao.getCustomerByNic(shopAlphaId, '851234567V');
       expect(existing, isNotNull);
-      expect(existing!.id, equals(existingCustomerId));
+      expect(existing!.id, greaterThan(0));
 
       // No duplicate customer was created
-      final dup = await customerDao.getCustomerById(shopAlphaId, '11111111-1111-1111-1111-111111111105');
-      expect(dup, isNull);
+      final dupCount = await (db.select(db.customers)
+            ..where((c) => c.shopId.equals(shopAlphaId))
+            ..where((c) => c.nic.equals('851234567V')))
+          .get();
+      expect(dupCount, hasLength(1));
     });
 
     test('duplicate NIC is scoped to the current shop — same NIC in another shop is allowed', () async {
@@ -716,7 +723,7 @@ void main() {
       );
 
       // Same NIC in Beta shop (different shop) must succeed
-      await registrationService.registerCustomer(
+      final betaCreated = await registrationService.registerCustomer(
         RegisterCustomerRequest(
           id: '11111111-1111-1111-1111-111111111106',
           shopId: shopBetaId,
@@ -728,7 +735,7 @@ void main() {
         ),
       );
 
-      final betaCust = await customerDao.getCustomerById(shopBetaId, '11111111-1111-1111-1111-111111111106');
+      final betaCust = await customerDao.getCustomerById(shopBetaId, betaCreated.id);
       expect(betaCust, isNotNull);
       expect(betaCust!.shopId, equals(shopBetaId));
     });
@@ -766,7 +773,7 @@ void main() {
       );
 
       // No new customer was created
-      final newCust = await customerDao.getCustomerById(shopAlphaId, '11111111-1111-1111-1111-111111111107');
+      final newCust = await customerDao.getCustomerByNic(shopAlphaId, '901234567V');
       expect(newCust, isNull);
 
       // No sync queue event was recorded
@@ -780,7 +787,7 @@ void main() {
       final photoBytes = createSampleImageBytes();
 
       // Existing customer with phone 0771234567
-      await registrationService.registerCustomer(
+      final existingCreated = await registrationService.registerCustomer(
         RegisterCustomerRequest(
           id: existingCustomerId,
           shopId: shopAlphaId,
@@ -791,7 +798,6 @@ void main() {
           rawPhotoBytes: photoBytes,
         ),
       );
-
       // New customer with shared phone — WITH explicit confirmation
       final created = await registrationService.registerCustomer(
         RegisterCustomerRequest(
@@ -807,12 +813,12 @@ void main() {
         ),
       );
 
-      expect(created.id, equals('11111111-1111-1111-1111-111111111108'));
+      expect(created.id, greaterThan(0));
       expect(created.shopId, equals(shopAlphaId));
       expect(created.nic, equals('901234567V'));
 
       // Customer persisted in database
-      final inDb = await customerDao.getCustomerById(shopAlphaId, '11111111-1111-1111-1111-111111111108');
+      final inDb = await customerDao.getCustomerById(shopAlphaId, created.id);
       expect(inDb, isNotNull);
       expect(inDb!.phone, equals('+94771234567'));
 
@@ -831,8 +837,8 @@ void main() {
 
       final payload = jsonDecode(event.payloadJson) as Map<String, dynamic>;
       expect(payload['shop_id'], equals(shopAlphaId));
-      expect(payload['new_customer_id'], equals('11111111-1111-1111-1111-111111111108'));
-      expect(payload['existing_customer_ids'], contains(existingCustomerId));
+      expect(payload['new_customer_id'], equals(created.id));
+      expect(payload['existing_customer_ids'], contains(existingCreated.id));
       expect(payload['confirming_staff_id'], equals(staffId));
       expect(payload['shared_phone'], equals('+94771234567'));
       expect(payload['confirmed_at'], isNotNull);
@@ -844,7 +850,7 @@ void main() {
       // Pre-seed an existing customer with same NIC to trigger unique constraint violation
       await customerDao.createCustomer(
         Customer(
-          id: 'cust-prior-nic',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Prior NIC Holder',
           nic: '198012345678',
@@ -886,14 +892,13 @@ void main() {
         throwsA(anything),
       );
 
-      // No customer was created
-      final failedCust = await customerDao.getCustomerById(shopAlphaId, '11111111-1111-1111-1111-111111111109');
-      expect(failedCust, isNull);
+      // No customer was created (the colliding NIC still resolves to the pre-seed)
+      final failedCust = await customerDao.getCustomerByNic(shopAlphaId, '198012345678');
+      expect(failedCust!.fullName, equals('Prior NIC Holder'));
 
       // No orphaned sync queue event
       final queueItems = await (db.select(db.syncQueue)
-            ..where((q) => q.actionType.equals('customer_created_shared_phone'))
-            ..where((q) => q.entityId.equals('11111111-1111-1111-1111-111111111109')))
+            ..where((q) => q.actionType.equals('customer_created_shared_phone')))
           .get();
       expect(queueItems, isEmpty);
     });

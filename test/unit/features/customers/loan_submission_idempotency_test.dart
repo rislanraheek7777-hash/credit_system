@@ -7,7 +7,7 @@ final RegExp uuidV4Pattern = RegExp(
 );
 
 LoanSubmissionFingerprint fingerprint({
-  String customerId = 'cust-1',
+  int customerId = 1,
   int principalCents = 500000,
   DateTime? dueDate,
   List<String> collateralItemIds = const ['coll-1'],
@@ -36,8 +36,8 @@ void main() {
 
     test('differs when the customer differs', () {
       expect(
-        fingerprint(customerId: 'cust-1'),
-        isNot(equals(fingerprint(customerId: 'cust-2'))),
+        fingerprint(customerId: 1),
+        isNot(equals(fingerprint(customerId: 2))),
       );
     });
 
@@ -90,8 +90,8 @@ void main() {
     });
 
     test('a different customer receives a different key', () {
-      final first = idempotency.keyFor(fingerprint(customerId: 'cust-1'));
-      final second = idempotency.keyFor(fingerprint(customerId: 'cust-2'));
+      final first = idempotency.keyFor(fingerprint(customerId: 1));
+      final second = idempotency.keyFor(fingerprint(customerId: 2));
       expect(second, isNot(equals(first)));
     });
 

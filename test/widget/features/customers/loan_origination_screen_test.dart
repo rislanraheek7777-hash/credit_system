@@ -12,7 +12,7 @@ import 'package:credit_system/features/customers/domain/services/loan_submission
 import 'package:credit_system/features/customers/presentation/loan_origination_screen.dart';
 
 const String shopId = '11111111-1111-1111-1111-111111111201';
-const String customerId = '11111111-1111-1111-1111-111111111202';
+const customerId = 1;
 const String staffId = '11111111-1111-1111-1111-111111111203';
 const String itemOneId = 'coll-item-1';
 const String itemTwoId = 'coll-item-2';
@@ -686,7 +686,7 @@ void main() {
 
   group('LoanOriginationScreen - non-default shop time zone (H-1)', () {
     const String tokyoShopId = '11111111-1111-1111-1111-111111111211';
-    const String tokyoCustomerId = '11111111-1111-1111-1111-111111111212';
+    const tokyoCustomerId = 2;
     const String tokyoStaffId = '11111111-1111-1111-1111-111111111213';
     const String tokyoItemId = 'coll-tokyo-1';
 

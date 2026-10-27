@@ -728,7 +728,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
                                     'Loan ${loan.id.substring(0, 8)}...',
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
-                                  Text('Customer: ${loan.customerId.substring(0, 8)}...'),
+                                  Text('Customer: ${loan.customerId}'),
                                   Text('Due: ${loan.dueDateAsCalendarDate(_shopTimeZone!)}'),
                                   Text(
                                     'Days Overdue: $daysOverdue',

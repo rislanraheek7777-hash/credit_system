@@ -133,6 +133,23 @@ class _CollateralRegistrationScreenState
     }
   }
 
+  /// Parses the customer id field and returns the database-assigned integer
+  /// id, or shows an error.
+  int? _parseCustomerId() {
+    final text = _customerIdController.text.trim();
+    if (text.isEmpty) {
+      setState(() => _statusMessage = 'Customer ID is required');
+      return null;
+    }
+    final customerId = int.tryParse(text);
+    if (customerId == null || customerId <= 0) {
+      setState(() =>
+          _statusMessage = 'Customer ID must be a positive integer (database id)');
+      return null;
+    }
+    return customerId;
+  }
+
   /// Validates that either a photo has been stored or an approved exception
   /// exists before allowing registration.
   bool _hasPhotoOrApprovedException() {
@@ -343,6 +360,9 @@ class _CollateralRegistrationScreenState
     final valueCents = _parseEstimatedValue();
     if (valueCents == null) return;
 
+    final customerId = _parseCustomerId();
+    if (customerId == null) return;
+
     final category = _parseCategory();
     if (category == null) return;
 
@@ -385,7 +405,7 @@ class _CollateralRegistrationScreenState
                 defaultValue: 'item-${DateTime.now().millisecondsSinceEpoch}',
               ),
         shopId: _shopIdController.text.trim(),
-        customerId: _customerIdController.text.trim(),
+        customerId: customerId,
         loanId: _loanIdController.text.trim().isEmpty
             ? null
             : _loanIdController.text.trim(),
@@ -524,9 +544,10 @@ class _CollateralRegistrationScreenState
 
                 TextFormField(
                   controller: _customerIdController,
+                  keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Customer ID',
-                    hintText: 'UUIDv4',
+                    hintText: 'Database customer id (integer)',
                     border: OutlineInputBorder(),
                   ),
                   validator: (v) => v == null || v.trim().isEmpty

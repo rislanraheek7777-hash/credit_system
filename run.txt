@@ -1,0 +1,469 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 109.0.0 (110.0.0 available)
+  analyzer 14.5.0 (14.6.0 available)
+  archive 4.0.9 (4.5.2 available)
+  build 4.0.11 (5.0.0 available)
+  build_config 1.3.3 (1.4.0 available)
+  build_daemon 4.1.6 (4.1.7 available)
+  build_runner 2.16.2 (2.17.1 available)
+  cupertino_icons 1.0.9 (2.0.0 available)
+  dart_style 3.1.13 (3.1.14 available)
+  drift 2.35.2 (2.35.3 available)
+  drift_dev 2.35.1 (2.35.2 available)
+  http_multi_server 3.2.2 (3.2.3 available)
+  image 4.5.4 (4.12.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  pdf 3.12.0 (3.13.1 available)
+  pointycastle 3.9.1 (4.0.0 available)
+  posix 6.5.2 (6.5.3 available)
+  pubspec_parse 1.6.0 (1.7.0 available)
+  qr 3.0.2 (4.0.0 available)
+  shelf 1.4.2 (1.4.3 available)
+  source_gen 4.3.0 (4.3.1 available)
+  sqlite3 3.7.1 (3.8.0 available)
+  sqlparser 0.45.0 (0.45.1 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.3 available)
+  vm_service 15.3.0 (15.4.0 available)
+  web 1.1.1 (1.1.2 available)
+  xml 6.6.1 (7.1.0 available)
+Got dependencies!
+28 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Launching lib\main.dart on SM A725F (wireless) in debug mode...
+Running Gradle task 'assembleDebug'...                          
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/Rahmi/.gradle/wrapper/dists/gradle-9.3.1-all/9ot9r568e8zfvvd4mn8rbu1j0/gradle-9.3.1/lib/native-platform-0.22-milestone-29.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+I/flutter ( 5496): WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+I/flutter ( 5496): Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+I/flutter ( 5496): Here is the stacktrace from when the database was opened a second time:
+I/flutter ( 5496): #0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+I/flutter ( 5496): #1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+I/flutter ( 5496): #2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+I/flutter ( 5496): #3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:12986:36)
+I/flutter ( 5496): #4      new AppDatabase (package:credit_system/core/data/local/app_database.dart:103:19)
+I/flutter ( 5496): #5      _ShopCreationScreenState._createShop (package:credit_system/features/shop/presentation/shop_creation_screen.dart:76:37)
+I/flutter ( 5496): #6      _InkResponseState.handleTap (package:flutter/src/material/ink_well.dart:1224:21)
+I/flutter ( 5496): #7      GestureRecognizer.invokeCallback (package:flutter/src/gestures/recognizer.dart:362:24)
+I/flutter ( 5496): #8      TapGestureRecognizer.handleTapUp (package:flutter/src/gestures/tap.dart:758:11)
+I/flutter ( 5496): #9      BaseTapGestureRecognizer._checkUp (package:flutter/src/gestures/tap.dart:383:5)
+I/flutter ( 5496): #10     BaseTapGestureRecognizer.acceptGesture (package:flutter/src/gestures/tap.dart:353:7)
+I/flutter ( 5496): #11     GestureArenaManager.sweep (package:flutter/src/gestures/arena.dart:173:27)
+I/flutter ( 5496): #12     GestureBinding.handleEvent (package:flutter/src/gestures/binding.dart:542:20)
+I/flutter ( 5496): #13     GestureBinding.dispatchEvent (package:flutter/src/gestures/binding.dart:508:22)
+I/flutter ( 5496): #14     RendererBinding.dispatchEvent (package:flutter/src/rendering/binding.dart:473:11)
+I/flutter ( 5496): #15     GestureBinding._handlePointerEventImmediately (package:flutter/src/gestures/binding.dart:447:7)
+I/flutter ( 5496): #16     GestureBinding.handlePointerEvent (package:flutter/src/gestures/binding.dart:404:5)
+I/flutter ( 5496): #17     GestureBinding._flushPointerEventQueue (package:flutter/src/gestures/binding.dart:351:7)
+I/flutter ( 5496): #18     GestureBinding._handlePointerDataPacket (package:flutter/src/gestures/binding.dart:310:9)
+I/flutter ( 5496): #19     _invoke1 (dart:ui/hooks.dart:457:13)
+I/flutter ( 5496): #20     PlatformDispatcher._dispatchPointerDataPacket (dart:ui/platform_dispatcher.dart:473:7)
+I/flutter ( 5496): #21     _dispatchPointerDataPacket (dart:ui/hooks.dart:374:31)
+I/flutter ( 5496): This warning will only appear on debug builds.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+Running Gradle task 'assembleDebug'...                              5.8s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+D/FlutterJNI( 5496): Sending viewport metrics to the engine.
+Installing build\app\outputs\flutter-apk\app-debug.apk...         106.2s
+I/FlutterActivityAndFragmentDelegate( 7033): If you are attempting to set --enable-dart-profiling via Intent extras to launch a Flutter component outside of using the Flutter CLI, note that support for setting engine flags on Android via Intent will soon be dropped; see https://github.com/flutter/flutter/issues/180686 for more information on this breaking change. To migrate, set --enable-dart-profiling or any other flags specified via Intent extras on the command line instead or see https://github.com/flutter/flutter/blob/main/docs/engine/Flutter-Android-Engine-Flags.md for alternative methods.
+D/FlutterJNI( 7033): Beginning load of flutter...
+D/FlutterJNI( 7033): flutter (null) was loaded normally!
+I/flutter ( 7033): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+I/flutter ( 7033): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+D/FlutterRenderer( 7033): Width is zero. 0,0
+I/IDS_TAG ( 7033): Closing IDS observe window
+I/IDS_TAG ( 7033): Getting Shared Preference for android.app.Application@ef9f5ba uid = 10390
+I/IDS_TAG ( 7033): IDS count updated to 1 for android.app.Application@ef9f5ba
+I/Choreographer( 7033): Skipped 135 frames!  The application may be doing too much work on its main thread.
+I/SurfaceView@94f5203( 7033): onWindowVisibilityChanged(0) true io.flutter.embedding.android.FlutterSurfaceView{94f5203 V.E...... ......I. 0,0-0,0} of ViewRootImpl@195d129[MainActivity]
+D/SurfaceView@94f5203( 7033): 156193283 updateSurface: has no frame
+D/FlutterRenderer( 7033): Width is zero. 0,0
+I/BufferQueueProducer( 7033): [](id:1b7900000000,api:0,p:325859772,c:7033) setDequeueTimeout:2077252342
+I/BLASTBufferQueue_Java( 7033): new BLASTBufferQueue, mName= ViewRootImpl@195d129[MainActivity] mNativeObject= 0xb400007d1cc6c0f0 sc.mNativeObject= 0xb400007cbcc6c7d0 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3028 android.view.ViewRootImpl.relayoutWindow:10131 android.view.ViewRootImpl.performTraversals:4110 android.view.ViewRootImpl.doTraversal:3288 android.view.ViewRootImpl$TraversalRunnable.run:11344 android.view.Choreographer$CallbackRecord.run:1689 android.view.Choreographer$CallbackRecord.run:1698 android.view.Choreographer.doCallbacks:1153 android.view.Choreographer.doFrame:1079 android.view.Choreographer$FrameDisplayEventReceiver.run:1646 
+I/BLASTBufferQueue_Java( 7033): update, w= 1080 h= 2400 mName = ViewRootImpl@195d129[MainActivity] mNativeObject= 0xb400007d1cc6c0f0 sc.mNativeObject= 0xb400007cbcc6c7d0 format= -3 caller= android.graphics.BLASTBufferQueue.<init>:89 android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3028 android.view.ViewRootImpl.relayoutWindow:10131 android.view.ViewRootImpl.performTraversals:4110 android.view.ViewRootImpl.doTraversal:3288 android.view.ViewRootImpl$TraversalRunnable.run:11344 
+I/ViewRootImpl@195d129[MainActivity]( 7033): Relayout returned: old=(0,0,1080,2400) new=(0,0,1080,2400) relayoutAsync=false req=(1080,2400)0 dur=16 res=0x403 s={true 0xb400007b7cc84df0} ch=true seqId=0
+I/ViewRootImpl@195d129[MainActivity]( 7033): performConfigurationChange setNightDimText nightDimLevel=0
+D/ViewRootImpl@195d129[MainActivity]( 7033): mThreadedRenderer.initialize() mSurface={isValid=true 0xb400007b7cc84df0} hwInitialized=true
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+D/SurfaceView@94f5203( 7033): 156193283 updateSurface: has no frame
+I/SurfaceView@94f5203( 7033): windowStopped(false) true io.flutter.embedding.android.FlutterSurfaceView{94f5203 V.E...... ......ID 0,0-1080,2256} of ViewRootImpl@195d129[MainActivity]
+D/SurfaceView@94f5203( 7033): 156193283 updateSurface: has no frame
+D/ViewRootImpl@195d129[MainActivity]( 7033): reportNextDraw android.view.ViewRootImpl.performTraversals:4718 android.view.ViewRootImpl.doTraversal:3288 android.view.ViewRootImpl$TraversalRunnable.run:11344 android.view.Choreographer$CallbackRecord.run:1689 android.view.Choreographer$CallbackRecord.run:1698 
+I/SurfaceView( 7033): 156193283 Changes: creating=true format=true size=true visible=true alpha=false hint=false visible=true left=true top=true z=false attached=true lifecycleStrategy=false
+I/BufferQueueProducer( 7033): [](id:1b7900000001,api:0,p:1718773108,c:7033) setDequeueTimeout:2077252342
+I/BLASTBufferQueue_Java( 7033): update, w= 1080 h= 2256 mName = null mNativeObject= 0xb400007d1cc67c30 sc.mNativeObject= 0xb400007cbcc6d250 format= 4 caller= android.view.SurfaceView.createBlastSurfaceControls:1517 android.view.SurfaceView.updateSurface:1193 android.view.SurfaceView.lambda$new$0:258 android.view.SurfaceView.$r8$lambda$cm3nmzErr-srXoT_KjIYQgdhFN0:0 android.view.SurfaceView$$ExternalSyntheticLambda2.onPreDraw:2 android.view.ViewTreeObserver.dispatchOnPreDraw:1204 
+I/SurfaceView@94f5203( 7033): 156193283 Cur surface: Surface(name=null)/@0x4d82bc5
+I/SurfaceView@94f5203( 7033): pST: sr = Rect(0, 0 - 1080, 2256) sw = 1080 sh = 2256
+D/SurfaceView@94f5203( 7033): 156193283 performSurfaceTransaction RenderWorker position = [0, 0, 1080, 2256] surfaceSize = 1080x2256
+I/SurfaceView@94f5203( 7033): updateSurface: mVisible = true mSurface.isValid() = true
+I/SurfaceView@94f5203( 7033): updateSurface: mSurfaceCreated = false surfaceChanged = true visibleChanged = true
+I/SurfaceView( 7033): 156193283 visibleChanged -- surfaceCreated
+I/SurfaceView@94f5203( 7033): surfaceCreated 1 #8 io.flutter.embedding.android.FlutterSurfaceView{94f5203 V.E...... ......ID 0,0-1080,2256}
+I/SurfaceView( 7033): 156193283 surfaceChanged -- format=4 w=1080 h=2256
+I/SurfaceView@94f5203( 7033): surfaceChanged (1080,2256) 1 #8 io.flutter.embedding.android.FlutterSurfaceView{94f5203 V.E...... ......ID 0,0-1080,2256}
+I/SurfaceView( 7033): 156193283 surfaceRedrawNeeded
+V/SurfaceView@94f5203( 7033): Layout: x=0 y=0 w=1080 h=2256, frame=Rect(0, 0 - 1080, 2256)
+D/OpenGLRenderer( 7033): HWUI - treat SMPTE_170M as sRGB
+I/BLASTBufferQueue( 7033): [SurfaceView[com.raheek.credit_system/com.raheek.credit_system.MainActivity]@0#1](f:0,a:0,s:0) onFrameAvailable the first frame is available
+I/SurfaceView( 7033): 156193283 finishedDrawing
+I/InsetsSourceConsumer( 7033): applyRequestedVisibilityToControl: visible=true, type=navigationBars, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity
+I/InsetsSourceConsumer( 7033): applyRequestedVisibilityToControl: visible=true, type=statusBars, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity
+I/BLASTBufferQueue_Java( 7033): update, w= 1080 h= 2400 mName = ViewRootImpl@195d129[MainActivity] mNativeObject= 0xb400007d1cc6c0f0 sc.mNativeObject= 0xb400007cbcc6e090 format= -3 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3017 android.view.ViewRootImpl.relayoutWindow:10131 android.view.ViewRootImpl.performTraversals:4110 android.view.ViewRootImpl.doTraversal:3288 android.view.ViewRootImpl$TraversalRunnable.run:11344 android.view.Choreographer$CallbackRecord.run:1689 
+I/ViewRootImpl@195d129[MainActivity]( 7033): Relayout returned: old=(0,0,1080,2400) new=(0,0,1080,2400) relayoutAsync=false req=(1080,2400)0 dur=19 res=0x401 s={true 0xb400007b7cc84df0} ch=false seqId=0
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): updateBoundsLayer: t=android.view.SurfaceControl$Transaction@98596d5 sc=Surface(name=Bounds for - com.raheek.credit_system/com.raheek.credit_system.MainActivity@0)/@0xf944eea frame=1
+D/ViewRootImpl@195d129[MainActivity]( 7033): reportNextDraw android.view.ViewRootImpl.performTraversals:4718 android.view.ViewRootImpl.doTraversal:3288 android.view.ViewRootImpl$TraversalRunnable.run:11344 android.view.Choreographer$CallbackRecord.run:1689 android.view.Choreographer$CallbackRecord.run:1698 
+I/ViewRootImpl@195d129[MainActivity]( 7033): Setup new sync=wmsSync-ViewRootImpl@195d129[MainActivity]#1
+I/ViewRootImpl@195d129[MainActivity]( 7033): Creating new active sync group ViewRootImpl@195d129[MainActivity]#2
+I/ViewRootImpl@195d129[MainActivity]( 7033): registerCallbacksForSync syncBuffer=false
+D/SurfaceView( 7033): 156193283 updateSurfacePosition RenderWorker, frameNr = 1, position = [0, 0, 1080, 2256] surfaceSize = 1080x2256
+I/SurfaceView@94f5203( 7033): uSP: rtp = Rect(0, 0 - 1080, 2256) rtsw = 1080 rtsh = 2256
+I/SurfaceView@94f5203( 7033): onSSPAndSRT: pl = 0 pt = 0 sx = 1.0 sy = 1.0
+I/SurfaceView@94f5203( 7033): aOrMT: ViewRootImpl@195d129[MainActivity] t = android.view.SurfaceControl$Transaction@33d3878 fN = 1 android.view.SurfaceView.-$$Nest$mapplyOrMergeTransaction:0 android.view.SurfaceView$SurfaceViewPositionUpdateListener.positionChanged:1666 android.graphics.RenderNode$CompositePositionUpdateListener.positionChanged:369 
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc601f0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 1 mRenderHdrSdrRatio=1.0 caller= android.view.SurfaceView.applyOrMergeTransaction:1598 android.view.SurfaceView.-$$Nest$mapplyOrMergeTransaction:0 android.view.SurfaceView$SurfaceViewPositionUpdateListener.positionChanged:1666 
+I/ViewRootImpl@195d129[MainActivity]( 7033): Received frameDrawingCallback syncResult=0 frameNum=1.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc62f50 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 1 mRenderHdrSdrRatio=1.0 caller= android.view.ViewRootImpl$8.onFrameDraw:13841 android.view.ThreadedRenderer$1.onFrameDraw:792 <bottom of call stack> 
+I/ViewRootImpl@195d129[MainActivity]( 7033): Setting up sync and frameCommitCallback
+I/BLASTBufferQueue( 7033): [ViewRootImpl@195d129[MainActivity]#0](f:0,a:0,s:0) onFrameAvailable the first frame is available
+I/ViewRootImpl@195d129[MainActivity]( 7033): Received frameCommittedCallback lastAttemptedDrawFrameNum=1 didProduceBuffer=true
+D/OpenGLRenderer( 7033): CFMS:: SetUp Pid : 7033    Tid : 7059
+I/ViewRootImpl@195d129[MainActivity]( 7033): reportDrawFinished seqId=0
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/flutter ( 7033): WARNING (drift): It looks like you've created the database class AppDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+I/flutter ( 7033): Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+I/flutter ( 7033): Here is the stacktrace from when the database was opened a second time:
+I/flutter ( 7033): #0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+I/flutter ( 7033): #1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+I/flutter ( 7033): #2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+I/flutter ( 7033): #3      new _$AppDatabase (package:credit_system/core/data/local/app_database.g.dart:12986:36)
+I/flutter ( 7033): #4      new AppDatabase (package:credit_system/core/data/local/app_database.dart:103:19)
+I/flutter ( 7033): #5      _LoginScreenState._initializeAuthService (package:credit_system/features/auth/presentation/login_screen.dart:44:20)
+I/flutter ( 7033): #6      _LoginScreenState.initState (package:credit_system/features/auth/presentation/login_screen.dart:40:5)
+I/flutter ( 7033): #7      StatefulElement._firstBuild (package:flutter/src/widgets/framework.dart:5963:55)
+I/flutter ( 7033): #8      ComponentElement.mount (package:flutter/src/widgets/framework.dart:5806:5)
+I/flutter ( 7033): #9      Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+I/flutter ( 7033): #10     Element.updateChild (package:flutter/src/widgets/framework.dart:4066:20)
+I/flutter ( 7033): #11     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5854:16)
+I/flutter ( 7033): #12     StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5995:11)
+I/flutter ( 7033): #13     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+I/flutter ( 7033): #14     BuildScope._tryRebuild (package:flutter/src/widgets/framework.dart:2763:15)
+I/flutter ( 7033): #15     BuildScope._flushDirtyElements (package:flutter/src/widgets/framework.dart:2820:11)
+I/flutter ( 7033): #16     BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3124:18)
+I/flutter ( 7033): #17     WidgetsBinding.drawFrame (package:flutter/src/widgets/binding.dart:1571:21)
+I/flutter ( 7033): #18     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+I/flutter ( 7033): #19     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+I/flutter ( 7033): #20     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+I/flutter ( 7033): #21     SchedulerBinding._handleDrawFrame (package:flutter/src/scheduler/binding.dart:1198:5)
+I/flutter ( 7033): #22     _invoke (dart:ui/hooks.dart:441:13)
+I/flutter ( 7033): #23     PlatformDispatcher._drawFrame (dart:ui/platform_dispatcher.dart:450:5)
+I/flutter ( 7033): #24     _drawFrame (dart:ui/hooks.dart:413:31)
+I/flutter ( 7033): This warning will only appear on debug builds.
+I/ViewRootImpl@195d129[MainActivity]( 7033): handleWindowFocusChanged: 1 0 call from android.view.ViewRootImpl.-$$Nest$mhandleWindowFocusChanged:0
+D/ViewRootImpl@195d129[MainActivity]( 7033): mThreadedRenderer.initializeIfNeeded()#2 mSurface={isValid=true 0xb400007b7cc84df0}
+D/InputMethodManagerUtils( 7033): startInputInner - Id : 0
+I/InputMethodManager( 7033): startInputInner - IInputMethodManagerGlobalInvoker.startInputOrWindowGainedFocus
+D/InputMethodManagerUtils( 7033): startInputInner - Id : 0
+I/InsetsController( 7033): onStateChanged: host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:7209, state=InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 86 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(514, 0 - 566, 86), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.8125} cutoutSpec={M 0,0 M 0,12.08888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,18.48888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,-18.48888888888889 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=0, center=Point(0, 0)}, RoundedCorner{position=TopRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomLeft, radius=0, center=Point(0, 0)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2400), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(948, 0 - 1080, 86) rotation=0}, mDisplayShape=DisplayShape{ spec=-311912193 displayWidth=1080 displayHeight=2400 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}, mSources= { InsetsSource: {e7610000 mType=statusBars mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {e7610005 mType=mandatorySystemGestures mFrame=[0,0][1080,122] mVisible=true mFlags=[]}, InsetsSource: {e7610006 mType=tappableElement mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {3 mType=ime mFrame=[0,0][0,0] mVisible=false mFlags=[]}, InsetsSource: {27 mType=displayCutout mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {106c0001 mType=navigationBars mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0004 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]}, InsetsSource: {106c0005 mType=mandatorySystemGestures mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0006 mType=tappableElement mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0024 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]} }
+I/InsetsSourceConsumer( 7033): applyRequestedVisibilityToControl: visible=false, type=ime, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity
+Syncing files to device SM A725F (wireless)...                     153ms
+
+Flutter run key commands.
+r Hot reload. 
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on SM A725F is available at: http://127.0.0.1:56929/mAZ_AQowFtw=/
+The Flutter DevTools debugger and profiler on SM A725F is available at: http://127.0.0.1:56929/mAZ_AQowFtw=/devtools/?uri=ws://127.0.0.1:56929/mAZ_AQowFtw=/ws
+I/Choreographer( 7033): Skipped 41 frames!  The application may be doing too much work on its main thread.
+W/WindowOnBackDispatcher( 7033): OnBackInvokedCallback is not enabled for the application.
+W/WindowOnBackDispatcher( 7033): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+D/ProfileInstaller( 7033): Installing profile for com.raheek.credit_system
+I/ViewRootImpl@195d129[MainActivity]( 7033): ViewPostIme key 0
+D/Activity( 7033): onKeyDown(KEYCODE_BACK)
+I/ViewRootImpl@195d129[MainActivity]( 7033): ViewPostIme key 1
+D/Activity( 7033): onKeyUp(KEYCODE_BACK) isTracking()=true isCanceled()=false hasCallback=false
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /system/app/DictDiotekForSec/DictDiotekForSec.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rp_0fBACtvZkii7Xmk4IBg==/com.openai.chatgpt-AFrxzvi4NI8j7ofbvsOEZw==/base.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rp_0fBACtvZkii7Xmk4IBg==/com.openai.chatgpt-AFrxzvi4NI8j7ofbvsOEZw==/split_config.arm64_v8a.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rp_0fBACtvZkii7Xmk4IBg==/com.openai.chatgpt-AFrxzvi4NI8j7ofbvsOEZw==/split_config.en.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rp_0fBACtvZkii7Xmk4IBg==/com.openai.chatgpt-AFrxzvi4NI8j7ofbvsOEZw==/split_config.xxhdpi.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~9jwah3hW6UqgOLTU0K-FTg==/com.google.android.apps.translate-FX8iuCDuq6qrjodXc353CQ==/base.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Xl2lLtVa8u8SFdB4VSjzvQ==/com.samsung.android.spay-GU_3FdsJdW6awLdB96mRnA==/base.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~swULOWzlboTc60FWnQOitg==/com.truecaller-y869XROem5m0JlEru9LmMA==/base.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~swULOWzlboTc60FWnQOitg==/com.truecaller-y869XROem5m0JlEru9LmMA==/split_config.arm64_v8a.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~swULOWzlboTc60FWnQOitg==/com.truecaller-y869XROem5m0JlEru9LmMA==/split_config.xxhdpi.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~swULOWzlboTc60FWnQOitg==/com.truecaller-y869XROem5m0JlEru9LmMA==/split_insights_category_model.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NIX0VI8smkULdTrNOlW5Iw==/com.samsung.android.samsungpass-Imwj5xY0A8C-a2AZ5BGWHQ==/base.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~tjxo4leufVfKWsNvd4qAUQ==/com.google.android.googlequicksearchbox-xCXQPBvSF5cUv4qR1_tyRA==/base.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~tjxo4leufVfKWsNvd4qAUQ==/com.google.android.googlequicksearchbox-xCXQPBvSF5cUv4qR1_tyRA==/split_config.xxhdpi.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~tjxo4leufVfKWsNvd4qAUQ==/com.google.android.googlequicksearchbox-xCXQPBvSF5cUv4qR1_tyRA==/split_lens_ondevice_engine_feature_module.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~tjxo4leufVfKWsNvd4qAUQ==/com.google.android.googlequicksearchbox-xCXQPBvSF5cUv4qR1_tyRA==/split_lens_ondevice_engine_play_ml_module.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~t6TmKFk-xA3BEbF7h__AOA==/ai.perplexity.app.android-Lg4VLxWI_zyMmqmBySEAgg==/base.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~t6TmKFk-xA3BEbF7h__AOA==/ai.perplexity.app.android-Lg4VLxWI_zyMmqmBySEAgg==/split_config.arm64_v8a.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~t6TmKFk-xA3BEbF7h__AOA==/ai.perplexity.app.android-Lg4VLxWI_zyMmqmBySEAgg==/split_config.xxhdpi.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5k87okOQMcxLsszMJVxhfg==/com.microsoft.office.officehubrow-NTRcJ6UGXg4EIBFxYd_TEA==/base.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5k87okOQMcxLsszMJVxhfg==/com.microsoft.office.officehubrow-NTRcJ6UGXg4EIBFxYd_TEA==/split_config.en.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5k87okOQMcxLsszMJVxhfg==/com.microsoft.office.officehubrow-NTRcJ6UGXg4EIBFxYd_TEA==/split_config.xxhdpi.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5k87okOQMcxLsszMJVxhfg==/com.microsoft.office.officehubrow-NTRcJ6UGXg4EIBFxYd_TEA==/split_lenssampledoc.apk' with 1 weak references
+W/k.credit_system( 7033): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5k87okOQMcxLsszMJVxhfg==/com.microsoft.office.officehubrow-NTRcJ6UGXg4EIBFxYd_TEA==/split_mainassetpack.apk' with 1 weak references
+I/InputMethodManager_LC( 7033): showSoftInput(View,I)
+I/ImeTracker( 7033): com.raheek.credit_system:aca5ec90: onRequestShow at ORIGIN_CLIENT_SHOW_SOFT_INPUT reason SHOW_SOFT_INPUT
+I/InputMethodManager_LC( 7033): ssi(): flags=0 view=com.raheek.credit_system reason = SHOW_SOFT_INPUT
+I/InputMethodManager_LC( 7033): ssi() view is not EditText
+D/InputMethodManagerUtils( 7033): startInputInner - Id : 0
+I/InputMethodManager( 7033): startInputInner - IInputMethodManagerGlobalInvoker.startInputOrWindowGainedFocus
+D/InputMethodManager( 7033): showSoftInput() view=io.flutter.embedding.android.FlutterView{19b283e VFE...... .F....ID 0,0-1080,2256 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+D/InputConnectionAdaptor( 7033): The input method toggled cursor monitoring on
+I/ViewRootImpl@195d129[MainActivity]( 7033): Resizing android.view.ViewRootImpl@5f0e3ec: frame = [0,0][1080,2400] reportDraw = false forceLayout = false syncSeqId = -1
+I/InsetsController( 7033): onStateChanged: host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:7196, state=InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 86 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(514, 0 - 566, 86), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.8125} cutoutSpec={M 0,0 M 0,12.08888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,18.48888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,-18.48888888888889 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=0, center=Point(0, 0)}, RoundedCorner{position=TopRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomLeft, radius=0, center=Point(0, 0)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2400), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(948, 0 - 1080, 86) rotation=0}, mDisplayShape=DisplayShape{ spec=-311912193 displayWidth=1080 displayHeight=2400 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}, mSources= { InsetsSource: {e7610000 mType=statusBars mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {e7610005 mType=mandatorySystemGestures mFrame=[0,0][1080,122] mVisible=true mFlags=[]}, InsetsSource: {e7610006 mType=tappableElement mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {3 mType=ime mFrame=[0,1374][1080,2400] mVisible=false mFlags=[]}, InsetsSource: {27 mType=displayCutout mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {106c0001 mType=navigationBars mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0004 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]}, InsetsSource: {106c0005 mType=mandatorySystemGestures mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0006 mType=tappableElement mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0024 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]} }
+I/ViewRootImpl@195d129[MainActivity]( 7033): handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][1080,2400] display=[0,0][1080,2400] parentFrame=[0,0][0,0]} forceNextWindowRelayout=false displayId=0 dragResizing=false compatScale=1.0 frameChanged=false attachedFrameChanged=false configChanged=false displayChanged=false compatScaleChanged=false
+D/InsetsController( 7033): show(ime(), fromIme=true)
+I/InsetsController( 7033): setRequestedVisibleTypes: visible=true, mask=ime, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.InsetsController.controlAnimationUnchecked:1445 android.view.InsetsController.applyAnimation:2005 android.view.InsetsController.applyAnimation:1968 android.view.InsetsController.show:1309 android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:7233 android.view.ViewRootImpl$ViewRootHandler.handleMessage:7166 android.os.Handler.dispatchMessage:106 android.os.Looper.loopOnce:230 android.os.Looper.loop:319 android.app.ActivityThread.main:8919 
+I/InsetsController( 7033): controlAnimationUncheckedInner: Added types=ime, animType=0, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.InsetsController.controlAnimationUnchecked:1449 android.view.InsetsController.applyAnimation:2005 android.view.InsetsController.applyAnimation:1968 
+I/ViewRootImpl@195d129[MainActivity]( 7033): Resizing android.view.ViewRootImpl@5f0e3ec: frame = [0,0][1080,2400] reportDraw = false forceLayout = false syncSeqId = -1
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc7810 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 4 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc3350 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 5 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+I/InsetsController( 7033): onStateChanged: host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:7209, state=InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 86 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(514, 0 - 566, 86), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.8125} cutoutSpec={M 0,0 M 0,12.08888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,18.48888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,-18.48888888888889 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=0, center=Point(0, 0)}, RoundedCorner{position=TopRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomLeft, radius=0, center=Point(0, 0)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2400), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(948, 0 - 1080, 86) rotation=0}, mDisplayShape=DisplayShape{ spec=-311912193 displayWidth=1080 displayHeight=2400 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}, mSources= { InsetsSource: {e7610000 mType=statusBars mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {e7610005 mType=mandatorySystemGestures mFrame=[0,0][1080,122] mVisible=true mFlags=[]}, InsetsSource: {e7610006 mType=tappableElement mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {3 mType=ime mFrame=[0,1374][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {27 mType=displayCutout mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {106c0001 mType=navigationBars mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0004 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]}, InsetsSource: {106c0005 mType=mandatorySystemGestures mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0006 mType=tappableElement mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0024 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]} }
+I/ViewRootImpl@195d129[MainActivity]( 7033): handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][1080,2400] display=[0,0][1080,2400] parentFrame=[0,0][0,0]} forceNextWindowRelayout=false displayId=0 dragResizing=false compatScale=1.0 frameChanged=false attachedFrameChanged=false configChanged=false displayChanged=false compatScaleChanged=false
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc54b10 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 6 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc53a90 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 7 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc54430 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 8 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc549b0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 9 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc53d50 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 10 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc63630 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 11 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccbd050 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 12 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc5b0d0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 13 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc63bb0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 14 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc9650 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 15 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc9390 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 16 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc4eef0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 17 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc4fcb0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 18 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccce610 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 19 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc4ff70 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 20 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cccb1d0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 21 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccca570 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 22 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccd3b50 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 23 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+I/InsetsController( 7033): cancelAnimation: types=ime, animType=0, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.InsetsController.notifyFinished:1748 android.view.InsetsAnimationControlImpl.applyChangeInsets:312 android.view.InsetsController.lambda$new$3:918 
+I/ImeTracker( 7033): com.raheek.credit_system:aca5ec90: onShown
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc1d50 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 24 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccbd310 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 24 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/InputConnectionAdaptor( 7033): The input method toggled text monitoring on
+D/InputMethodManagerUtils( 7033): startInputInner - Id : 0
+I/InputMethodManager( 7033): startInputInner - IInputMethodManagerGlobalInvoker.startInputOrWindowGainedFocus
+I/InputMethodManager_LC( 7033): showSoftInput(View,I)
+I/ImeTracker( 7033): com.raheek.credit_system:a38f1bc3: onRequestShow at ORIGIN_CLIENT_SHOW_SOFT_INPUT reason SHOW_SOFT_INPUT
+I/InputMethodManager_LC( 7033): ssi(): flags=0 view=com.raheek.credit_system reason = SHOW_SOFT_INPUT
+I/InputMethodManager_LC( 7033): ssi() view is not EditText
+D/InputMethodManager( 7033): showSoftInput() view=io.flutter.embedding.android.FlutterView{19b283e VFE...... .F...... 0,0-1080,2256 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+D/InputConnectionAdaptor( 7033): The input method toggled cursor monitoring on
+D/InsetsController( 7033): show(ime(), fromIme=true)
+I/ImeTracker( 7033): com.raheek.credit_system:a38f1bc3: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+I/ViewRootImpl@195d129[MainActivity]( 7033): The input has been finished in ImeInputStage.
+I/ViewRootImpl@195d129[MainActivity]( 7033): The input has been finished in ImeInputStage.
+I/InsetsController( 7033): setRequestedVisibleTypes: visible=false, mask=ime, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.InsetsController.controlAnimationUnchecked:1445 android.view.InsetsController.applyAnimation:2005 android.view.InsetsController.applyAnimation:1968 android.view.InsetsController.hide:1403 android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:7240 android.view.ViewRootImpl$ViewRootHandler.handleMessage:7166 android.os.Handler.dispatchMessage:106 android.os.Looper.loopOnce:230 android.os.Looper.loop:319 android.app.ActivityThread.main:8919 
+I/InsetsController( 7033): controlAnimationUncheckedInner: Added types=ime, animType=1, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.InsetsController.controlAnimationUnchecked:1449 android.view.InsetsController.applyAnimation:2005 android.view.InsetsController.applyAnimation:1968 
+W/WindowOnBackDispatcher( 7033): sendCancelIfRunning: isInProgress=falsecallback=ImeCallback=ImeOnBackInvokedCallback@19122147 Callback=android.window.IOnBackInvokedCallback$Stub$Proxy@44518a2
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+D/InputConnectionAdaptor( 7033): The input method toggled cursor monitoring off
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccd1210 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 25 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+I/ViewRootImpl@195d129[MainActivity]( 7033): Resizing android.view.ViewRootImpl@5f0e3ec: frame = [0,0][1080,2400] reportDraw = false forceLayout = false syncSeqId = -1
+I/InsetsController( 7033): onStateChanged: host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:7209, state=InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 86 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(514, 0 - 566, 86), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.8125} cutoutSpec={M 0,0 M 0,12.08888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,18.48888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,-18.48888888888889 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=0, center=Point(0, 0)}, RoundedCorner{position=TopRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomLeft, radius=0, center=Point(0, 0)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2400), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(948, 0 - 1080, 86) rotation=0}, mDisplayShape=DisplayShape{ spec=-311912193 displayWidth=1080 displayHeight=2400 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}, mSources= { InsetsSource: {e7610000 mType=statusBars mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {e7610005 mType=mandatorySystemGestures mFrame=[0,0][1080,122] mVisible=true mFlags=[]}, InsetsSource: {e7610006 mType=tappableElement mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {3 mType=ime mFrame=[0,1374][1080,2400] mVisible=false mFlags=[]}, InsetsSource: {27 mType=displayCutout mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {106c0001 mType=navigationBars mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0004 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]}, InsetsSource: {106c0005 mType=mandatorySystemGestures mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0006 mType=tappableElement mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0024 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]} }
+I/InsetsSourceConsumer( 7033): applyRequestedVisibilityToControl: visible=true, type=navigationBars, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc53a90 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 26 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+I/ViewRootImpl@195d129[MainActivity]( 7033): handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][1080,2400] display=[0,0][1080,2400] parentFrame=[0,0][0,0]} forceNextWindowRelayout=false displayId=0 dragResizing=false compatScale=1.0 frameChanged=false attachedFrameChanged=false configChanged=false displayChanged=false compatScaleChanged=false
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cccddd0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 27 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc76b0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 28 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cccb490 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 29 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cccfc10 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 30 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc8050 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 31 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc9a70 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 32 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cccb8b0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 33 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cccc3b0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 34 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc9ff0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 35 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cccfd70 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 36 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc4dbb0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 37 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc5450 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 38 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cccd010 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 39 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc26f0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 40 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccd5af0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 41 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccce610 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 42 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc3cf0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 43 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccd02f0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 44 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc4e3f0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 45 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc4e550 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 46 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc26f0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 47 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccd31b0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 48 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2ccc90d0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 49 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc5cdb0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 50 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+I/InsetsController( 7033): cancelAnimation: types=ime, animType=1, host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.InsetsController.notifyFinished:1748 android.view.InsetsAnimationControlImpl.applyChangeInsets:312 android.view.InsetsController.lambda$new$3:918 
+I/ImeTracker( 7033): com.raheek.credit_system:becffd37: onRequestHide at ORIGIN_CLIENT_HIDE_SOFT_INPUT reason HIDE_SOFT_INPUT_BY_INSETS_API
+I/InputMethodManager_LC( 7033): notifyImeHidden: IInputMethodManagerGlobalInvoker.hideSoftInput
+I/ImeTracker( 7033): com.raheek.credit_system:d98c6248: onHidden
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+D/FlutterJNI( 7033): Sending viewport metrics to the engine.
+D/InputMethodManagerUtils( 7033): startInputInner - Id : 0
+I/InputMethodManager( 7033): startInputInner - IInputMethodManagerGlobalInvoker.startInputOrWindowGainedFocus
+I/ViewRootImpl@195d129[MainActivity]( 7033): mWNT: t=0xb400007c2cc5e3b0 mBlastBufferQueue=0xb400007d1cc6c0f0 fn= 51 mRenderHdrSdrRatio=1.0 caller= android.view.SyncRtSurfaceTransactionApplier.applyTransaction:96 android.view.SyncRtSurfaceTransactionApplier.lambda$scheduleApply$0:69 android.view.SyncRtSurfaceTransactionApplier.$r8$lambda$SgowXC58rj3PR958kHUfRgLZmvE:0 
+I/ViewRootImpl@195d129[MainActivity]( 7033): Resizing android.view.ViewRootImpl@5f0e3ec: frame = [0,0][1080,2400] reportDraw = false forceLayout = false syncSeqId = -1
+I/Choreographer( 7033): Skipped 30 frames!  The application may be doing too much work on its main thread.
+I/InsetsController( 7033): onStateChanged: host=com.raheek.credit_system/com.raheek.credit_system.MainActivity, from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImpl:7196, state=InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2400), mDisplayCutout=DisplayCutout{insets=Rect(0, 86 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(514, 0 - 566, 86), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2400 physicalDisplayWidth=1080 physicalDisplayHeight=2400 density={2.8125} cutoutSpec={M 0,0 M 0,12.08888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,18.48888888888889 a 9.244444444444444,9.244444444444444 0 1,0 0,-18.48888888888889 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=0, center=Point(0, 0)}, RoundedCorner{position=TopRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomRight, radius=0, center=Point(0, 0)}, RoundedCorner{position=BottomLeft, radius=0, center=Point(0, 0)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2400), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(948, 0 - 1080, 86) rotation=0}, mDisplayShape=DisplayShape{ spec=-311912193 displayWidth=1080 displayHeight=2400 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}, mSources= { InsetsSource: {e7610000 mType=statusBars mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {e7610005 mType=mandatorySystemGestures mFrame=[0,0][1080,122] mVisible=true mFlags=[]}, InsetsSource: {e7610006 mType=tappableElement mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {3 mType=ime mFrame=[0,0][0,0] mVisible=false mFlags=[]}, InsetsSource: {27 mType=displayCutout mFrame=[0,0][1080,86] mVisible=true mFlags=[]}, InsetsSource: {106c0001 mType=navigationBars mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0004 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]}, InsetsSource: {106c0005 mType=mandatorySystemGestures mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0006 mType=tappableElement mFrame=[0,2256][1080,2400] mVisible=true mFlags=[]}, InsetsSource: {106c0024 mType=systemGestures mFrame=[0,0][0,0] mVisible=true mFlags=[]} }
+I/ViewRootImpl@195d129[MainActivity]( 7033): handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][1080,2400] display=[0,0][1080,2400] parentFrame=[0,0][0,0]} forceNextWindowRelayout=false displayId=0 dragResizing=false compatScale=1.0 frameChanged=false attachedFrameChanged=false configChanged=false displayChanged=false compatScaleChanged=false
+I/ViewRootImpl@195d129[MainActivity]( 7033): handleWindowFocusChanged: 0 0 call from android.view.ViewRootImpl.-$$Nest$mhandleWindowFocusChanged:0
+I/ImeFocusController( 7033): onPreWindowFocus: skipped, hasWindowFocus=false mHasImeFocus=true
+I/ImeFocusController( 7033): onPostWindowFocus: skipped, hasWindowFocus=false mHasImeFocus=true
+I/ViewRootImpl@195d129[MainActivity]( 7033): handleAppVisibility mAppVisible = true visible = false
+I/SurfaceView@94f5203( 7033): onWindowVisibilityChanged(8) false io.flutter.embedding.android.FlutterSurfaceView{94f5203 V.E...... ........ 0,0-1080,2256} of ViewRootImpl@195d129[MainActivity]
+I/SurfaceView( 7033): 156193283 Changes: creating=false format=false size=false visible=true alpha=false hint=false visible=true left=false top=false z=false attached=true lifecycleStrategy=false
+I/SurfaceView@94f5203( 7033): 156193283 Cur surface: Surface(name=null)/@0x4d82bc5
+I/SurfaceView( 7033): 156193283 surfaceDestroyed
+I/SurfaceView@94f5203( 7033): surfaceDestroyed callback.size 1 #2 io.flutter.embedding.android.FlutterSurfaceView{94f5203 V.E...... ........ 0,0-1080,2256}
+I/SurfaceView@94f5203( 7033): updateSurface: mVisible = false mSurface.isValid() = true
+I/SurfaceView@94f5203( 7033): releaseSurfaces: viewRoot = ViewRootImpl@195d129[MainActivity]
+V/SurfaceView@94f5203( 7033): Layout: x=0 y=0 w=1080 h=2256, frame=Rect(0, 0 - 1080, 2256)
+I/ViewRootImpl@195d129[MainActivity]( 7033): destroyHardwareResources: Callers=android.view.ViewRootImpl.performTraversals:3932 android.view.ViewRootImpl.doTraversal:3288 android.view.ViewRootImpl$TraversalRunnable.run:11344 android.view.Choreographer$CallbackRecord.run:1689 android.view.Choreographer$CallbackRecord.run:1698 android.view.Choreographer.doCallbacks:1153 android.view.Choreographer.doFrame:1079 android.view.Choreographer$FrameDisplayEventReceiver.run:1646 android.os.Handler.handleCallback:958 android.os.Handler.dispatchMessage:99 
+D/SurfaceView( 7033): 99295260 windowPositionLost, frameNr = 0
+D/OpenGLRenderer( 7033): CacheManager::trimMemory(20)
+I/ViewRootImpl@195d129[MainActivity]( 7033): Relayout returned: old=(0,0,1080,2400) new=(0,0,1080,2400) relayoutAsync=false req=(1080,2400)8 dur=48 res=0x402 s={false 0x0} ch=true seqId=0
+I/SurfaceView@94f5203( 7033): windowStopped(true) false io.flutter.embedding.android.FlutterSurfaceView{94f5203 V.E...... ........ 0,0-1080,2256} of ViewRootImpl@195d129[MainActivity]
+D/SurfaceView@94f5203( 7033): updateSurface: surface is not valid
+I/SurfaceView@94f5203( 7033): releaseSurfaces: viewRoot = ViewRootImpl@195d129[MainActivity]
+D/SurfaceView@94f5203( 7033): updateSurface: surface is not valid
+I/SurfaceView@94f5203( 7033): releaseSurfaces: viewRoot = ViewRootImpl@195d129[MainActivity]
+D/OpenGLRenderer( 7033): CacheManager::trimMemory(20)
+D/SurfaceView@94f5203( 7033): updateSurface: surface is not valid
+I/SurfaceView@94f5203( 7033): releaseSurfaces: viewRoot = ViewRootImpl@195d129[MainActivity]
+I/ViewRootImpl@195d129[MainActivity]( 7033): stopped(true) old = false
+D/ViewRootImpl@195d129[MainActivity]( 7033): WindowStopped on com.raheek.credit_system/com.raheek.credit_system.MainActivity set to true
+D/OpenGLRenderer( 7033): CacheManager::trimMemory(20)
+D/SurfaceView@94f5203( 7033): updateSurface: surface is not valid
+I/SurfaceView@94f5203( 7033): releaseSurfaces: viewRoot = ViewRootImpl@195d129[MainActivity]
+D/InputTransport( 7033): Input channel destroyed: 'ClientS', fd=177
+D/SurfaceView@94f5203( 7033): updateSurface: surface is not valid
+I/SurfaceView@94f5203( 7033): releaseSurfaces: viewRoot = ViewRootImpl@195d129[MainActivity]
+Lost connection to device.

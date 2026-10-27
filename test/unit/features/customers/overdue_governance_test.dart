@@ -19,7 +19,7 @@ void main() {
   const shopId = 'shop-gov-001';
   const ownerId = 'owner-gov-001';
   const cashierId = 'cashier-gov-001';
-  const customerId = 'cust-gov-001';
+  const customerId = 1;
   const loanId = 'loan-gov-001';
 
   final ownerUser = AppUser(

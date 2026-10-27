@@ -9,7 +9,7 @@ void main() {
       final item = CollateralItem(
         id: 'coll-1',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-001',
         category: CollateralItemCategory.gold,
         description: '22K gold necklace',
@@ -22,7 +22,7 @@ void main() {
 
       expect(item.id, equals('coll-1'));
       expect(item.shopId, equals('shop-1'));
-      expect(item.customerId, equals('cust-1'));
+      expect(item.customerId, equals(1));
       expect(item.itemReferenceId, equals('COLL-001'));
       expect(item.category, equals(CollateralItemCategory.gold));
       expect(item.description, equals('22K gold necklace'));
@@ -39,7 +39,7 @@ void main() {
       final item = CollateralItem(
         id: 'coll-2',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-002',
         category: CollateralItemCategory.electronics,
         description: 'Samsung smartphone',
@@ -94,7 +94,7 @@ void main() {
         () => CollateralItem(
           id: '',
           shopId: 'shop-1',
-          customerId: 'cust-1',
+          customerId: 1,
           itemReferenceId: 'COLL-001',
           category: CollateralItemCategory.gold,
           description: 'Test',
@@ -112,7 +112,7 @@ void main() {
         () => CollateralItem(
           id: 'coll-1',
           shopId: '   ',
-          customerId: 'cust-1',
+          customerId: 1,
           itemReferenceId: 'COLL-001',
           category: CollateralItemCategory.gold,
           description: 'Test',
@@ -125,12 +125,12 @@ void main() {
         throwsArgumentError,
       );
 
-      // Empty customerId
+      // Empty customerId is no longer representable; a non-positive id is invalid
       expect(
         () => CollateralItem(
           id: 'coll-1',
           shopId: 'shop-1',
-          customerId: '',
+          customerId: 0,
           itemReferenceId: 'COLL-001',
           category: CollateralItemCategory.gold,
           description: 'Test',
@@ -148,7 +148,7 @@ void main() {
         () => CollateralItem(
           id: 'coll-1',
           shopId: 'shop-1',
-          customerId: 'cust-1',
+          customerId: 1,
           itemReferenceId: 'COLL-001',
           category: CollateralItemCategory.gold,
           description: 'Test',
@@ -166,7 +166,7 @@ void main() {
         () => CollateralItem(
           id: 'coll-1',
           shopId: 'shop-1',
-          customerId: 'cust-1',
+          customerId: 1,
           itemReferenceId: 'COLL-001',
           category: CollateralItemCategory.gold,
           description: 'Test',
@@ -184,7 +184,7 @@ void main() {
         () => CollateralItem(
           id: 'coll-1',
           shopId: 'shop-1',
-          customerId: 'cust-1',
+          customerId: 1,
           itemReferenceId: 'COLL-001',
           category: CollateralItemCategory.gold,
           description: 'Test',
@@ -202,7 +202,7 @@ void main() {
         () => CollateralItem(
           id: 'coll-1',
           shopId: 'shop-1',
-          customerId: 'cust-1',
+          customerId: 1,
           itemReferenceId: 'COLL-001',
           category: CollateralItemCategory.gold,
           description: '   ',
@@ -220,7 +220,7 @@ void main() {
         () => CollateralItem(
           id: 'coll-1',
           shopId: 'shop-1',
-          customerId: 'cust-1',
+          customerId: 1,
           itemReferenceId: '',
           category: CollateralItemCategory.gold,
           description: 'Test',
@@ -239,7 +239,7 @@ void main() {
       final original = CollateralItem(
         id: 'coll-3',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-003',
         category: CollateralItemCategory.valuables,
         description: 'Diamond ring',
@@ -269,7 +269,7 @@ void main() {
       final c1 = CollateralItem(
         id: 'coll-4',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-004',
         category: CollateralItemCategory.gold,
         description: 'Gold bar',
@@ -282,7 +282,7 @@ void main() {
       final c2 = CollateralItem(
         id: 'coll-4',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-004',
         category: CollateralItemCategory.gold,
         description: 'Gold bar',
@@ -295,7 +295,7 @@ void main() {
       final c3 = CollateralItem(
         id: 'coll-5',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-005',
         category: CollateralItemCategory.gold,
         description: 'Gold bar',
@@ -457,7 +457,7 @@ void main() {
       final item = CollateralItem(
         id: 'coll-6',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-006',
         category: CollateralItemCategory.gold,
         description: 'Test item',
@@ -485,7 +485,7 @@ void main() {
       final requested = CollateralItem(
         id: 'coll-7',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-007',
         category: CollateralItemCategory.gold,
         description: 'Test item',
@@ -503,7 +503,7 @@ void main() {
       final reported = CollateralItem(
         id: 'coll-8',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-008',
         category: CollateralItemCategory.gold,
         description: 'Test item',
@@ -523,7 +523,7 @@ void main() {
       final discrepancy = CollateralItem(
         id: 'coll-9',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-009',
         category: CollateralItemCategory.gold,
         description: 'Test item',
@@ -553,7 +553,7 @@ void main() {
       final item = CollateralItem(
         id: 'coll-10',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-010',
         category: CollateralItemCategory.gold,
         description: 'Test item',
@@ -577,7 +577,7 @@ void main() {
       final item = CollateralItem(
         id: 'coll-11',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-011',
         category: CollateralItemCategory.gold,
         description: 'Test item',
@@ -645,7 +645,7 @@ void main() {
       final item = CollateralItem(
         id: 'coll-12',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-012',
         category: CollateralItemCategory.gold,
         description: 'Test item',
@@ -663,7 +663,7 @@ void main() {
       final reported = CollateralItem(
         id: 'coll-13',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-013',
         category: CollateralItemCategory.gold,
         description: 'Test item',
@@ -682,7 +682,7 @@ void main() {
       final held = CollateralItem(
         id: 'coll-14',
         shopId: 'shop-1',
-        customerId: 'cust-1',
+        customerId: 1,
         itemReferenceId: 'COLL-014',
         category: CollateralItemCategory.gold,
         description: 'Test item',

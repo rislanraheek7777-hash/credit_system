@@ -29,7 +29,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 /// schema version 12 -> 13 upgrade.
 void main() {
   const shopId = 'shop-legacy';
-  const customerId = 'cust-legacy';
+  const customerId = 1;
   const managerId = 'user-legacy';
   const itemId = 'coll-legacy';
 

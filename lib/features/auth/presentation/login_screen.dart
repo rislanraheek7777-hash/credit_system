@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
+import 'package:credit_system/core/presentation/loading_screen.dart';
 import 'package:credit_system/core/data/remote/postgres_executor.dart';
 import 'package:credit_system/core/data/secure_storage.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
@@ -21,7 +22,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _shopIdController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -30,7 +30,9 @@ class _LoginScreenState extends State<LoginScreen> {
   AuthService? _authService;
   UserDao? _userDao;
   AppDatabase? _appDatabase;
+  bool _obscurePassword = true;
   bool _isOfflineMode = false;
+  bool _isInitializing = true;
 
   @override
   void initState() {
@@ -51,16 +53,98 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (_) {
       _authService = null;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+        });
+      }
     }
   }
 
   @override
   void dispose() {
-    _shopIdController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     _appDatabase?.close();
     super.dispose();
+  }
+
+  Future<void> _showForgotCredentialsDialog() async {
+    if (_userDao == null) return;
+    final shopIdController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    String? message;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Reset shop owner password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: shopIdController,
+                    decoration: const InputDecoration(labelText: 'Shop ID'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'New password'),
+                  ),
+                  if (message != null) ...[
+                    const SizedBox(height: 12),
+                    Text(message!, style: const TextStyle(color: Colors.red)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final shopId = shopIdController.text.trim();
+                    final newPassword = newPasswordController.text;
+                    if (shopId.isEmpty || newPassword.isEmpty) {
+                      setState(() => message = 'Shop ID and password required');
+                      return;
+                    }
+                    try {
+                      final users = await _userDao!.getUsersByShopId(shopId);
+                      final owner = users.firstWhere(
+                        (u) => u.role == AppRole.shopOwner,
+                        orElse: () => throw StateError('not found'),
+                      );
+                      final hash = PasswordHashService().hashPassword(newPassword);
+                      await _userDao!.updateUserPassword(shopId, owner.id, passwordHash: hash);
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(content: Text('Password reset. Username: ${owner.username}')),
+                        );
+                    } catch (e) {
+                      setState(() => message = 'Reset failed: $e');
+                    }
+                  },
+                  child: const Text('Reset'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    shopIdController.dispose();
+    newPasswordController.dispose();
   }
 
   Future<void> _login() async {
@@ -73,14 +157,18 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final shopId = _shopIdController.text.trim();
       final username = _usernameController.text.trim();
       final password = _passwordController.text;
+
+      final localUser = await _userDao!.getUserByLoginIdentifierGlobal(username);
+      if (localUser == null) {
+        throw const AuthenticationException('Invalid credentials');
+      }
 
       if (_authService != null) {
         try {
           final authResult = await _authService!.authenticate(
-            shopId,
+            localUser.shopId,
             username,
             password,
           );
@@ -112,38 +200,53 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
 
-      final localUser = await _userDao!.getUserByUsername(shopId, username);
-      if (localUser == null) {
-        throw const AuthenticationException('Invalid credentials');
+      if (_authService != null) {
+        final authResult = await _authService!.authenticateOffline(
+          localUser.shopId,
+          username,
+          password,
+          localUserData: {
+            'id': localUser.id,
+            'shop_id': localUser.shopId,
+            'username': localUser.username,
+            'full_name': localUser.fullName,
+            'role': localUser.role.key,
+            'is_active': localUser.isActive,
+            'session_version': localUser.sessionVersion,
+            'password_hash': localUser.passwordHash,
+          },
+        );
+
+        if (!mounted) return;
+
+        final user = AppUser(
+          id: authResult.userId,
+          shopId: authResult.shopId,
+          username: authResult.username,
+          fullName: authResult.fullName,
+          role: AppRole.fromKey(authResult.role),
+          isActive: true,
+          sessionVersion: authResult.sessionVersion,
+        );
+
+        setState(() {
+          _isLoading = false;
+          _error = null;
+          _isOfflineMode = true;
+        });
+
+        if (!mounted) return;
+
+        widget.onAuthenticated(user, true);
+        return;
       }
 
-      final authResult = await _authService!.authenticateOffline(
-        shopId,
-        username,
-        password,
-        localUserData: {
-          'id': localUser.id,
-          'shop_id': localUser.shopId,
-          'username': localUser.username,
-          'full_name': localUser.fullName,
-          'role': localUser.role.key,
-          'is_active': localUser.isActive,
-          'session_version': localUser.sessionVersion,
-          'password_hash': localUser.passwordHash,
-        },
-      );
-
-      if (!mounted) return;
-
-      final user = AppUser(
-        id: authResult.userId,
-        shopId: authResult.shopId,
-        username: authResult.username,
-        fullName: authResult.fullName,
-        role: AppRole.fromKey(authResult.role),
-        isActive: true,
-        sessionVersion: authResult.sessionVersion,
-      );
+      // Fallback when AuthService could not be initialized: verify password locally.
+      final hash = localUser.passwordHash;
+      if (hash == null ||
+          !PasswordHashService().verifyPassword(password, hash)) {
+        throw const AuthenticationException('Invalid credentials');
+      }
 
       setState(() {
         _isLoading = false;
@@ -153,9 +256,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      widget.onAuthenticated(user, true);
+      widget.onAuthenticated(localUser, true);
+      return;
     } on AuthenticationException {
-      rethrow;
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = 'Invalid username or password';
+      });
+      return;
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -167,56 +276,71 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isInitializing) {
+      return const LoadingScreen(message: 'Preparing login...');
+    }
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
+                      Image.asset(
+                        'assets/logo.png',
+                        width: 80,
+                        height: 80,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const FlutterLogo(size: 80),
+                      ),
+                      const SizedBox(height: 8),
+                      const Icon(Icons.payments_rounded,
+                          size: 32, color: Color(0xFF1565C0)),
+                      const SizedBox(height: 12),
                       const Text(
-                        'Login',
+                        'Credit System',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: Color(0xFF1565C0),
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        key: const Key('shopIdField'),
-                        controller: _shopIdController,
-                        decoration: const InputDecoration(
-                          labelText: 'Shop ID',
-                          hintText: 'Enter your shop ID',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Shop ID is required';
-                          }
-                          return null;
-                        },
+                      const Text(
+                        'Sign in to continue',
+                        style: TextStyle(color: Colors.grey),
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       TextFormField(
                         key: const Key('usernameField'),
                         controller: _usernameController,
                         decoration: const InputDecoration(
-                          labelText: 'Username',
-                          hintText: 'Enter your username',
+                          labelText: 'Email or Phone Number',
+                          hintText: 'Enter your email or phone number',
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Username is required';
+                            return 'Email or phone number is required';
                           }
                           return null;
                         },
@@ -225,12 +349,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextFormField(
                         key: const Key('passwordField'),
                         controller: _passwordController,
+                        obscureText: _obscurePassword,
                         decoration: const InputDecoration(
                           labelText: 'Password',
                           hintText: 'Enter your password',
                           border: OutlineInputBorder(),
+                        ).copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
+                          ),
                         ),
-                        obscureText: true,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Password is required';
@@ -270,6 +402,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
                       ],
+                      TextButton(
+                        onPressed: _showForgotCredentialsDialog,
+                        child: const Text('Forgot username or password?'),
+                      ),
+                      const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -304,11 +441,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: const Text('Create New Shop'),
                         ),
                       ),
+                       const SizedBox(height: 8),
+                       SizedBox(
+                         width: double.infinity,
+                         child: TextButton(
+                           onPressed: _isLoading
+                               ? null
+                               : () {
+                                   final guestUser = AppUser(
+                                     id: 'guest',
+                                     shopId: 'guest',
+                                     username: 'guest',
+                                     fullName: 'Guest',
+                                     role: AppRole.shopOwner,
+                                     isActive: true,
+                                     sessionVersion: 1,
+                                   );
+                                   widget.onAuthenticated(guestUser, true);
+                                 },
+                           child: const Text('Skip'),
+                         ),
+                       ),
                     ],
                   ),
                 ),
               ),
             ),
+          ),
+        ),
+        ),
     );
   }
 }

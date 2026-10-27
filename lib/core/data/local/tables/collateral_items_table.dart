@@ -28,8 +28,8 @@ class CollateralItems extends Table {
       text().references(Shops, #id, onDelete: KeyAction.restrict)();
 
   /// Associated customer borrower (immutable foreign key boundary, required).
-  TextColumn get customerId =>
-      text().references(Customers, #id, onDelete: KeyAction.restrict)();
+  IntColumn get customerId =>
+      integer().references(Customers, #id, onDelete: KeyAction.restrict)();
 
   /// Optional associated loan (nullable until Epic 4 enforces loan-collateral binding).
   TextColumn get loanId =>

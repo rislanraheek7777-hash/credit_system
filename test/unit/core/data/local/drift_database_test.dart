@@ -19,8 +19,8 @@ void main() {
   });
 
   group('AppDatabase - Local Drift Foundations & Schema v7 Tests', () {
-    test('schema version is 19 and all tables exist', () {
-      expect(db.schemaVersion, equals(19));
+    test('schema version is 20 and all tables exist', () {
+      expect(db.schemaVersion, equals(20));
       expect(
         db.allTables.map((t) => t.actualTableName),
         containsAll([
@@ -114,7 +114,7 @@ void main() {
       );
 
       final customer = CustomerEntry(
-        id: 'cust-v4-1',
+        id: 1,
         shopId: 'shop-v4-cust',
         fullName: 'Kamal Silva',
         nic: '851234567V',
@@ -127,8 +127,8 @@ void main() {
       );
       await db.into(db.customers).insert(customer);
 
-      final retrieved = await (db.select(db.customers)..where((c) => c.id.equals('cust-v4-1'))).getSingle();
-      expect(retrieved.id, equals('cust-v4-1'));
+      final retrieved = await (db.select(db.customers)..where((c) => c.id.equals(1))).getSingle();
+      expect(retrieved.id, equals(1));
       expect(retrieved.shopId, equals('shop-v4-cust'));
       expect(retrieved.fullName, equals('Kamal Silva'));
       expect(retrieved.nic, equals('851234567V'));
@@ -297,7 +297,7 @@ void main() {
       final now = DateTime.now().toUtc();
       await upgradedDb.into(upgradedDb.customers).insert(
         CustomerEntry(
-          id: 'cust-migrated-1',
+          id: 1,
           shopId: 'shop-v1-existing',
           fullName: 'Migrated Customer',
           nic: '901234567V',
@@ -309,7 +309,7 @@ void main() {
       );
 
       final createdCustomer = await (upgradedDb.select(upgradedDb.customers)
-            ..where((c) => c.id.equals('cust-migrated-1')))
+            ..where((c) => c.id.equals(1)))
           .getSingle();
       expect(createdCustomer.fullName, equals('Migrated Customer'));
       expect(createdCustomer.nic, equals('901234567V'));
@@ -432,7 +432,7 @@ void main() {
       final now = DateTime.now().toUtc();
       await upgradedDb.into(upgradedDb.customers).insert(
         CustomerEntry(
-          id: 'cust-v2-upgraded',
+          id: 202,
           shopId: 'shop-v2',
           fullName: 'Customer Post Upgrade',
           nic: '199012345678',
@@ -444,7 +444,7 @@ void main() {
       );
 
       final cust = await (upgradedDb.select(upgradedDb.customers)
-            ..where((c) => c.id.equals('cust-v2-upgraded')))
+            ..where((c) => c.id.equals(202)))
           .getSingle();
       expect(cust.nic, equals('199012345678'));
 
@@ -565,7 +565,7 @@ void main() {
       final now = DateTime.now().toUtc();
       await upgradedDb.into(upgradedDb.customers).insert(
         CustomerEntry(
-          id: 'cust-v3-upgraded',
+          id: 301,
           shopId: 'shop-v3-orig',
           fullName: 'Customer V3 Upgrade',
           nic: '851234567V',
@@ -577,9 +577,9 @@ void main() {
       );
 
       final cust = await (upgradedDb.select(upgradedDb.customers)
-            ..where((c) => c.id.equals('cust-v3-upgraded')))
+            ..where((c) => c.id.equals(301)))
           .getSingle();
-      expect(cust.id, equals('cust-v3-upgraded'));
+      expect(cust.id, equals(301));
       expect(cust.nic, equals('851234567V'));
 
       // Verify inserting into customer_photo_exceptions works
@@ -683,10 +683,13 @@ void main() {
       final executor = NativeDatabase.opened(rawSqliteDb);
       final upgradedDb = AppDatabase.forTesting(executor);
 
-      // Verify pre-existing customer survived without loss
+      // Verify pre-existing customer survived without loss.
+      // The legacy TEXT id is remapped to the rowid during the v20 migration,
+      // so the single pre-existing customer becomes id 1.
       final existingCustomer = await (upgradedDb.select(upgradedDb.customers)
-            ..where((c) => c.id.equals('cust-v4-existing')))
+            ..where((c) => c.nic.equals('198512345678')))
           .getSingle();
+      expect(existingCustomer.id, equals(1));
       expect(existingCustomer.fullName, equals('V4 Existing Customer'));
       expect(existingCustomer.nic, equals('198512345678'));
       expect(existingCustomer.photoUri, equals('/photos/cust.jpg'));
@@ -826,10 +829,12 @@ void main() {
       final executor = NativeDatabase.opened(rawSqliteDb);
       final upgradedDb = AppDatabase.forTesting(executor);
 
-      // Verify pre-existing customer survived without loss
+      // Verify pre-existing customer survived without loss.
+      // The legacy TEXT id is remapped to the rowid during the v20 migration.
       final existingCustomer = await (upgradedDb.select(upgradedDb.customers)
-            ..where((c) => c.id.equals('cust-v5-existing')))
+            ..where((c) => c.nic.equals('198512345678')))
           .getSingle();
+      expect(existingCustomer.id, equals(1));
       expect(existingCustomer.fullName, equals('V5 Existing Customer'));
       expect(existingCustomer.nic, equals('198512345678'));
 
@@ -852,7 +857,7 @@ void main() {
       final now = DateTime.now().toUtc();
       await upgradedDb.into(upgradedDb.customers).insert(
         CustomerEntry(
-          id: 'cust-v6-new',
+          id: 99,
           shopId: 'shop-v5-orig',
           fullName: 'V6 New Customer',
           nic: '199012345678',
@@ -864,7 +869,7 @@ void main() {
       );
 
       final newCust = await (upgradedDb.select(upgradedDb.customers)
-            ..where((c) => c.id.equals('cust-v6-new')))
+            ..where((c) => c.id.equals(99)))
           .getSingle();
       expect(newCust.phone, equals('0771234567'));
 
@@ -961,7 +966,7 @@ void main() {
       ''');
       rawSqliteDb.execute('''
         INSERT INTO "customers" ("id", "shop_id", "full_name", "nic", "phone", "address", "photo_uri", "photo_hash", "created_at", "updated_at")
-        VALUES ('cust-v6-existing', 'shop-v6-orig', 'V6 Existing Customer', '198512345678', '+94 77 999 8888', '45 Park Road', '/photos/cust.jpg', 'hash-v6', $nowEpoch, $nowEpoch);
+        VALUES (1, 'shop-v6-orig', 'V6 Existing Customer', '198512345678', '+94 77 999 8888', '45 Park Road', '/photos/cust.jpg', 'hash-v6', $nowEpoch, $nowEpoch);
       ''');
 
       final executor = NativeDatabase.opened(rawSqliteDb);
@@ -969,7 +974,7 @@ void main() {
 
       // Verify pre-existing customer survived without loss
       final existingCustomer = await (upgradedDb.select(upgradedDb.customers)
-            ..where((c) => c.id.equals('cust-v6-existing')))
+            ..where((c) => c.id.equals(1)))
           .getSingle();
       expect(existingCustomer.fullName, equals('V6 Existing Customer'));
       expect(existingCustomer.nic, equals('198512345678'));
@@ -996,7 +1001,7 @@ void main() {
         LoanEntry(
           id: 'loan-v7-new',
           shopId: 'shop-v6-orig',
-          customerId: 'cust-v6-existing',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: 'active',
@@ -1011,7 +1016,7 @@ void main() {
             ..where((l) => l.id.equals('loan-v7-new')))
           .getSingle();
       expect(newLoan.status, equals('active'));
-      expect(newLoan.customerId, equals('cust-v6-existing'));
+      expect(newLoan.customerId, equals(1));
 
       await upgradedDb.close();
     });
@@ -1139,10 +1144,12 @@ void main() {
       expect(existingUser.username, equals('v7.staff'));
       expect(existingUser.passwordHash, isNull);
 
-      // Verify pre-existing customer survived without loss
+      // Verify pre-existing customer survived without loss.
+      // The legacy TEXT id is remapped to the rowid during the v20 migration.
       final existingCustomer = await (upgradedDb.select(upgradedDb.customers)
-            ..where((c) => c.id.equals('cust-v7-existing')))
+            ..where((c) => c.nic.equals('198512345678')))
           .getSingle();
+      expect(existingCustomer.id, equals(1));
       expect(existingCustomer.fullName, equals('V7 Existing Customer'));
       expect(existingCustomer.nic, equals('198512345678'));
 
@@ -1151,7 +1158,7 @@ void main() {
             ..where((l) => l.id.equals('loan-v7-existing')))
           .getSingle();
       expect(existingLoan.status, equals('active'));
-      expect(existingLoan.customerId, equals('cust-v7-existing'));
+      expect(existingLoan.customerId, equals(1));
       // Story 4.1 (schema v12): loans that predate the disbursement workflow
       // were already payable under the Story 2.5 model, so the migration
       // backfills them to 'disbursed' rather than blocking their payments.
@@ -1660,7 +1667,7 @@ void main() {
     test('FOREIGN KEY: Customers insertion fails if referenced shop does not exist', () async {
       final now = DateTime.now().toUtc();
       final orphanCustomer = CustomerEntry(
-        id: 'orphan-cust-1',
+        id: 999,
         shopId: 'non-existent-shop-id',
         fullName: 'Orphan Customer',
         nic: '901234567V',
@@ -1702,7 +1709,7 @@ void main() {
       // Insert customer in Shop Alpha
       await db.into(db.customers).insert(
         CustomerEntry(
-          id: 'cust-alpha-1',
+          id: 10,
           shopId: 'shop-cust-alpha',
           fullName: 'Saman Kumara',
           nic: '851234567V',
@@ -1717,7 +1724,7 @@ void main() {
       expect(
         () => db.into(db.customers).insert(
           CustomerEntry(
-            id: 'cust-alpha-2',
+            id: 11,
             shopId: 'shop-cust-alpha',
             fullName: 'Duplicate Saman',
             nic: '851234567V',
@@ -1733,7 +1740,7 @@ void main() {
       // Same NIC in Shop Beta -> must succeed (shop isolation)
       await db.into(db.customers).insert(
         CustomerEntry(
-          id: 'cust-beta-1',
+          id: 1,
           shopId: 'shop-cust-beta',
           fullName: 'Saman Kumara at Beta',
           nic: '851234567V',
@@ -1744,7 +1751,7 @@ void main() {
         ),
       );
 
-      final betaCust = await (db.select(db.customers)..where((c) => c.id.equals('cust-beta-1'))).getSingle();
+      final betaCust = await (db.select(db.customers)..where((c) => c.id.equals(1))).getSingle();
       expect(betaCust.shopId, equals('shop-cust-beta'));
       expect(betaCust.nic, equals('851234567V'));
     });

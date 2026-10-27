@@ -24,8 +24,8 @@ class CustomerFollowUps extends Table {
       text().references(Loans, #id, onDelete: KeyAction.restrict)();
 
   /// Associated customer borrower.
-  TextColumn get customerId =>
-      text().references(Customers, #id, onDelete: KeyAction.restrict)();
+  IntColumn get customerId =>
+      integer().references(Customers, #id, onDelete: KeyAction.restrict)();
 
   /// Staff member who performed the follow-up.
   TextColumn get staffId =>

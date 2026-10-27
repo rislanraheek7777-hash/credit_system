@@ -191,6 +191,8 @@ class AuthService {
                  session_version, password_hash
           FROM app_users
           WHERE username = @p0
+             OR email = @p0
+             OR phone = @p0
         ''',
         [username],
       );

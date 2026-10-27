@@ -48,8 +48,10 @@ void main() {
   group('CustomerDao - Local CRUD & Persistence', () {
     test('createCustomer inserts record with normalized NIC and returns domain entity on query', () async {
       final now = DateTime.now().toUtc();
+      // The id placeholder (0) is replaced by the database-assigned
+      // auto-increment id on insert.
       final customer = Customer(
-        id: 'cust-alpha-001',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Nimal Perera',
         nic: ' 851234567v ', // whitespace & lowercase 'v'
@@ -61,12 +63,13 @@ void main() {
         updatedAt: now,
       );
 
-      await customerDao.createCustomer(customer);
+      final newId = await customerDao.createCustomer(customer);
+      expect(newId, greaterThan(0));
 
       // Verify in database via getCustomerById
-      final inDb = await customerDao.getCustomerById(shopAlphaId, customer.id);
+      final inDb = await customerDao.getCustomerById(shopAlphaId, newId);
       expect(inDb, isNotNull);
-      expect(inDb!.id, equals('cust-alpha-001'));
+      expect(inDb!.id, equals(newId));
       expect(inDb.shopId, equals(shopAlphaId));
       expect(inDb.fullName, equals('Nimal Perera'));
       expect(inDb.nic, equals('851234567V')); // normalized
@@ -79,7 +82,7 @@ void main() {
     test('createCustomer blocks duplicate NIC within same shop via unique constraint', () async {
       final now = DateTime.now().toUtc();
       final customer1 = Customer(
-        id: 'cust-dup-1',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'First Holder',
         nic: '851234567V',
@@ -91,7 +94,7 @@ void main() {
       await customerDao.createCustomer(customer1);
 
       final customer2 = Customer(
-        id: 'cust-dup-2',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Duplicate Holder',
         nic: ' 851234567v ', // normalizes to same NIC
@@ -110,7 +113,7 @@ void main() {
     test('createCustomer allows identical NIC in different shop tenant', () async {
       final now = DateTime.now().toUtc();
       final custAlpha = Customer(
-        id: 'cust-alpha-iso',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Alpha Customer',
         nic: '851234567V',
@@ -119,10 +122,10 @@ void main() {
         createdAt: now,
         updatedAt: now,
       );
-      await customerDao.createCustomer(custAlpha);
+      final alphaId = await customerDao.createCustomer(custAlpha);
 
       final custBeta = Customer(
-        id: 'cust-beta-iso',
+        id: 0,
         shopId: shopBetaId,
         fullName: 'Beta Customer',
         nic: '851234567V',
@@ -131,10 +134,10 @@ void main() {
         createdAt: now,
         updatedAt: now,
       );
-      await customerDao.createCustomer(custBeta);
+      final betaId = await customerDao.createCustomer(custBeta);
 
-      final retrievedAlpha = await customerDao.getCustomerById(shopAlphaId, custAlpha.id);
-      final retrievedBeta = await customerDao.getCustomerById(shopBetaId, custBeta.id);
+      final retrievedAlpha = await customerDao.getCustomerById(shopAlphaId, alphaId);
+      final retrievedBeta = await customerDao.getCustomerById(shopBetaId, betaId);
 
       expect(retrievedAlpha, isNotNull);
       expect(retrievedBeta, isNotNull);
@@ -146,7 +149,7 @@ void main() {
     test('getCustomerByNic normalizes input and respects shop boundary', () async {
       final now = DateTime.now().toUtc();
       final cust = Customer(
-        id: 'cust-nic-search',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Alpha Person',
         nic: '851234567V',
@@ -170,7 +173,7 @@ void main() {
     test('getCustomerById returns null on cross-shop lookup', () async {
       final now = DateTime.now().toUtc();
       final custAlpha = Customer(
-        id: 'cust-alpha-cross',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Alpha Person',
         nic: '901234567V',
@@ -179,15 +182,15 @@ void main() {
         createdAt: now,
         updatedAt: now,
       );
-      await customerDao.createCustomer(custAlpha);
+      final alphaId = await customerDao.createCustomer(custAlpha);
 
       // Correct shop lookup
-      final retrieved = await customerDao.getCustomerById(shopAlphaId, custAlpha.id);
+      final retrieved = await customerDao.getCustomerById(shopAlphaId, alphaId);
       expect(retrieved, isNotNull);
-      expect(retrieved!.id, equals(custAlpha.id));
+      expect(retrieved!.id, equals(alphaId));
 
       // Cross-shop lookup (requesting Alpha customer with Beta shopId)
-      final crossShopRetrieved = await customerDao.getCustomerById(shopBetaId, custAlpha.id);
+      final crossShopRetrieved = await customerDao.getCustomerById(shopBetaId, alphaId);
       expect(crossShopRetrieved, isNull);
     });
 
@@ -195,7 +198,7 @@ void main() {
       final now = DateTime.now().toUtc();
       await customerDao.createCustomer(
         Customer(
-          id: 'c-alpha-1',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Kamal Alpha',
           nic: '801234567V',
@@ -207,7 +210,7 @@ void main() {
       );
       await customerDao.createCustomer(
         Customer(
-          id: 'c-alpha-2',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Amal Alpha',
           nic: '811234567V',
@@ -219,7 +222,7 @@ void main() {
       );
       await customerDao.createCustomer(
         Customer(
-          id: 'c-beta-1',
+          id: 0,
           shopId: shopBetaId,
           fullName: 'Sunil Beta',
           nic: '821234567V',
@@ -243,7 +246,7 @@ void main() {
       final now = DateTime.now().toUtc();
       await customerDao.createCustomer(
         Customer(
-          id: 's-1',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Sunil Weerasinghe',
           nic: '198512345678',
@@ -255,7 +258,7 @@ void main() {
       );
       await customerDao.createCustomer(
         Customer(
-          id: 's-2',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Sunil Fernando',
           nic: '199012345678',
@@ -267,7 +270,7 @@ void main() {
       );
       await customerDao.createCustomer(
         Customer(
-          id: 's-3',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Kanthi Perera',
           nic: '751234567V',
@@ -280,7 +283,7 @@ void main() {
       // Beta customer with same name "Sunil"
       await customerDao.createCustomer(
         Customer(
-          id: 's-4',
+          id: 0,
           shopId: shopBetaId,
           fullName: 'Sunil Jayasuriya',
           nic: '198212345678',
@@ -314,7 +317,7 @@ void main() {
     test('updateCustomer modifies profile and enforces shop scope and unique constraint', () async {
       final now = DateTime.now().toUtc();
       final customer = Customer(
-        id: 'cust-update-target',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Original Customer',
         nic: '851234567V',
@@ -323,9 +326,10 @@ void main() {
         createdAt: now,
         updatedAt: now,
       );
-      await customerDao.createCustomer(customer);
+      final newId = await customerDao.createCustomer(customer);
+      final persisted = await customerDao.getCustomerById(shopAlphaId, newId);
 
-      final updatedCustomer = customer.copyWith(
+      final updatedCustomer = persisted!.copyWith(
         fullName: 'Modified Customer',
         nic: '198512345678',
         phone: '+94 77 111 1111',
@@ -336,7 +340,7 @@ void main() {
 
       await customerDao.updateCustomer(updatedCustomer);
 
-      final retrieved = await customerDao.getCustomerById(shopAlphaId, customer.id);
+      final retrieved = await customerDao.getCustomerById(shopAlphaId, newId);
       expect(retrieved, isNotNull);
       expect(retrieved!.fullName, equals('Modified Customer'));
       expect(retrieved.nic, equals('198512345678'));
@@ -356,7 +360,7 @@ void main() {
     test('updateCustomer rejects duplicate NIC within same shop', () async {
       final now = DateTime.now().toUtc();
       final cust1 = Customer(
-        id: 'cust-uniq-1',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Customer One',
         nic: '851234567V',
@@ -365,8 +369,10 @@ void main() {
         createdAt: now,
         updatedAt: now,
       );
+      await customerDao.createCustomer(cust1);
+
       final cust2 = Customer(
-        id: 'cust-uniq-2',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Customer Two',
         nic: '901234567V',
@@ -375,12 +381,11 @@ void main() {
         createdAt: now,
         updatedAt: now,
       );
-
-      await customerDao.createCustomer(cust1);
-      await customerDao.createCustomer(cust2);
+      final cust2Id = await customerDao.createCustomer(cust2);
+      final persistedCust2 = (await customerDao.getCustomerById(shopAlphaId, cust2Id))!;
 
       // Attempting to update cust2's NIC to cust1's NIC
-      final duplicateAttempt = cust2.copyWith(nic: '851234567V');
+      final duplicateAttempt = persistedCust2.copyWith(nic: '851234567V');
       expect(
         () => customerDao.updateCustomer(duplicateAttempt),
         throwsA(isA<sqlite.SqliteException>()),
@@ -390,7 +395,7 @@ void main() {
     test('createCustomer fails with SqliteException when shopId does not exist in shops (foreign key constraint)', () async {
       final now = DateTime.now().toUtc();
       final orphanCustomer = Customer(
-        id: 'cust-orphan-1',
+        id: 0,
         shopId: 'nonexistent-shop-uuid',
         fullName: 'Orphan Borrower',
         nic: '851234567V',
@@ -409,7 +414,7 @@ void main() {
     test('updateCustomer preserves immutable identity and does not modify id or shopId or createdAt', () async {
       final creationTime = DateTime.utc(2026, 1, 15, 10, 30);
       final original = Customer(
-        id: 'cust-immut-1',
+        id: 0,
         shopId: shopAlphaId,
         fullName: 'Original Name',
         nic: '851234567V',
@@ -418,19 +423,20 @@ void main() {
         createdAt: creationTime,
         updatedAt: creationTime,
       );
-      await customerDao.createCustomer(original);
+      final newId = await customerDao.createCustomer(original);
+      final persisted = (await customerDao.getCustomerById(shopAlphaId, newId))!;
 
       // Update fields with a modified customer object
-      final modified = original.copyWith(
+      final modified = persisted.copyWith(
         fullName: 'New Name',
         phone: '+94 77 999 8888',
         address: '20 Flower Rd, Colombo 07',
       );
       await customerDao.updateCustomer(modified);
 
-      final retrieved = await customerDao.getCustomerById(shopAlphaId, 'cust-immut-1');
+      final retrieved = await customerDao.getCustomerById(shopAlphaId, newId);
       expect(retrieved, isNotNull);
-      expect(retrieved!.id, equals('cust-immut-1'));
+      expect(retrieved!.id, equals(newId));
       expect(retrieved.shopId, equals(shopAlphaId));
       expect(retrieved.fullName, equals('New Name'));
       expect(retrieved.phone, equals('+94 77 999 8888'));
@@ -443,9 +449,9 @@ void main() {
   group('CustomerDao - Duplicate Detection (Story 2.4)', () {
     test('findCustomersByPhone finds existing customer with equivalent normalized phone', () async {
       final now = DateTime.now().toUtc();
-      await customerDao.createCustomer(
+      final newId = await customerDao.createCustomer(
         Customer(
-          id: 'cust-phone-1',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Shared Phone User',
           nic: '851234567V',
@@ -459,14 +465,14 @@ void main() {
       // International format of the same number must match
       final matches = await customerDao.findCustomersByPhone(shopAlphaId, '+94771234567');
       expect(matches.length, equals(1));
-      expect(matches.first.id, equals('cust-phone-1'));
+      expect(matches.first.id, equals(newId));
     });
 
     test('findCustomersByPhone returns empty when no phone match in shop', () async {
       final now = DateTime.now().toUtc();
       await customerDao.createCustomer(
         Customer(
-          id: 'cust-phone-2',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Different Phone',
           nic: '901234567V',
@@ -484,9 +490,9 @@ void main() {
     test('findCustomersByPhone is strictly shop-scoped — no cross-shop leakage', () async {
       final now = DateTime.now().toUtc();
       // Same normalized phone in two different shops
-      await customerDao.createCustomer(
+      final alphaId = await customerDao.createCustomer(
         Customer(
-          id: 'cust-alpha-phone',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Alpha Customer',
           nic: '851234567V',
@@ -496,9 +502,9 @@ void main() {
           updatedAt: now,
         ),
       );
-      await customerDao.createCustomer(
+      final betaId = await customerDao.createCustomer(
         Customer(
-          id: 'cust-beta-phone',
+          id: 0,
           shopId: shopBetaId,
           fullName: 'Beta Customer',
           nic: '901234567V',
@@ -512,19 +518,19 @@ void main() {
       // Querying Alpha must return only Alpha's customer, not Beta's
       final alphaMatches = await customerDao.findCustomersByPhone(shopAlphaId, '0771234567');
       expect(alphaMatches.length, equals(1));
-      expect(alphaMatches.first.id, equals('cust-alpha-phone'));
+      expect(alphaMatches.first.id, equals(alphaId));
 
       // Querying Beta must return only Beta's customer, not Alpha's
       final betaMatches = await customerDao.findCustomersByPhone(shopBetaId, '+94771234567');
       expect(betaMatches.length, equals(1));
-      expect(betaMatches.first.id, equals('cust-beta-phone'));
+      expect(betaMatches.first.id, equals(betaId));
     });
 
     test('findCustomersByPhone returns all customers sharing a phone in the same shop', () async {
       final now = DateTime.now().toUtc();
-      await customerDao.createCustomer(
+      final sharedAId = await customerDao.createCustomer(
         Customer(
-          id: 'cust-shared-1',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Family Member A',
           nic: '851234567V',
@@ -534,9 +540,9 @@ void main() {
           updatedAt: now,
         ),
       );
-      await customerDao.createCustomer(
+      final sharedBId = await customerDao.createCustomer(
         Customer(
-          id: 'cust-shared-2',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'Family Member B',
           nic: '901234567V',
@@ -549,14 +555,14 @@ void main() {
 
       final matches = await customerDao.findCustomersByPhone(shopAlphaId, '0771234567');
       expect(matches.length, equals(2));
-      expect(matches.map((c) => c.id), containsAll(['cust-shared-1', 'cust-shared-2']));
+      expect(matches.map((c) => c.id), containsAll([sharedAId, sharedBId]));
     });
 
     test('getCustomerByNic blocks duplicate NIC within same shop', () async {
       final now = DateTime.now().toUtc();
-      await customerDao.createCustomer(
+      final nicOwnerId = await customerDao.createCustomer(
         Customer(
-          id: 'cust-nic-1',
+          id: 0,
           shopId: shopAlphaId,
           fullName: 'NIC Owner',
           nic: '851234567V',
@@ -570,7 +576,7 @@ void main() {
       // Same NIC, different formatting — must be found
       final found = await customerDao.getCustomerByNic(shopAlphaId, ' 851234567v ');
       expect(found, isNotNull);
-      expect(found!.id, equals('cust-nic-1'));
+      expect(found!.id, equals(nicOwnerId));
 
       // Same NIC in different shop — must not be found
       final notFound = await customerDao.getCustomerByNic(shopBetaId, '851234567V');

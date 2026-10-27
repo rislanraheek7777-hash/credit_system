@@ -15,7 +15,7 @@ import 'package:credit_system/features/customers/presentation/loan_disbursement_
 
 const String shopId = '11111111-1111-1111-1111-111111111401';
 const String otherShopId = '11111111-1111-1111-1111-111111111402';
-const String customerId = '11111111-1111-1111-1111-111111111403';
+const customerId = 1;
 const String managerId = '11111111-1111-1111-1111-111111111404';
 const String cashierId = '11111111-1111-1111-1111-111111111405';
 const String itemId = 'coll-disb-widget-1';

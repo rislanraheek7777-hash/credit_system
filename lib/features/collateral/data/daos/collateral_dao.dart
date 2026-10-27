@@ -96,9 +96,9 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
     if (item.shopId.trim().isEmpty) {
       throw ArgumentError.value(item.shopId, 'shopId', 'shopId cannot be empty');
     }
-    if (item.customerId.trim().isEmpty) {
+    if (item.customerId <= 0) {
       throw ArgumentError.value(
-          item.customerId, 'customerId', 'customerId cannot be empty');
+          item.customerId, 'customerId', 'customerId must be a positive integer');
     }
     await into(collateralItems).insert(_toCompanion(item));
   }
@@ -137,7 +137,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
   /// Returns items ordered by creation time descending.
   Future<List<CollateralItem>> getCollateralItemsByCustomerId(
     String shopId,
-    String customerId,
+    int customerId,
   ) async {
     final query = select(collateralItems)
       ..where((c) =>
@@ -168,7 +168,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
   /// Strictly scoped to [shopId] — items in other shops are never returned.
   Future<List<CollateralItem>> getCollateralItemsByCustomerAndCustody(
     String shopId,
-    String customerId,
+    int customerId,
     CollateralCustodyStatus custodyStatus,
   ) async {
     final query = select(collateralItems)

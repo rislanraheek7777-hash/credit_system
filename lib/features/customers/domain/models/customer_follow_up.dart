@@ -24,7 +24,7 @@ class CustomerFollowUp {
   final String id;
   final String shopId;
   final String loanId;
-  final String customerId;
+  final int customerId;
   final String staffId;
   final FollowUpChannel channel;
   final String notes;

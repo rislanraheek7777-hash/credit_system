@@ -26,7 +26,7 @@ class CustomerAccessForbiddenException implements Exception {
 /// DTO representing a customer profile response with server-enforced masking metadata (Story 2.6).
 @immutable
 class CustomerProfileDto {
-  final String id;
+  final int id;
   final String shopId;
   final String fullName;
   final String nic;
@@ -159,7 +159,7 @@ class CustomerDataMaskingService {
   /// Retrieves and masks customer data according to [actor]'s permissions.
   Future<CustomerProfileDto> getCustomerProfile({
     required String shopId,
-    required String customerId,
+    required int customerId,
     required AppUser actor,
   }) async {
     // Cross-tenant guard
@@ -168,7 +168,7 @@ class CustomerDataMaskingService {
         shopId: shopId,
         actorId: actor.id,
         actionType: 'unauthorized_cross_tenant_customer_access',
-        targetCustomerId: customerId,
+        targetCustomerId: customerId.toString(),
         reason: 'Cross-tenant customer profile access attempt denied',
       );
       throw const CustomerAccessForbiddenException(
@@ -184,7 +184,7 @@ class CustomerDataMaskingService {
         shopId: shopId,
         actorId: actor.id,
         actionType: 'unauthorized_customer_profile_access',
-        targetCustomerId: customerId,
+        targetCustomerId: customerId.toString(),
         reason: 'User lacks viewCustomers permission',
       );
       throw const CustomerAccessForbiddenException(
@@ -208,7 +208,7 @@ class CustomerDataMaskingService {
       if (customer.photoUri != null && customer.photoUri!.isNotEmpty) {
         signedPhotoUrl = photoSigner.generateSignedUrl(
           shopId: shopId,
-          customerId: customer.id,
+          customerId: customer.id.toString(),
           photoUri: customer.photoUri!,
         );
       }

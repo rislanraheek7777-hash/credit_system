@@ -24,7 +24,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 /// eligibility check has to be part of the write itself.
 void main() {
   const shopId = '11111111-1111-1111-1111-111111111901';
-  const customerId = '11111111-1111-1111-1111-111111111903';
+  const customerId = 1;
   const managerId = '11111111-1111-1111-1111-111111111904';
   const itemA = 'coll-race-a';
   const itemB = 'coll-race-b';

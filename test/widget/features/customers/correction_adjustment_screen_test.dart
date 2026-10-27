@@ -12,7 +12,7 @@ import 'package:credit_system/features/customers/presentation/correction_adjustm
 import 'package:uuid/uuid.dart';
 
 const String shopId = 'adj-shop-1111-1111-1111-111111111101';
-const String customerId = 'adj-cust-1111-1111-111111111102';
+const customerId = 1;
 const String ownerId = 'adj-owner-1111-1111-111111111103';
 const String managerId = 'adj-mgr-1111-1111-111111111104';
 const String loanId = 'adj-loan-1111-1111-111111111105';

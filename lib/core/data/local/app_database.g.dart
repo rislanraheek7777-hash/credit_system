@@ -881,6 +881,32 @@ class $AppUsersTable extends AppUsers
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 0,
+      maxTextLength: 255,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 0,
+      maxTextLength: 50,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fullNameMeta = const VerificationMeta(
     'fullName',
   );
@@ -981,6 +1007,8 @@ class $AppUsersTable extends AppUsers
     id,
     shopId,
     username,
+    email,
+    phone,
     fullName,
     role,
     isActive,
@@ -1022,6 +1050,18 @@ class $AppUsersTable extends AppUsers
       );
     } else if (isInserting) {
       context.missing(_usernameMeta);
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
     }
     if (data.containsKey('full_name')) {
       context.handle(
@@ -1113,6 +1153,14 @@ class $AppUsersTable extends AppUsers
         DriftSqlType.string,
         data['${effectivePrefix}username'],
       )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
       fullName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}full_name'],
@@ -1164,6 +1212,12 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
   /// Username unique within the shop tenant boundary.
   final String username;
 
+  /// Optional email address, unique within the shop tenant boundary when set.
+  final String? email;
+
+  /// Optional phone number, unique within the shop tenant boundary when set.
+  final String? phone;
+
   /// Full display name of the user.
   final String fullName;
 
@@ -1198,6 +1252,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     required this.id,
     required this.shopId,
     required this.username,
+    this.email,
+    this.phone,
     required this.fullName,
     required this.role,
     required this.isActive,
@@ -1213,6 +1269,12 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
     map['username'] = Variable<String>(username);
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
     map['full_name'] = Variable<String>(fullName);
     map['role'] = Variable<String>(role);
     map['is_active'] = Variable<bool>(isActive);
@@ -1233,6 +1295,12 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
       id: Value(id),
       shopId: Value(shopId),
       username: Value(username),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
       fullName: Value(fullName),
       role: Value(role),
       isActive: Value(isActive),
@@ -1257,6 +1325,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
       username: serializer.fromJson<String>(json['username']),
+      email: serializer.fromJson<String?>(json['email']),
+      phone: serializer.fromJson<String?>(json['phone']),
       fullName: serializer.fromJson<String>(json['fullName']),
       role: serializer.fromJson<String>(json['role']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -1274,6 +1344,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
       'username': serializer.toJson<String>(username),
+      'email': serializer.toJson<String?>(email),
+      'phone': serializer.toJson<String?>(phone),
       'fullName': serializer.toJson<String>(fullName),
       'role': serializer.toJson<String>(role),
       'isActive': serializer.toJson<bool>(isActive),
@@ -1289,6 +1361,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     String? id,
     String? shopId,
     String? username,
+    Value<String?> email = const Value.absent(),
+    Value<String?> phone = const Value.absent(),
     String? fullName,
     String? role,
     bool? isActive,
@@ -1301,6 +1375,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
     username: username ?? this.username,
+    email: email.present ? email.value : this.email,
+    phone: phone.present ? phone.value : this.phone,
     fullName: fullName ?? this.fullName,
     role: role ?? this.role,
     isActive: isActive ?? this.isActive,
@@ -1315,6 +1391,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
       username: data.username.present ? data.username.value : this.username,
+      email: data.email.present ? data.email.value : this.email,
+      phone: data.phone.present ? data.phone.value : this.phone,
       fullName: data.fullName.present ? data.fullName.value : this.fullName,
       role: data.role.present ? data.role.value : this.role,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
@@ -1338,6 +1416,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
           ..write('username: $username, ')
+          ..write('email: $email, ')
+          ..write('phone: $phone, ')
           ..write('fullName: $fullName, ')
           ..write('role: $role, ')
           ..write('isActive: $isActive, ')
@@ -1355,6 +1435,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
     id,
     shopId,
     username,
+    email,
+    phone,
     fullName,
     role,
     isActive,
@@ -1371,6 +1453,8 @@ class AppUserEntry extends DataClass implements Insertable<AppUserEntry> {
           other.id == this.id &&
           other.shopId == this.shopId &&
           other.username == this.username &&
+          other.email == this.email &&
+          other.phone == this.phone &&
           other.fullName == this.fullName &&
           other.role == this.role &&
           other.isActive == this.isActive &&
@@ -1385,6 +1469,8 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
   final Value<String> id;
   final Value<String> shopId;
   final Value<String> username;
+  final Value<String?> email;
+  final Value<String?> phone;
   final Value<String> fullName;
   final Value<String> role;
   final Value<bool> isActive;
@@ -1398,6 +1484,8 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
     this.username = const Value.absent(),
+    this.email = const Value.absent(),
+    this.phone = const Value.absent(),
     this.fullName = const Value.absent(),
     this.role = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -1412,6 +1500,8 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     required String id,
     required String shopId,
     required String username,
+    this.email = const Value.absent(),
+    this.phone = const Value.absent(),
     required String fullName,
     required String role,
     this.isActive = const Value.absent(),
@@ -1432,6 +1522,8 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     Expression<String>? id,
     Expression<String>? shopId,
     Expression<String>? username,
+    Expression<String>? email,
+    Expression<String>? phone,
     Expression<String>? fullName,
     Expression<String>? role,
     Expression<bool>? isActive,
@@ -1446,6 +1538,8 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
       if (username != null) 'username': username,
+      if (email != null) 'email': email,
+      if (phone != null) 'phone': phone,
       if (fullName != null) 'full_name': fullName,
       if (role != null) 'role': role,
       if (isActive != null) 'is_active': isActive,
@@ -1462,6 +1556,8 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     Value<String>? id,
     Value<String>? shopId,
     Value<String>? username,
+    Value<String?>? email,
+    Value<String?>? phone,
     Value<String>? fullName,
     Value<String>? role,
     Value<bool>? isActive,
@@ -1476,6 +1572,8 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
       username: username ?? this.username,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
       fullName: fullName ?? this.fullName,
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
@@ -1499,6 +1597,12 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
     }
     if (username.present) {
       map['username'] = Variable<String>(username.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
     }
     if (fullName.present) {
       map['full_name'] = Variable<String>(fullName.value);
@@ -1536,6 +1640,8 @@ class AppUsersCompanion extends UpdateCompanion<AppUserEntry> {
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
           ..write('username: $username, ')
+          ..write('email: $email, ')
+          ..write('phone: $phone, ')
           ..write('fullName: $fullName, ')
           ..write('role: $role, ')
           ..write('isActive: $isActive, ')
@@ -2313,12 +2419,16 @@ class $CustomersTable extends Customers
   $CustomersTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
     'id',
     aliasedName,
     false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
   );
   static const VerificationMeta _shopIdMeta = const VerificationMeta('shopId');
   @override
@@ -2456,8 +2566,6 @@ class $CustomersTable extends Customers
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('shop_id')) {
       context.handle(
@@ -2541,7 +2649,7 @@ class $CustomersTable extends Customers
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return CustomerEntry(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
       shopId: attachedDatabase.typeMapping.read(
@@ -2590,8 +2698,8 @@ class $CustomersTable extends Customers
 }
 
 class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
-  /// Canonical UUIDv4 primary key.
-  final String id;
+  /// Auto-increment primary key (hidden: system-generated).
+  final int id;
 
   /// Tenant shop association (immutable foreign key boundary).
   final String shopId;
@@ -2634,7 +2742,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
+    map['id'] = Variable<int>(id);
     map['shop_id'] = Variable<String>(shopId);
     map['full_name'] = Variable<String>(fullName);
     map['nic'] = Variable<String>(nic);
@@ -2676,7 +2784,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return CustomerEntry(
-      id: serializer.fromJson<String>(json['id']),
+      id: serializer.fromJson<int>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
       fullName: serializer.fromJson<String>(json['fullName']),
       nic: serializer.fromJson<String>(json['nic']),
@@ -2692,7 +2800,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
+      'id': serializer.toJson<int>(id),
       'shopId': serializer.toJson<String>(shopId),
       'fullName': serializer.toJson<String>(fullName),
       'nic': serializer.toJson<String>(nic),
@@ -2706,7 +2814,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
   }
 
   CustomerEntry copyWith({
-    String? id,
+    int? id,
     String? shopId,
     String? fullName,
     String? nic,
@@ -2790,7 +2898,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
 }
 
 class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
-  final Value<String> id;
+  final Value<int> id;
   final Value<String> shopId;
   final Value<String> fullName;
   final Value<String> nic;
@@ -2800,7 +2908,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
   final Value<String?> photoHash;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
-  final Value<int> rowid;
   const CustomersCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
@@ -2812,10 +2919,9 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     this.photoHash = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-    this.rowid = const Value.absent(),
   });
   CustomersCompanion.insert({
-    required String id,
+    this.id = const Value.absent(),
     required String shopId,
     required String fullName,
     required String nic,
@@ -2825,9 +2931,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     this.photoHash = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       shopId = Value(shopId),
+  }) : shopId = Value(shopId),
        fullName = Value(fullName),
        nic = Value(nic),
        phone = Value(phone),
@@ -2835,7 +2939,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<CustomerEntry> custom({
-    Expression<String>? id,
+    Expression<int>? id,
     Expression<String>? shopId,
     Expression<String>? fullName,
     Expression<String>? nic,
@@ -2845,7 +2949,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     Expression<String>? photoHash,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
-    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2858,12 +2961,11 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
       if (photoHash != null) 'photo_hash': photoHash,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
-      if (rowid != null) 'rowid': rowid,
     });
   }
 
   CustomersCompanion copyWith({
-    Value<String>? id,
+    Value<int>? id,
     Value<String>? shopId,
     Value<String>? fullName,
     Value<String>? nic,
@@ -2873,7 +2975,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     Value<String?>? photoHash,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
-    Value<int>? rowid,
   }) {
     return CustomersCompanion(
       id: id ?? this.id,
@@ -2886,7 +2987,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
       photoHash: photoHash ?? this.photoHash,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -2894,7 +2994,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<String>(id.value);
+      map['id'] = Variable<int>(id.value);
     }
     if (shopId.present) {
       map['shop_id'] = Variable<String>(shopId.value);
@@ -2923,9 +3023,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
     return map;
   }
 
@@ -2941,8 +3038,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
           ..write('photoUri: $photoUri, ')
           ..write('photoHash: $photoHash, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt, ')
-          ..write('rowid: $rowid')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -3762,11 +3858,11 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, LoanEntry> {
     'customerId',
   );
   @override
-  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+  late final GeneratedColumn<int> customerId = GeneratedColumn<int>(
     'customer_id',
     aliasedName,
     false,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES customers (id) ON DELETE RESTRICT',
@@ -4149,7 +4245,7 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, LoanEntry> {
         data['${effectivePrefix}shop_id'],
       )!,
       customerId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}customer_id'],
       )!,
       principalCents: attachedDatabase.typeMapping.read(
@@ -4229,7 +4325,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
   final String shopId;
 
   /// Associated customer borrower (immutable foreign key boundary).
-  final String customerId;
+  final int customerId;
 
   /// Original principal in minor units (cents).
   final int principalCents;
@@ -4320,7 +4416,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['customer_id'] = Variable<String>(customerId);
+    map['customer_id'] = Variable<int>(customerId);
     map['principal_cents'] = Variable<int>(principalCents);
     map['balance_cents'] = Variable<int>(balanceCents);
     map['status'] = Variable<String>(status);
@@ -4402,7 +4498,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
     return LoanEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      customerId: serializer.fromJson<String>(json['customerId']),
+      customerId: serializer.fromJson<int>(json['customerId']),
       principalCents: serializer.fromJson<int>(json['principalCents']),
       balanceCents: serializer.fromJson<int>(json['balanceCents']),
       status: serializer.fromJson<String>(json['status']),
@@ -4432,7 +4528,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'customerId': serializer.toJson<String>(customerId),
+      'customerId': serializer.toJson<int>(customerId),
       'principalCents': serializer.toJson<int>(principalCents),
       'balanceCents': serializer.toJson<int>(balanceCents),
       'status': serializer.toJson<String>(status),
@@ -4454,7 +4550,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
   LoanEntry copyWith({
     String? id,
     String? shopId,
-    String? customerId,
+    int? customerId,
     int? principalCents,
     int? balanceCents,
     String? status,
@@ -4620,7 +4716,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
 class LoansCompanion extends UpdateCompanion<LoanEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> customerId;
+  final Value<int> customerId;
   final Value<int> principalCents;
   final Value<int> balanceCents;
   final Value<String> status;
@@ -4661,7 +4757,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
   LoansCompanion.insert({
     required String id,
     required String shopId,
-    required String customerId,
+    required int customerId,
     required int principalCents,
     required int balanceCents,
     this.status = const Value.absent(),
@@ -4688,7 +4784,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
   static Insertable<LoanEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? customerId,
+    Expression<int>? customerId,
     Expression<int>? principalCents,
     Expression<int>? balanceCents,
     Expression<String>? status,
@@ -4733,7 +4829,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
   LoansCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? customerId,
+    Value<int>? customerId,
     Value<int>? principalCents,
     Value<int>? balanceCents,
     Value<String>? status,
@@ -4784,7 +4880,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
       map['shop_id'] = Variable<String>(shopId.value);
     }
     if (customerId.present) {
-      map['customer_id'] = Variable<String>(customerId.value);
+      map['customer_id'] = Variable<int>(customerId.value);
     }
     if (principalCents.present) {
       map['principal_cents'] = Variable<int>(principalCents.value);
@@ -4895,11 +4991,11 @@ class $CollateralItemsTable extends CollateralItems
     'customerId',
   );
   @override
-  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+  late final GeneratedColumn<int> customerId = GeneratedColumn<int>(
     'customer_id',
     aliasedName,
     false,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES customers (id) ON DELETE RESTRICT',
@@ -5233,7 +5329,7 @@ class $CollateralItemsTable extends CollateralItems
         data['${effectivePrefix}shop_id'],
       )!,
       customerId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}customer_id'],
       )!,
       loanId: attachedDatabase.typeMapping.read(
@@ -5302,7 +5398,7 @@ class CollateralItemEntry extends DataClass
   final String shopId;
 
   /// Associated customer borrower (immutable foreign key boundary, required).
-  final String customerId;
+  final int customerId;
 
   /// Optional associated loan (nullable until Epic 4 enforces loan-collateral binding).
   final String? loanId;
@@ -5364,7 +5460,7 @@ class CollateralItemEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['customer_id'] = Variable<String>(customerId);
+    map['customer_id'] = Variable<int>(customerId);
     if (!nullToAbsent || loanId != null) {
       map['loan_id'] = Variable<String>(loanId);
     }
@@ -5420,7 +5516,7 @@ class CollateralItemEntry extends DataClass
     return CollateralItemEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      customerId: serializer.fromJson<String>(json['customerId']),
+      customerId: serializer.fromJson<int>(json['customerId']),
       loanId: serializer.fromJson<String?>(json['loanId']),
       itemReferenceId: serializer.fromJson<String>(json['itemReferenceId']),
       category: serializer.fromJson<String>(json['category']),
@@ -5443,7 +5539,7 @@ class CollateralItemEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'customerId': serializer.toJson<String>(customerId),
+      'customerId': serializer.toJson<int>(customerId),
       'loanId': serializer.toJson<String?>(loanId),
       'itemReferenceId': serializer.toJson<String>(itemReferenceId),
       'category': serializer.toJson<String>(category),
@@ -5462,7 +5558,7 @@ class CollateralItemEntry extends DataClass
   CollateralItemEntry copyWith({
     String? id,
     String? shopId,
-    String? customerId,
+    int? customerId,
     Value<String?> loanId = const Value.absent(),
     String? itemReferenceId,
     String? category,
@@ -5590,7 +5686,7 @@ class CollateralItemEntry extends DataClass
 class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> customerId;
+  final Value<int> customerId;
   final Value<String?> loanId;
   final Value<String> itemReferenceId;
   final Value<String> category;
@@ -5625,7 +5721,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
   CollateralItemsCompanion.insert({
     required String id,
     required String shopId,
-    required String customerId,
+    required int customerId,
     this.loanId = const Value.absent(),
     required String itemReferenceId,
     required String category,
@@ -5653,7 +5749,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
   static Insertable<CollateralItemEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? customerId,
+    Expression<int>? customerId,
     Expression<String>? loanId,
     Expression<String>? itemReferenceId,
     Expression<String>? category,
@@ -5692,7 +5788,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
   CollateralItemsCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? customerId,
+    Value<int>? customerId,
     Value<String?>? loanId,
     Value<String>? itemReferenceId,
     Value<String>? category,
@@ -5737,7 +5833,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
       map['shop_id'] = Variable<String>(shopId.value);
     }
     if (customerId.present) {
-      map['customer_id'] = Variable<String>(customerId.value);
+      map['customer_id'] = Variable<int>(customerId.value);
     }
     if (loanId.present) {
       map['loan_id'] = Variable<String>(loanId.value);
@@ -7953,11 +8049,11 @@ class $PaymentsTable extends Payments
     'customerId',
   );
   @override
-  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+  late final GeneratedColumn<int> customerId = GeneratedColumn<int>(
     'customer_id',
     aliasedName,
     false,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _customerNameMeta = const VerificationMeta(
@@ -8315,7 +8411,7 @@ class $PaymentsTable extends Payments
         data['${effectivePrefix}recorded_by_user_id'],
       )!,
       customerId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}customer_id'],
       )!,
       customerName: attachedDatabase.typeMapping.read(
@@ -8391,7 +8487,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
   final String recordedByUserId;
 
   /// Customer borrower identifier (denormalized for receipt snapshot).
-  final String customerId;
+  final int customerId;
 
   /// Customer full name at time of payment (masked per RBAC in UI layer).
   final String customerName;
@@ -8450,7 +8546,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
     map['payment_type'] = Variable<String>(paymentType);
     map['recorded_at'] = Variable<DateTime>(recordedAt);
     map['recorded_by_user_id'] = Variable<String>(recordedByUserId);
-    map['customer_id'] = Variable<String>(customerId);
+    map['customer_id'] = Variable<int>(customerId);
     map['customer_name'] = Variable<String>(customerName);
     map['customer_nic'] = Variable<String>(customerNic);
     map['shop_name'] = Variable<String>(shopName);
@@ -8518,7 +8614,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
       paymentType: serializer.fromJson<String>(json['paymentType']),
       recordedAt: serializer.fromJson<DateTime>(json['recordedAt']),
       recordedByUserId: serializer.fromJson<String>(json['recordedByUserId']),
-      customerId: serializer.fromJson<String>(json['customerId']),
+      customerId: serializer.fromJson<int>(json['customerId']),
       customerName: serializer.fromJson<String>(json['customerName']),
       customerNic: serializer.fromJson<String>(json['customerNic']),
       shopName: serializer.fromJson<String>(json['shopName']),
@@ -8543,7 +8639,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
       'paymentType': serializer.toJson<String>(paymentType),
       'recordedAt': serializer.toJson<DateTime>(recordedAt),
       'recordedByUserId': serializer.toJson<String>(recordedByUserId),
-      'customerId': serializer.toJson<String>(customerId),
+      'customerId': serializer.toJson<int>(customerId),
       'customerName': serializer.toJson<String>(customerName),
       'customerNic': serializer.toJson<String>(customerNic),
       'shopName': serializer.toJson<String>(shopName),
@@ -8566,7 +8662,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
     String? paymentType,
     DateTime? recordedAt,
     String? recordedByUserId,
-    String? customerId,
+    int? customerId,
     String? customerName,
     String? customerNic,
     String? shopName,
@@ -8732,7 +8828,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
   final Value<String> paymentType;
   final Value<DateTime> recordedAt;
   final Value<String> recordedByUserId;
-  final Value<String> customerId;
+  final Value<int> customerId;
   final Value<String> customerName;
   final Value<String> customerNic;
   final Value<String> shopName;
@@ -8775,7 +8871,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
     required String paymentType,
     required DateTime recordedAt,
     required String recordedByUserId,
-    required String customerId,
+    required int customerId,
     required String customerName,
     required String customerNic,
     required String shopName,
@@ -8811,7 +8907,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
     Expression<String>? paymentType,
     Expression<DateTime>? recordedAt,
     Expression<String>? recordedByUserId,
-    Expression<String>? customerId,
+    Expression<int>? customerId,
     Expression<String>? customerName,
     Expression<String>? customerNic,
     Expression<String>? shopName,
@@ -8857,7 +8953,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
     Value<String>? paymentType,
     Value<DateTime>? recordedAt,
     Value<String>? recordedByUserId,
-    Value<String>? customerId,
+    Value<int>? customerId,
     Value<String>? customerName,
     Value<String>? customerNic,
     Value<String>? shopName,
@@ -8926,7 +9022,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
       map['recorded_by_user_id'] = Variable<String>(recordedByUserId.value);
     }
     if (customerId.present) {
-      map['customer_id'] = Variable<String>(customerId.value);
+      map['customer_id'] = Variable<int>(customerId.value);
     }
     if (customerName.present) {
       map['customer_name'] = Variable<String>(customerName.value);
@@ -11320,11 +11416,11 @@ class $CustomerFollowUpsTable extends CustomerFollowUps
     'customerId',
   );
   @override
-  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+  late final GeneratedColumn<int> customerId = GeneratedColumn<int>(
     'customer_id',
     aliasedName,
     false,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES customers (id) ON DELETE RESTRICT',
@@ -11503,7 +11599,7 @@ class $CustomerFollowUpsTable extends CustomerFollowUps
         data['${effectivePrefix}loan_id'],
       )!,
       customerId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}customer_id'],
       )!,
       staffId: attachedDatabase.typeMapping.read(
@@ -11547,7 +11643,7 @@ class CustomerFollowUpEntry extends DataClass
   final String loanId;
 
   /// Associated customer borrower.
-  final String customerId;
+  final int customerId;
 
   /// Staff member who performed the follow-up.
   final String staffId;
@@ -11580,7 +11676,7 @@ class CustomerFollowUpEntry extends DataClass
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
     map['loan_id'] = Variable<String>(loanId);
-    map['customer_id'] = Variable<String>(customerId);
+    map['customer_id'] = Variable<int>(customerId);
     map['staff_id'] = Variable<String>(staffId);
     map['channel'] = Variable<String>(channel);
     map['notes'] = Variable<String>(notes);
@@ -11616,7 +11712,7 @@ class CustomerFollowUpEntry extends DataClass
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
       loanId: serializer.fromJson<String>(json['loanId']),
-      customerId: serializer.fromJson<String>(json['customerId']),
+      customerId: serializer.fromJson<int>(json['customerId']),
       staffId: serializer.fromJson<String>(json['staffId']),
       channel: serializer.fromJson<String>(json['channel']),
       notes: serializer.fromJson<String>(json['notes']),
@@ -11633,7 +11729,7 @@ class CustomerFollowUpEntry extends DataClass
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
       'loanId': serializer.toJson<String>(loanId),
-      'customerId': serializer.toJson<String>(customerId),
+      'customerId': serializer.toJson<int>(customerId),
       'staffId': serializer.toJson<String>(staffId),
       'channel': serializer.toJson<String>(channel),
       'notes': serializer.toJson<String>(notes),
@@ -11646,7 +11742,7 @@ class CustomerFollowUpEntry extends DataClass
     String? id,
     String? shopId,
     String? loanId,
-    String? customerId,
+    int? customerId,
     String? staffId,
     String? channel,
     String? notes,
@@ -11731,7 +11827,7 @@ class CustomerFollowUpsCompanion
   final Value<String> id;
   final Value<String> shopId;
   final Value<String> loanId;
-  final Value<String> customerId;
+  final Value<int> customerId;
   final Value<String> staffId;
   final Value<String> channel;
   final Value<String> notes;
@@ -11754,7 +11850,7 @@ class CustomerFollowUpsCompanion
     required String id,
     required String shopId,
     required String loanId,
-    required String customerId,
+    required int customerId,
     required String staffId,
     required String channel,
     required String notes,
@@ -11773,7 +11869,7 @@ class CustomerFollowUpsCompanion
     Expression<String>? id,
     Expression<String>? shopId,
     Expression<String>? loanId,
-    Expression<String>? customerId,
+    Expression<int>? customerId,
     Expression<String>? staffId,
     Expression<String>? channel,
     Expression<String>? notes,
@@ -11800,7 +11896,7 @@ class CustomerFollowUpsCompanion
     Value<String>? id,
     Value<String>? shopId,
     Value<String>? loanId,
-    Value<String>? customerId,
+    Value<int>? customerId,
     Value<String>? staffId,
     Value<String>? channel,
     Value<String>? notes,
@@ -11835,7 +11931,7 @@ class CustomerFollowUpsCompanion
       map['loan_id'] = Variable<String>(loanId.value);
     }
     if (customerId.present) {
-      map['customer_id'] = Variable<String>(customerId.value);
+      map['customer_id'] = Variable<int>(customerId.value);
     }
     if (staffId.present) {
       map['staff_id'] = Variable<String>(staffId.value);
@@ -14756,10 +14852,11 @@ class $$ShopsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (appUsersRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          AppUserEntry
+                          AppUserEntry,
+                          $AppUsersTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14770,17 +14867,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).appUsersRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (syncQueueRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          SyncQueueRecord
+                          SyncQueueRecord,
+                          $SyncQueueTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14791,17 +14887,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).syncQueueRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (customersRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          CustomerEntry
+                          CustomerEntry,
+                          $CustomersTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14812,17 +14907,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).customersRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (customerPhotoExceptionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          CustomerPhotoExceptionEntry
+                          CustomerPhotoExceptionEntry,
+                          $CustomerPhotoExceptionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14833,34 +14927,32 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).customerPhotoExceptionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (loansRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanEntry
+                          LoanEntry,
+                          $LoansTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
                               ._loansRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$ShopsTableReferences(db, table, p0).loansRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (collateralItemsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          CollateralItemEntry
+                          CollateralItemEntry,
+                          $CollateralItemsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14871,17 +14963,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).collateralItemsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (collateralPhotoExceptionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          CollateralPhotoExceptionEntry
+                          CollateralPhotoExceptionEntry,
+                          $CollateralPhotoExceptionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14892,17 +14983,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).collateralPhotoExceptionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (collateralCustodyEventsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          CollateralCustodyEventEntry
+                          CollateralCustodyEventEntry,
+                          $CollateralCustodyEventsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14913,17 +15003,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).collateralCustodyEventsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (collateralDiscrepanciesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          CollateralDiscrepancyEntry
+                          CollateralDiscrepancyEntry,
+                          $CollateralDiscrepanciesTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14934,17 +15023,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).collateralDiscrepanciesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (paymentsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          PaymentEntry
+                          PaymentEntry,
+                          $PaymentsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14955,17 +15043,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).paymentsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (loanCorrectionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanCorrectionEntry
+                          LoanCorrectionEntry,
+                          $LoanCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14976,17 +15063,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).loanCorrectionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (loanLedgerEntriesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanLedgerEntryEntry
+                          LoanLedgerEntryEntry,
+                          $LoanLedgerEntriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -14997,17 +15083,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).loanLedgerEntriesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (dueDateExtensionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          DueDateExtensionEntry
+                          DueDateExtensionEntry,
+                          $DueDateExtensionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -15018,17 +15103,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).dueDateExtensionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (customerFollowUpsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          CustomerFollowUpEntry
+                          CustomerFollowUpEntry,
+                          $CustomerFollowUpsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -15039,17 +15123,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).customerFollowUpsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (loanResolutionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanResolutionEntry
+                          LoanResolutionEntry,
+                          $LoanResolutionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -15060,17 +15143,16 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).loanResolutionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                       if (loanAdministrativeClosuresRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanAdministrativeClosureEntry
+                          LoanAdministrativeClosureEntry,
+                          $LoanAdministrativeClosuresTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
@@ -15081,10 +15163,8 @@ class $$ShopsTableTableManager
                                 table,
                                 p0,
                               ).loanAdministrativeClosuresRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.shopId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
                     ];
@@ -15130,6 +15210,8 @@ typedef $$AppUsersTableCreateCompanionBuilder = AppUsersCompanion Function({
   required String id,
   required String shopId,
   required String username,
+  Value<String?> email,
+  Value<String?> phone,
   required String fullName,
   required String role,
   Value<bool> isActive,
@@ -15144,6 +15226,8 @@ typedef $$AppUsersTableUpdateCompanionBuilder = AppUsersCompanion Function({
   Value<String> id,
   Value<String> shopId,
   Value<String> username,
+  Value<String?> email,
+  Value<String?> phone,
   Value<String> fullName,
   Value<String> role,
   Value<bool> isActive,
@@ -15586,6 +15670,16 @@ class $$AppUsersTableFilterComposer
 
   ColumnFilters<String> get username => $composableBuilder(
     column: $table.username,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16083,6 +16177,16 @@ class $$AppUsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get fullName => $composableBuilder(
     column: $table.fullName,
     builder: (column) => ColumnOrderings(column),
@@ -16161,6 +16265,12 @@ class $$AppUsersTableAnnotationComposer
 
   GeneratedColumn<String> get username =>
       $composableBuilder(column: $table.username, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
 
   GeneratedColumn<String> get fullName =>
       $composableBuilder(column: $table.fullName, builder: (column) => column);
@@ -16686,6 +16796,8 @@ class $$AppUsersTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
                 Value<String> username = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
                 Value<String> fullName = const Value.absent(),
                 Value<String> role = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -16699,6 +16811,8 @@ class $$AppUsersTableTableManager
                 id: id,
                 shopId: shopId,
                 username: username,
+                email: email,
+                phone: phone,
                 fullName: fullName,
                 role: role,
                 isActive: isActive,
@@ -16714,6 +16828,8 @@ class $$AppUsersTableTableManager
                 required String id,
                 required String shopId,
                 required String username,
+                Value<String?> email = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
                 required String fullName,
                 required String role,
                 Value<bool> isActive = const Value.absent(),
@@ -16727,6 +16843,8 @@ class $$AppUsersTableTableManager
                 id: id,
                 shopId: shopId,
                 username: username,
+                email: email,
+                phone: phone,
                 fullName: fullName,
                 role: role,
                 isActive: isActive,
@@ -16823,10 +16941,11 @@ class $$AppUsersTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (requestedExceptions)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          CustomerPhotoExceptionEntry
+                          CustomerPhotoExceptionEntry,
+                          $CustomerPhotoExceptionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -16837,17 +16956,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).requestedExceptions,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.requestedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'requested_by_user_id',
                           typedResults: items,
                         ),
                       if (reviewedExceptions)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          CustomerPhotoExceptionEntry
+                          CustomerPhotoExceptionEntry,
+                          $CustomerPhotoExceptionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -16858,17 +16976,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).reviewedExceptions,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.reviewedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'reviewed_by_user_id',
                           typedResults: items,
                         ),
                       if (loansRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanEntry
+                          LoanEntry,
+                          $LoansTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -16879,17 +16996,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).loansRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.disbursedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'disbursed_by_user_id',
                           typedResults: items,
                         ),
                       if (requestedCollateralPhotoExceptions)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          CollateralPhotoExceptionEntry
+                          CollateralPhotoExceptionEntry,
+                          $CollateralPhotoExceptionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -16900,17 +17016,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).requestedCollateralPhotoExceptions,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.requestedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'requested_by_user_id',
                           typedResults: items,
                         ),
                       if (reviewedCollateralPhotoExceptions)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          CollateralPhotoExceptionEntry
+                          CollateralPhotoExceptionEntry,
+                          $CollateralPhotoExceptionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -16921,17 +17036,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).reviewedCollateralPhotoExceptions,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.reviewedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'reviewed_by_user_id',
                           typedResults: items,
                         ),
                       if (requestedCustodyEvents)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          CollateralCustodyEventEntry
+                          CollateralCustodyEventEntry,
+                          $CollateralCustodyEventsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -16942,17 +17056,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).requestedCustodyEvents,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.reportedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'reported_by_user_id',
                           typedResults: items,
                         ),
                       if (reportedCollateralDiscrepancies)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          CollateralDiscrepancyEntry
+                          CollateralDiscrepancyEntry,
+                          $CollateralDiscrepanciesTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -16963,17 +17076,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).reportedCollateralDiscrepancies,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.reportedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'reported_by_user_id',
                           typedResults: items,
                         ),
                       if (resolvedCollateralDiscrepancies)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          CollateralDiscrepancyEntry
+                          CollateralDiscrepancyEntry,
+                          $CollateralDiscrepanciesTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -16984,17 +17096,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).resolvedCollateralDiscrepancies,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.resolvedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'resolved_by_user_id',
                           typedResults: items,
                         ),
                       if (paymentsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          PaymentEntry
+                          PaymentEntry,
+                          $PaymentsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17005,17 +17116,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).paymentsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.recordedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'recorded_by_user_id',
                           typedResults: items,
                         ),
                       if (requestedCorrections)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanCorrectionEntry
+                          LoanCorrectionEntry,
+                          $LoanCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17026,17 +17136,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).requestedCorrections,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.requestedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'requested_by_user_id',
                           typedResults: items,
                         ),
                       if (reviewedCorrections)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanCorrectionEntry
+                          LoanCorrectionEntry,
+                          $LoanCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17047,17 +17156,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).reviewedCorrections,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.reviewedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'reviewed_by_user_id',
                           typedResults: items,
                         ),
                       if (ledgerEntriesByUser)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanLedgerEntryEntry
+                          LoanLedgerEntryEntry,
+                          $LoanLedgerEntriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17068,17 +17176,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).ledgerEntriesByUser,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.recordedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'recorded_by_user_id',
                           typedResults: items,
                         ),
                       if (dueDateExtensionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          DueDateExtensionEntry
+                          DueDateExtensionEntry,
+                          $DueDateExtensionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17089,17 +17196,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).dueDateExtensionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.grantedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'granted_by_user_id',
                           typedResults: items,
                         ),
                       if (customerFollowUpsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          CustomerFollowUpEntry
+                          CustomerFollowUpEntry,
+                          $CustomerFollowUpsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17110,17 +17216,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).customerFollowUpsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.staffId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'staff_id',
                           typedResults: items,
                         ),
                       if (loanResolutionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanResolutionEntry
+                          LoanResolutionEntry,
+                          $LoanResolutionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17131,17 +17236,16 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).loanResolutionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.resolvedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'resolved_by_user_id',
                           typedResults: items,
                         ),
                       if (loanAdministrativeClosuresRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanAdministrativeClosureEntry
+                          LoanAdministrativeClosureEntry,
+                          $LoanAdministrativeClosuresTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17152,10 +17256,8 @@ class $$AppUsersTableTableManager
                                 table,
                                 p0,
                               ).loanAdministrativeClosuresRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.closedByUserId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'closed_by_user_id',
                           typedResults: items,
                         ),
                     ];
@@ -17655,7 +17757,7 @@ typedef $$SyncQueueTableProcessedTableManager =
       PrefetchHooks Function({bool shopId})
     >;
 typedef $$CustomersTableCreateCompanionBuilder = CustomersCompanion Function({
-  required String id,
+  Value<int> id,
   required String shopId,
   required String fullName,
   required String nic,
@@ -17665,10 +17767,9 @@ typedef $$CustomersTableCreateCompanionBuilder = CustomersCompanion Function({
   Value<String?> photoHash,
   required DateTime createdAt,
   required DateTime updatedAt,
-  Value<int> rowid,
 });
 typedef $$CustomersTableUpdateCompanionBuilder = CustomersCompanion Function({
-  Value<String> id,
+  Value<int> id,
   Value<String> shopId,
   Value<String> fullName,
   Value<String> nic,
@@ -17678,7 +17779,6 @@ typedef $$CustomersTableUpdateCompanionBuilder = CustomersCompanion Function({
   Value<String?> photoHash,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
-  Value<int> rowid,
 });
 
 final class $$CustomersTableReferences
@@ -17713,7 +17813,7 @@ final class $$CustomersTableReferences
     final manager = $$LoansTableTableManager(
       $_db,
       $_db.loans,
-    ).filter((f) => f.customerId.id.sqlEquals($_itemColumn<String>('id')!));
+    ).filter((f) => f.customerId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_loansRefsTable($_db));
     return ProcessedTableManager(
@@ -17731,7 +17831,7 @@ final class $$CustomersTableReferences
     final manager = $$CollateralItemsTableTableManager(
       $_db,
       $_db.collateralItems,
-    ).filter((f) => f.customerId.id.sqlEquals($_itemColumn<String>('id')!));
+    ).filter((f) => f.customerId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _collateralItemsRefsTable($_db),
@@ -17755,7 +17855,7 @@ final class $$CustomersTableReferences
     final manager = $$CustomerFollowUpsTableTableManager(
       $_db,
       $_db.customerFollowUps,
-    ).filter((f) => f.customerId.id.sqlEquals($_itemColumn<String>('id')!));
+    ).filter((f) => f.customerId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _customerFollowUpsRefsTable($_db),
@@ -17775,7 +17875,7 @@ class $$CustomersTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
+  ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -17928,7 +18028,7 @@ class $$CustomersTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
+  ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -18006,7 +18106,7 @@ class $$CustomersTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
+  GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get fullName =>
@@ -18166,7 +18266,7 @@ class $$CustomersTableTableManager
               $$CustomersTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<String> id = const Value.absent(),
+                Value<int> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
                 Value<String> fullName = const Value.absent(),
                 Value<String> nic = const Value.absent(),
@@ -18176,7 +18276,6 @@ class $$CustomersTableTableManager
                 Value<String?> photoHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
               }) => CustomersCompanion(
                 id: id,
                 shopId: shopId,
@@ -18188,11 +18287,10 @@ class $$CustomersTableTableManager
                 photoHash: photoHash,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
-                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
+                Value<int> id = const Value.absent(),
                 required String shopId,
                 required String fullName,
                 required String nic,
@@ -18202,7 +18300,6 @@ class $$CustomersTableTableManager
                 Value<String?> photoHash = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
-                Value<int> rowid = const Value.absent(),
               }) => CustomersCompanion.insert(
                 id: id,
                 shopId: shopId,
@@ -18214,7 +18311,6 @@ class $$CustomersTableTableManager
                 photoHash: photoHash,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
-                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -18271,10 +18367,11 @@ class $$CustomersTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (loansRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           CustomerEntry,
                           $CustomersTable,
-                          LoanEntry
+                          LoanEntry,
+                          $LoansTable
                         >(
                           currentTable: table,
                           referencedTable: $$CustomersTableReferences
@@ -18285,17 +18382,16 @@ class $$CustomersTableTableManager
                                 table,
                                 p0,
                               ).loansRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.customerId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'customer_id',
                           typedResults: items,
                         ),
                       if (collateralItemsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           CustomerEntry,
                           $CustomersTable,
-                          CollateralItemEntry
+                          CollateralItemEntry,
+                          $CollateralItemsTable
                         >(
                           currentTable: table,
                           referencedTable: $$CustomersTableReferences
@@ -18306,17 +18402,16 @@ class $$CustomersTableTableManager
                                 table,
                                 p0,
                               ).collateralItemsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.customerId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'customer_id',
                           typedResults: items,
                         ),
                       if (customerFollowUpsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           CustomerEntry,
                           $CustomersTable,
-                          CustomerFollowUpEntry
+                          CustomerFollowUpEntry,
+                          $CustomerFollowUpsTable
                         >(
                           currentTable: table,
                           referencedTable: $$CustomersTableReferences
@@ -18327,10 +18422,8 @@ class $$CustomersTableTableManager
                                 table,
                                 p0,
                               ).customerFollowUpsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.customerId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'customer_id',
                           typedResults: items,
                         ),
                     ];
@@ -19038,7 +19131,7 @@ typedef $$CustomerPhotoExceptionsTableProcessedTableManager =
 typedef $$LoansTableCreateCompanionBuilder = LoansCompanion Function({
   required String id,
   required String shopId,
-  required String customerId,
+  required int customerId,
   required int principalCents,
   required int balanceCents,
   Value<String> status,
@@ -19059,7 +19152,7 @@ typedef $$LoansTableCreateCompanionBuilder = LoansCompanion Function({
 typedef $$LoansTableUpdateCompanionBuilder = LoansCompanion Function({
   Value<String> id,
   Value<String> shopId,
-  Value<String> customerId,
+  Value<int> customerId,
   Value<int> principalCents,
   Value<int> balanceCents,
   Value<String> status,
@@ -19103,7 +19196,7 @@ final class $$LoansTableReferences
       db.customers.createAlias('loans__customer_id__customers__id');
 
   $$CustomersTableProcessedTableManager get customerId {
-    final $_column = $_itemColumn<String>('customer_id')!;
+    final $_column = $_itemColumn<int>('customer_id')!;
 
     final manager = $$CustomersTableTableManager(
       $_db,
@@ -20211,7 +20304,7 @@ class $$LoansTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> customerId = const Value.absent(),
+                Value<int> customerId = const Value.absent(),
                 Value<int> principalCents = const Value.absent(),
                 Value<int> balanceCents = const Value.absent(),
                 Value<String> status = const Value.absent(),
@@ -20253,7 +20346,7 @@ class $$LoansTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String customerId,
+                required int customerId,
                 required int principalCents,
                 required int balanceCents,
                 Value<String> status = const Value.absent(),
@@ -20381,10 +20474,11 @@ class $$LoansTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (collateralItemsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanEntry,
                           $LoansTable,
-                          CollateralItemEntry
+                          CollateralItemEntry,
+                          $CollateralItemsTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoansTableReferences
@@ -20395,17 +20489,16 @@ class $$LoansTableTableManager
                                 table,
                                 p0,
                               ).collateralItemsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.loanId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'loan_id',
                           typedResults: items,
                         ),
                       if (paymentsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanEntry,
                           $LoansTable,
-                          PaymentEntry
+                          PaymentEntry,
+                          $PaymentsTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoansTableReferences
@@ -20416,17 +20509,16 @@ class $$LoansTableTableManager
                                 table,
                                 p0,
                               ).paymentsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.loanId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'loan_id',
                           typedResults: items,
                         ),
                       if (loanCorrectionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanEntry,
                           $LoansTable,
-                          LoanCorrectionEntry
+                          LoanCorrectionEntry,
+                          $LoanCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoansTableReferences
@@ -20437,17 +20529,16 @@ class $$LoansTableTableManager
                                 table,
                                 p0,
                               ).loanCorrectionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.loanId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'loan_id',
                           typedResults: items,
                         ),
                       if (loanLedgerEntriesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanEntry,
                           $LoansTable,
-                          LoanLedgerEntryEntry
+                          LoanLedgerEntryEntry,
+                          $LoanLedgerEntriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoansTableReferences
@@ -20458,17 +20549,16 @@ class $$LoansTableTableManager
                                 table,
                                 p0,
                               ).loanLedgerEntriesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.loanId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'loan_id',
                           typedResults: items,
                         ),
                       if (dueDateExtensionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanEntry,
                           $LoansTable,
-                          DueDateExtensionEntry
+                          DueDateExtensionEntry,
+                          $DueDateExtensionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoansTableReferences
@@ -20479,17 +20569,16 @@ class $$LoansTableTableManager
                                 table,
                                 p0,
                               ).dueDateExtensionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.loanId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'loan_id',
                           typedResults: items,
                         ),
                       if (customerFollowUpsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanEntry,
                           $LoansTable,
-                          CustomerFollowUpEntry
+                          CustomerFollowUpEntry,
+                          $CustomerFollowUpsTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoansTableReferences
@@ -20500,17 +20589,16 @@ class $$LoansTableTableManager
                                 table,
                                 p0,
                               ).customerFollowUpsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.loanId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'loan_id',
                           typedResults: items,
                         ),
                       if (loanResolutionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanEntry,
                           $LoansTable,
-                          LoanResolutionEntry
+                          LoanResolutionEntry,
+                          $LoanResolutionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoansTableReferences
@@ -20521,17 +20609,16 @@ class $$LoansTableTableManager
                                 table,
                                 p0,
                               ).loanResolutionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.loanId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'loan_id',
                           typedResults: items,
                         ),
                       if (loanAdministrativeClosuresRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanEntry,
                           $LoansTable,
-                          LoanAdministrativeClosureEntry
+                          LoanAdministrativeClosureEntry,
+                          $LoanAdministrativeClosuresTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoansTableReferences
@@ -20542,10 +20629,8 @@ class $$LoansTableTableManager
                                 table,
                                 p0,
                               ).loanAdministrativeClosuresRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.loanId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'loan_id',
                           typedResults: items,
                         ),
                     ];
@@ -20586,7 +20671,7 @@ typedef $$CollateralItemsTableCreateCompanionBuilder =
     CollateralItemsCompanion Function({
       required String id,
       required String shopId,
-      required String customerId,
+      required int customerId,
       Value<String?> loanId,
       required String itemReferenceId,
       required String category,
@@ -20605,7 +20690,7 @@ typedef $$CollateralItemsTableUpdateCompanionBuilder =
     CollateralItemsCompanion Function({
       Value<String> id,
       Value<String> shopId,
-      Value<String> customerId,
+      Value<int> customerId,
       Value<String?> loanId,
       Value<String> itemReferenceId,
       Value<String> category,
@@ -20655,7 +20740,7 @@ final class $$CollateralItemsTableReferences
       db.customers.createAlias('collateral_items__customer_id__customers__id');
 
   $$CustomersTableProcessedTableManager get customerId {
-    final $_column = $_itemColumn<String>('customer_id')!;
+    final $_column = $_itemColumn<int>('customer_id')!;
 
     final manager = $$CustomersTableTableManager(
       $_db,
@@ -21380,7 +21465,7 @@ class $$CollateralItemsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> customerId = const Value.absent(),
+                Value<int> customerId = const Value.absent(),
                 Value<String?> loanId = const Value.absent(),
                 Value<String> itemReferenceId = const Value.absent(),
                 Value<String> category = const Value.absent(),
@@ -21416,7 +21501,7 @@ class $$CollateralItemsTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String customerId,
+                required int customerId,
                 Value<String?> loanId = const Value.absent(),
                 required String itemReferenceId,
                 required String category,
@@ -21530,10 +21615,11 @@ class $$CollateralItemsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (collateralPhotoExceptionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           CollateralItemEntry,
                           $CollateralItemsTable,
-                          CollateralPhotoExceptionEntry
+                          CollateralPhotoExceptionEntry,
+                          $CollateralPhotoExceptionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$CollateralItemsTableReferences
@@ -21544,17 +21630,16 @@ class $$CollateralItemsTableTableManager
                                 table,
                                 p0,
                               ).collateralPhotoExceptionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.collateralItemId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'collateral_item_id',
                           typedResults: items,
                         ),
                       if (collateralCustodyEventsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           CollateralItemEntry,
                           $CollateralItemsTable,
-                          CollateralCustodyEventEntry
+                          CollateralCustodyEventEntry,
+                          $CollateralCustodyEventsTable
                         >(
                           currentTable: table,
                           referencedTable: $$CollateralItemsTableReferences
@@ -21565,17 +21650,16 @@ class $$CollateralItemsTableTableManager
                                 table,
                                 p0,
                               ).collateralCustodyEventsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.collateralItemId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'collateral_item_id',
                           typedResults: items,
                         ),
                       if (collateralDiscrepanciesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           CollateralItemEntry,
                           $CollateralItemsTable,
-                          CollateralDiscrepancyEntry
+                          CollateralDiscrepancyEntry,
+                          $CollateralDiscrepanciesTable
                         >(
                           currentTable: table,
                           referencedTable: $$CollateralItemsTableReferences
@@ -21586,10 +21670,8 @@ class $$CollateralItemsTableTableManager
                                 table,
                                 p0,
                               ).collateralDiscrepanciesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.collateralItemId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'collateral_item_id',
                           typedResults: items,
                         ),
                     ];
@@ -23712,7 +23794,7 @@ typedef $$PaymentsTableCreateCompanionBuilder = PaymentsCompanion Function({
   required String paymentType,
   required DateTime recordedAt,
   required String recordedByUserId,
-  required String customerId,
+  required int customerId,
   required String customerName,
   required String customerNic,
   required String shopName,
@@ -23734,7 +23816,7 @@ typedef $$PaymentsTableUpdateCompanionBuilder = PaymentsCompanion Function({
   Value<String> paymentType,
   Value<DateTime> recordedAt,
   Value<String> recordedByUserId,
-  Value<String> customerId,
+  Value<int> customerId,
   Value<String> customerName,
   Value<String> customerNic,
   Value<String> shopName,
@@ -23893,7 +23975,7 @@ class $$PaymentsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get customerId => $composableBuilder(
+  ColumnFilters<int> get customerId => $composableBuilder(
     column: $table.customerId,
     builder: (column) => ColumnFilters(column),
   );
@@ -24102,7 +24184,7 @@ class $$PaymentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get customerId => $composableBuilder(
+  ColumnOrderings<int> get customerId => $composableBuilder(
     column: $table.customerId,
     builder: (column) => ColumnOrderings(column),
   );
@@ -24259,7 +24341,7 @@ class $$PaymentsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get customerId => $composableBuilder(
+  GeneratedColumn<int> get customerId => $composableBuilder(
     column: $table.customerId,
     builder: (column) => column,
   );
@@ -24463,7 +24545,7 @@ class $$PaymentsTableTableManager
                 Value<String> paymentType = const Value.absent(),
                 Value<DateTime> recordedAt = const Value.absent(),
                 Value<String> recordedByUserId = const Value.absent(),
-                Value<String> customerId = const Value.absent(),
+                Value<int> customerId = const Value.absent(),
                 Value<String> customerName = const Value.absent(),
                 Value<String> customerNic = const Value.absent(),
                 Value<String> shopName = const Value.absent(),
@@ -24507,7 +24589,7 @@ class $$PaymentsTableTableManager
                 required String paymentType,
                 required DateTime recordedAt,
                 required String recordedByUserId,
-                required String customerId,
+                required int customerId,
                 required String customerName,
                 required String customerNic,
                 required String shopName,
@@ -24616,10 +24698,11 @@ class $$PaymentsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (loanCorrectionsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           PaymentEntry,
                           $PaymentsTable,
-                          LoanCorrectionEntry
+                          LoanCorrectionEntry,
+                          $LoanCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$PaymentsTableReferences
@@ -24630,17 +24713,16 @@ class $$PaymentsTableTableManager
                                 table,
                                 p0,
                               ).loanCorrectionsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.originalPaymentId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'original_payment_id',
                           typedResults: items,
                         ),
                       if (loanLedgerEntriesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           PaymentEntry,
                           $PaymentsTable,
-                          LoanLedgerEntryEntry
+                          LoanLedgerEntryEntry,
+                          $LoanLedgerEntriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$PaymentsTableReferences
@@ -24651,10 +24733,8 @@ class $$PaymentsTableTableManager
                                 table,
                                 p0,
                               ).loanLedgerEntriesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.originalPaymentId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'original_payment_id',
                           typedResults: items,
                         ),
                     ];
@@ -25600,10 +25680,11 @@ class $$LoanCorrectionsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (ledgerEntriesForCorrection)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           LoanCorrectionEntry,
                           $LoanCorrectionsTable,
-                          LoanLedgerEntryEntry
+                          LoanLedgerEntryEntry,
+                          $LoanLedgerEntriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$LoanCorrectionsTableReferences
@@ -25614,10 +25695,8 @@ class $$LoanCorrectionsTableTableManager
                                 table,
                                 p0,
                               ).ledgerEntriesForCorrection,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.correctionId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'correction_id',
                           typedResults: items,
                         ),
                     ];
@@ -27066,7 +27145,7 @@ typedef $$CustomerFollowUpsTableCreateCompanionBuilder =
       required String id,
       required String shopId,
       required String loanId,
-      required String customerId,
+      required int customerId,
       required String staffId,
       required String channel,
       required String notes,
@@ -27079,7 +27158,7 @@ typedef $$CustomerFollowUpsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> shopId,
       Value<String> loanId,
-      Value<String> customerId,
+      Value<int> customerId,
       Value<String> staffId,
       Value<String> channel,
       Value<String> notes,
@@ -27139,7 +27218,7 @@ final class $$CustomerFollowUpsTableReferences
       .createAlias('customer_follow_ups__customer_id__customers__id');
 
   $$CustomersTableProcessedTableManager get customerId {
-    final $_column = $_itemColumn<String>('customer_id')!;
+    final $_column = $_itemColumn<int>('customer_id')!;
 
     final manager = $$CustomersTableTableManager(
       $_db,
@@ -27584,7 +27663,7 @@ class $$CustomerFollowUpsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
                 Value<String> loanId = const Value.absent(),
-                Value<String> customerId = const Value.absent(),
+                Value<int> customerId = const Value.absent(),
                 Value<String> staffId = const Value.absent(),
                 Value<String> channel = const Value.absent(),
                 Value<String> notes = const Value.absent(),
@@ -27608,7 +27687,7 @@ class $$CustomerFollowUpsTableTableManager
                 required String id,
                 required String shopId,
                 required String loanId,
-                required String customerId,
+                required int customerId,
                 required String staffId,
                 required String channel,
                 required String notes,

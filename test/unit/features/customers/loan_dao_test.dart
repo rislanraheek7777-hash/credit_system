@@ -40,8 +40,8 @@ void main() {
 
   const shopAlphaId = '11111111-1111-1111-1111-111111111101';
   const shopBetaId = '11111111-1111-1111-1111-111111111102';
-  const customerAlphaId = '11111111-1111-1111-1111-111111111103';
-  const customerBetaId = '11111111-1111-1111-1111-111111111104';
+  const int customerAlphaId = 11;
+  const int customerBetaId = 12;
 
   setUp(() async {
     final inMemoryExecutor = AppDatabaseConnection.openInMemoryConnection();
@@ -301,7 +301,7 @@ void main() {
     const itemId = 'collateral-item-1';
     const secondItemId = 'collateral-item-2';
     const cashierId = 'cashier-user-1';
-    const otherShopCustomerId = '11111111-1111-1111-1111-111111111105';
+    const otherShopCustomerId = 13;
 
     late CollateralDao collateralDao;
     late AppUser cashier;
@@ -390,7 +390,7 @@ void main() {
 
     Future<Loan> createAgreement({
       String idempotencyKey = 'idem-key-1',
-      String customerId = customerAlphaId,
+      int customerId = customerAlphaId,
       Money principal = const Money(500000),
       List<String> collateralItemIds = const [itemId],
       AppUser? actor,

@@ -24,8 +24,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const shopAlphaId = '11111111-1111-1111-1111-111111111701';
   const shopBetaId = '11111111-1111-1111-1111-111111111702';
-  const customerAlphaId = '11111111-1111-1111-1111-111111111703';
-  const customerBetaId = '11111111-1111-1111-1111-111111111704';
+  const customerAlphaId = 1;
+  const customerBetaId = 2;
   const managerId = '11111111-1111-1111-1111-111111111705';
   const cashierId = '11111111-1111-1111-1111-111111111706';
 
@@ -76,7 +76,7 @@ void main() {
       await db.into(db.customers).insert(CustomerEntry(
         id: customer.id,
         shopId: customer.shopId,
-        fullName: customer.id,
+        fullName: customer.id.toString(),
         nic: customer.nic,
         phone: '0771234567',
         address: '1 Main St',
@@ -128,7 +128,7 @@ void main() {
   /// Originates an agreement that is awaiting disbursement.
   Future<Loan> originate({
     required String idempotencyKey,
-    String customerId = customerAlphaId,
+    int customerId = customerAlphaId,
     String itemId = 'coll-idem-a',
     String shopId = shopAlphaId,
   }) async {

@@ -269,8 +269,8 @@ void main() {
             ..where((l) => l.id.equals('loan-v17-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(19));
-      expect(db.schemaVersion, equals(19));
+      expect(readUserVersion(file), equals(20));
+      expect(db.schemaVersion, equals(20));
     });
 
     test('preserves existing loan and correction data and creates the ledger entries table after upgrade', () async {
@@ -284,7 +284,7 @@ void main() {
             ..where((l) => l.id.equals('loan-v17-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(19));
+      expect(readUserVersion(file), equals(20));
 
       // Existing data is preserved.
       final active = await (db.select(db.loans)
@@ -367,7 +367,7 @@ void main() {
               paymentType: 'partial',
               recordedAt: DateTime.fromMillisecondsSinceEpoch(1793000000, isUtc: true),
               recordedByUserId: 'user-v17',
-              customerId: 'cust-v17',
+              customerId: 1,
               customerName: 'Bad',
               customerNic: 'Bad',
               shopName: 'Bad Shop',

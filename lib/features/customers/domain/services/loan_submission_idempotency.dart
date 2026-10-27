@@ -17,7 +17,7 @@ import 'package:uuid/uuid.dart';
 @immutable
 class LoanSubmissionFingerprint {
   /// The borrower the agreement is for.
-  final String customerId;
+  final int customerId;
 
   /// The agreed principal in integer minor units.
   final int principalCents;

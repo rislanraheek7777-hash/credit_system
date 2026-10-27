@@ -28,8 +28,7 @@ class Loans extends Table {
       text().references(Shops, #id, onDelete: KeyAction.restrict)();
 
   /// Associated customer borrower (immutable foreign key boundary).
-  TextColumn get customerId =>
-      text().references(Customers, #id, onDelete: KeyAction.restrict)();
+  IntColumn get customerId => integer().references(Customers, #id, onDelete: KeyAction.restrict)();
 
   /// Original principal in minor units (cents).
   IntColumn get principalCents => integer()();

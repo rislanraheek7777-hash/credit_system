@@ -125,8 +125,8 @@ class CollateralItem {
   /// Associated shop tenant UUID boundary.
   final String shopId;
 
-  /// Associated customer borrower UUID.
-  final String customerId;
+  /// Associated customer borrower (database-assigned integer id).
+  final int customerId;
 
   /// Optional associated loan UUID (nullable until Epic 4 enforces binding).
   final String? loanId;
@@ -300,8 +300,8 @@ class CollateralItem {
     if (shopId.trim().isEmpty) {
       throw CollateralItemValidationException('Shop ID cannot be empty');
     }
-    if (customerId.trim().isEmpty) {
-      throw CollateralItemValidationException('Customer ID cannot be empty');
+    if (customerId <= 0) {
+      throw CollateralItemValidationException('Customer ID must be a positive integer');
     }
     if (itemReferenceId.trim().isEmpty) {
       throw CollateralItemValidationException('Item reference ID cannot be empty');
@@ -334,7 +334,7 @@ class CollateralItem {
   CollateralItem copyWith({
     String? id,
     String? shopId,
-    String? customerId,
+    int? customerId,
     String? loanId,
     String? itemReferenceId,
     CollateralItemCategory? category,

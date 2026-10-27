@@ -23,7 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// boundary.
 void main() {
   const shopId = '11111111-1111-1111-1111-111111111601';
-  const customerId = '11111111-1111-1111-1111-111111111603';
+  const customerId = 1;
   const managerId = '11111111-1111-1111-1111-111111111604';
   const itemId = 'coll-due-1';
 

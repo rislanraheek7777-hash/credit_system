@@ -12,6 +12,10 @@ import 'customer_photo_compressor.dart';
 /// Request payload for registering a new customer profile.
 @immutable
 class RegisterCustomerRequest {
+  /// Pre-onboarding session identifier (e.g. a UUID generated for the
+  /// registration session). Used for the photo-exception dual binding and
+  /// photo file naming — it is NOT the customer's primary key; the database
+  /// assigns an auto-increment id on insert.
   final String id;
   final String shopId;
   final String fullName;
@@ -175,9 +179,13 @@ class CustomerRegistrationService {
         );
       }
 
-      // Construct domain Customer entity without photograph metadata
+      // Construct domain Customer entity without photograph metadata.
+      // The pre-onboarding session id ([RegisterCustomerRequest.id]) is only
+      // used for the photo-exception dual binding; the database assigns the
+      // auto-increment primary key on insert.
+      const pendingId = 0;
       final customer = Customer(
-        id: request.id,
+        id: pendingId,
         shopId: request.shopId,
         fullName: request.fullName,
         nic: request.nic,
@@ -189,13 +197,15 @@ class CustomerRegistrationService {
 
       // Persist customer record and consume exception within an atomic database transaction
       final database = db ?? customerDao.attachedDatabase;
+      var createdId = pendingId;
       await database.transaction(() async {
-        await customerDao.createCustomer(customer);
+        createdId = await customerDao.createCustomer(customer);
         if (hasSharedPhoneMatch) {
           await _recordSharedPhoneSyncEvent(
             database,
             request,
             sharedPhoneCustomers,
+            createdId,
           );
         }
         await exceptionDao!.consumeException(
@@ -206,7 +216,7 @@ class CustomerRegistrationService {
         );
       });
 
-      return customer;
+      return customer.copyWith(id: createdId);
     }
 
     // 3. Standard Camera / Photo Flow (Story 2.2)
@@ -218,8 +228,11 @@ class CustomerRegistrationService {
       bytes: compressionResult.bytes,
     );
 
+    // The pre-onboarding session id ([RegisterCustomerRequest.id]) names the
+    // stored photo file; the database assigns the customer's auto-increment
+    // primary key on insert.
     final customer = Customer(
-      id: request.id,
+      id: 0,
       shopId: request.shopId,
       fullName: request.fullName,
       nic: request.nic,
@@ -231,17 +244,19 @@ class CustomerRegistrationService {
 
     try {
       final database = db ?? customerDao.attachedDatabase;
+      var createdId = 0;
       await database.transaction(() async {
-        await customerDao.createCustomer(customer);
+        createdId = await customerDao.createCustomer(customer);
         if (hasSharedPhoneMatch) {
           await _recordSharedPhoneSyncEvent(
             database,
             request,
             sharedPhoneCustomers,
+            createdId,
           );
         }
       });
-      return customer;
+      return customer.copyWith(id: createdId);
     } catch (e) {
       await storageService.deletePhotoIfExists(relativePath);
       rethrow;
@@ -252,11 +267,18 @@ class CustomerRegistrationService {
   /// customer registration. Follows existing SyncQueue conventions:
   /// UUIDv4 idempotency key, `pending_server_ack` status, JSON payload.
   ///
+  /// `sync_queue.entity_id` is a UUID both locally (`SyncQueueEntry`
+  /// validation) and server-side (`entity_id UUID NOT NULL`), so the queue row
+  /// is keyed by the pre-onboarding session id ([RegisterCustomerRequest.id]).
+  /// The database-assigned integer customer id travels in the payload as
+  /// `new_customer_id`.
+  ///
   /// Only called when shared-phone confirmation has occurred.
   Future<void> _recordSharedPhoneSyncEvent(
     AppDatabase database,
     RegisterCustomerRequest request,
     List<Customer> existingCustomers,
+    int createdCustomerId,
   ) async {
     final now = DateTime.now().toUtc();
 
@@ -267,7 +289,7 @@ class CustomerRegistrationService {
       actionType: 'customer_created_shared_phone',
       payload: {
         'shop_id': request.shopId,
-        'new_customer_id': request.id,
+        'new_customer_id': createdCustomerId,
         'existing_customer_ids': existingCustomers.map((c) => c.id).toList(),
         'confirming_staff_id': request.confirmingStaffId,
         'shared_phone': request.phone,

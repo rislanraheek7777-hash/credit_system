@@ -18,7 +18,7 @@ void main() {
     late CollateralDao dao;
 
     const shopId = 'shop-return-1';
-    const customerId = 'cust-return-1';
+    const customerId = 1;
     const loanId = 'loan-return-1';
     const cashierId = 'user-cashier-return';
     const ownerId = 'user-owner-return';
@@ -134,7 +134,7 @@ void main() {
     Future<void> pumpScreen(
       WidgetTester tester,
       AppUser currentUser, {
-      String? filterCustomerId,
+      int? filterCustomerId,
       String? filterLoanId,
     }) async {
       await tester.pumpWidget(

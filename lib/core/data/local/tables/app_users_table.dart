@@ -18,6 +18,12 @@ class AppUsers extends Table {
   /// Username unique within the shop tenant boundary.
   TextColumn get username => text().withLength(min: 1, max: 100)();
 
+  /// Optional email address, unique within the shop tenant boundary when set.
+  TextColumn get email => text().withLength(min: 0, max: 255).nullable()();
+
+  /// Optional phone number, unique within the shop tenant boundary when set.
+  TextColumn get phone => text().withLength(min: 0, max: 50).nullable()();
+
   /// Full display name of the user.
   TextColumn get fullName => text().withLength(min: 1, max: 255)();
 

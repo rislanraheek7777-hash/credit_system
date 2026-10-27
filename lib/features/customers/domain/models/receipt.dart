@@ -65,8 +65,8 @@ class Receipt {
   /// User UUID of the staff member who recorded the payment.
   final String recordedByUserId;
 
-  /// Customer borrower identifier.
-  final String customerId;
+  /// Customer borrower identifier (database-assigned integer id).
+  final int customerId;
 
   /// Customer full name at time of payment.
   final String customerName;
@@ -131,8 +131,8 @@ class Receipt {
     if (recordedByUserId.trim().isEmpty) {
       throw ReceiptValidationException('Recorded by user ID cannot be empty');
     }
-    if (customerId.trim().isEmpty) {
-      throw ReceiptValidationException('Customer ID cannot be empty');
+    if (customerId <= 0) {
+      throw ReceiptValidationException('Customer ID must be a positive integer');
     }
     if (shopName.trim().isEmpty) {
       throw ReceiptValidationException('Shop name cannot be empty');

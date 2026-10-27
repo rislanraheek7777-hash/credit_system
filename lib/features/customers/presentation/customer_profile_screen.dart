@@ -32,7 +32,7 @@ class CustomerProfileScreen extends StatefulWidget {
   });
 
   final String shopId;
-  final String customerId;
+  final int customerId;
 
   /// The authenticated actor viewing the profile.
   final AppUser currentUser;

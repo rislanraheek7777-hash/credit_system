@@ -136,7 +136,7 @@ class LoanOriginationScreen extends StatefulWidget {
   final String shopId;
 
   /// The borrower the agreement is created for.
-  final String customerId;
+  final int customerId;
 
   /// The authenticated actor performing the origination.
   final AppUser currentUser;
@@ -464,7 +464,7 @@ class _LoanOriginationScreenState extends State<LoanOriginationScreen> {
         shopId: widget.shopId,
         actorId: widget.currentUser.id,
         actionType: DocumentGenerationServiceImpl.draftGeneratedActionType,
-        customerId: widget.customerId,
+        customerId: widget.customerId.toString(),
         loanId: _createdLoan!.id,
         isDraft: true,
       );

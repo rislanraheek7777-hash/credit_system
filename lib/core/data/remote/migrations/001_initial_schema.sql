@@ -50,16 +50,21 @@ CREATE TABLE app_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
     username VARCHAR(100) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
     full_name VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     session_version INTEGER NOT NULL DEFAULT 1 CHECK (session_version >= 1),
+    password_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_app_users_shop_username UNIQUE (shop_id, username)
 );
 
 CREATE INDEX idx_app_users_shop_id ON app_users(shop_id);
+CREATE INDEX idx_app_users_shop_email ON app_users(shop_id, email);
+CREATE INDEX idx_app_users_shop_phone ON app_users(shop_id, phone);
 
 ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_users FORCE ROW LEVEL SECURITY;

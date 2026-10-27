@@ -13,7 +13,7 @@ void main() {
     return Loan(
       id: 'loan-1',
       shopId: 'shop-1',
-      customerId: 'customer-1',
+      customerId: 1,
       principalCents: principalCents,
       balanceCents: balanceCents,
       status: status,
@@ -28,7 +28,7 @@ void main() {
       final loan = Loan(
         id: 'loan-1',
         shopId: 'shop-1',
-        customerId: 'customer-1',
+        customerId: 1,
         principalCents: 500000,
         balanceCents: 500000,
         status: LoanStatus.active,
@@ -190,7 +190,7 @@ void main() {
         () => Loan(
           id: 'loan-1',
           shopId: 'shop-1',
-          customerId: 'customer-1',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: LoanStatus.cancelled,
@@ -208,7 +208,7 @@ void main() {
         () => Loan(
           id: 'loan-1',
           shopId: 'shop-1',
-          customerId: 'customer-1',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: LoanStatus.cancelled,
@@ -226,7 +226,7 @@ void main() {
         () => Loan(
           id: 'loan-1',
           shopId: 'shop-1',
-          customerId: 'customer-1',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: LoanStatus.active,
@@ -244,7 +244,7 @@ void main() {
         () => Loan(
           id: 'loan-1',
           shopId: 'shop-1',
-          customerId: 'customer-1',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: LoanStatus.cancelled,
@@ -263,7 +263,7 @@ void main() {
         () => Loan(
           id: 'loan-1',
           shopId: 'shop-1',
-          customerId: 'customer-1',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: LoanStatus.cancelled,
@@ -283,7 +283,7 @@ void main() {
         () => Loan(
           id: 'loan-1',
           shopId: 'shop-1',
-          customerId: 'customer-1',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: LoanStatus.active,
@@ -300,7 +300,7 @@ void main() {
         () => Loan(
           id: 'loan-1',
           shopId: 'shop-1',
-          customerId: 'customer-1',
+          customerId: 1,
           principalCents: 500000,
           balanceCents: 0,
           status: LoanStatus.settled,

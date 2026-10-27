@@ -23,7 +23,7 @@ void main() {
       const ownerId = 'owner-1';
       const staffId = 'staff-1';
       const itemId = 'coll-1';
-      const customerId = 'cust-1';
+      const customerId = 1;
 
       final now = DateTime.now().toUtc();
       await db.into(db.shops).insert(
@@ -203,7 +203,7 @@ void main() {
       const ownerId = 'owner-list';
       const staffId = 'staff-list';
       const itemId = 'coll-list-1';
-      const customerId = 'cust-list-1';
+      const customerId = 1;
 
       final now = DateTime.now().toUtc();
       await db.into(db.shops).insert(
@@ -322,7 +322,7 @@ void main() {
       const ownerId = 'owner-approve';
       const staffId = 'staff-approve';
       const itemId = 'coll-approve-1';
-      const customerId = 'cust-approve-1';
+      const customerId = 1;
 
       final now = DateTime.now().toUtc();
       await db.into(db.shops).insert(
@@ -453,7 +453,7 @@ void main() {
       const ownerId = 'owner-reject';
       const staffId = 'staff-reject';
       const itemId = 'coll-reject-1';
-      const customerId = 'cust-reject-1';
+      const customerId = 1;
 
       final now = DateTime.now().toUtc();
       await db.into(db.shops).insert(
@@ -586,7 +586,7 @@ void main() {
       const ownerId = 'owner-reject-reason';
       const staffId = 'staff-reject-reason';
       const itemId = 'coll-reject-reason-1';
-      const customerId = 'cust-reject-reason-1';
+      const customerId = 1;
 
       final now = DateTime.now().toUtc();
       await db.into(db.shops).insert(
@@ -715,7 +715,7 @@ void main() {
       const ownerId = 'owner-dup';
       const staffId = 'staff-dup';
       const itemId = 'coll-dup-1';
-      const customerId = 'cust-dup-1';
+      const customerId = 1;
 
       final now = DateTime.now().toUtc();
       await db.into(db.shops).insert(

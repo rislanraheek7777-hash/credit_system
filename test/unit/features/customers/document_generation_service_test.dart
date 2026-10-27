@@ -21,7 +21,7 @@ final ShopTimeZone shopZone = ShopTimeZone.defaultTimeZone();
 
 const String shopId = '11111111-1111-1111-1111-111111111101';
 const String otherShopId = '11111111-1111-1111-1111-111111111102';
-const String customerId = '22222222-2222-2222-2222-222222222201';
+const int customerId = 1;
 const String loanId = '33333333-3333-3333-3333-333333333301';
 const String otherLoanId = '33333333-3333-3333-3333-333333333302';
 const String snapshotId = '44444444-4444-4444-4444-444444444401';
@@ -67,7 +67,7 @@ final AppUser deactivatedActor = AppUser(
 );
 
 Customer buildCustomer({
-  String id = customerId,
+  int id = customerId,
   String shop = shopId,
   String nic = '851234567V',
   String phone = '0771234567',
@@ -89,7 +89,7 @@ Customer buildCustomer({
 Loan buildPendingLoan({
   String id = loanId,
   String shop = shopId,
-  String customer = customerId,
+  int customer = customerId,
   int principalCents = 150050,
   int? termPresetDays = 30,
   DateTime? customDueDate,
@@ -114,7 +114,7 @@ Loan buildPendingLoan({
 Loan buildDisbursedLoan({
   String id = loanId,
   String shop = shopId,
-  String customer = customerId,
+  int customer = customerId,
   int principalCents = 150050,
   DateTime? disbursedAt,
   DateTime? dueDate,
@@ -615,7 +615,7 @@ void main() {
           shopPhone: '+94112223344',
           shopTaxId: 'TAX-1',
           disbursingStaffId: 'staff-7',
-          customer: buildCustomer(id: '99999999-9999-9999-9999-999999999999'),
+          customer: buildCustomer(id: 999),
         ),
         throwsArgumentError,
       );
@@ -1063,7 +1063,7 @@ void main() {
             shopId: shopId,
             actorId: 'user-1',
             actionType: DocumentGenerationServiceImpl.draftGeneratedActionType,
-            customerId: customerId,
+          customerId: customerId.toString(),
             loanId: loanId,
             isDraft: true,
           );
@@ -1084,7 +1084,7 @@ void main() {
           shopId: otherShopId,
           actorId: 'user-1',
           actionType: DocumentGenerationServiceImpl.draftGeneratedActionType,
-          customerId: customerId,
+          customerId: customerId.toString(),
           loanId: loanId,
           isDraft: true,
         ),
@@ -1104,7 +1104,7 @@ void main() {
           shopId: shopId,
           actorId: 'user-1',
           actionType: '   ',
-          customerId: customerId,
+          customerId: customerId.toString(),
           loanId: loanId,
           isDraft: false,
         );

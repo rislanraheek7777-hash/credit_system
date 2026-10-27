@@ -22,7 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// disbursement.
 void main() {
   const shopId = '11111111-1111-1111-1111-111111111801';
-  const customerId = '11111111-1111-1111-1111-111111111803';
+  const customerId = 1;
   const managerId = '11111111-1111-1111-1111-111111111804';
   const itemId = 'coll-ui-idem-1';
 

@@ -20,6 +20,8 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
       id: entry.id,
       shopId: entry.shopId,
       username: entry.username,
+      email: entry.email,
+      phone: entry.phone,
       fullName: entry.fullName,
       role: AppRole.fromKey(entry.role),
       isActive: entry.isActive,
@@ -37,6 +39,8 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
       id: Value(user.id),
       shopId: Value(user.shopId),
       username: Value(user.username),
+      email: Value(user.email),
+      phone: Value(user.phone),
       fullName: Value(user.fullName),
       role: Value(user.role.key),
       isActive: Value(user.isActive),
@@ -55,12 +59,35 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
     return entry != null ? _toDomain(entry) : null;
   }
 
-  /// Retrieves a user by their tenant [shopId] and [username], returning null if not found.
-  Future<AppUser?> getUserByUsername(String shopId, String username) async {
+  /// Retrieves a user by their tenant [shopId] and login identifier
+  /// (username, email, or phone number), returning null if not found.
+  Future<AppUser?> getUserByLoginIdentifier(
+      String shopId, String identifier) async {
     final query = select(appUsers)
-      ..where((u) => u.shopId.equals(shopId) & u.username.equals(username));
+      ..where((u) =>
+          u.shopId.equals(shopId) &
+          (u.username.equals(identifier) |
+              u.email.equals(identifier) |
+              u.phone.equals(identifier)));
     final entry = await query.getSingleOrNull();
     return entry != null ? _toDomain(entry) : null;
+  }
+
+  /// Retrieves a user by login identifier (username, email, or phone)
+  /// across all shops, returning null if not found.
+  Future<AppUser?> getUserByLoginIdentifierGlobal(String identifier) async {
+    final query = select(appUsers)
+      ..where((u) =>
+          u.username.equals(identifier) |
+          u.email.equals(identifier) |
+          u.phone.equals(identifier));
+    final entry = await query.getSingleOrNull();
+    return entry != null ? _toDomain(entry) : null;
+  }
+
+  /// Backwards-compatible alias for [getUserByLoginIdentifier].
+  Future<AppUser?> getUserByUsername(String shopId, String username) async {
+    return getUserByLoginIdentifier(shopId, username);
   }
 
   /// Retrieves all users belonging strictly to the specified [shopId].
