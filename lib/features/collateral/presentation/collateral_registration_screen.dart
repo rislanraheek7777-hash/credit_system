@@ -56,7 +56,7 @@ class _CollateralRegistrationScreenState
   final _itemReferenceController = TextEditingController();
   final _shopIdController = TextEditingController();
   final _customerIdController = TextEditingController();
-  final _loanIdController = TextEditingController();
+  final _creditIdController = TextEditingController();
   final _categoryController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _conditionController = TextEditingController();
@@ -300,8 +300,6 @@ class _CollateralRegistrationScreenState
         _statusMessage =
             'Photo exception requested and pending Shop Owner approval';
       });
-
-      await db.close();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -341,8 +339,6 @@ class _CollateralRegistrationScreenState
         _isLoading = false;
         _statusMessage = 'Photo exception approved by Shop Owner';
       });
-
-      await db.close();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -406,9 +402,9 @@ class _CollateralRegistrationScreenState
               ),
         shopId: _shopIdController.text.trim(),
         customerId: customerId,
-        loanId: _loanIdController.text.trim().isEmpty
+        creditId: _creditIdController.text.trim().isEmpty
             ? null
-            : _loanIdController.text.trim(),
+            : _creditIdController.text.trim(),
         itemReferenceId: _itemReferenceController.text.trim(),
         category: category,
         description: _descriptionController.text.trim(),
@@ -443,8 +439,6 @@ class _CollateralRegistrationScreenState
       _exceptionReasonController.clear();
       _pendingException = null;
       _exceptionConsumed = false;
-
-      await db.close();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -458,7 +452,7 @@ class _CollateralRegistrationScreenState
     _itemReferenceController.dispose();
     _shopIdController.dispose();
     _customerIdController.dispose();
-    _loanIdController.dispose();
+    _creditIdController.dispose();
     _categoryController.dispose();
     _descriptionController.dispose();
     _conditionController.dispose();
@@ -557,10 +551,10 @@ class _CollateralRegistrationScreenState
                 const SizedBox(height: 12),
 
                 TextFormField(
-                  controller: _loanIdController,
+                  controller: _creditIdController,
                   decoration: const InputDecoration(
-                    labelText: 'Loan ID (optional)',
-                    hintText: 'UUIDv4 - leave blank if no loan yet',
+                    labelText: 'Credit ID (optional)',
+                    hintText: 'UUIDv4 - leave blank if no credit yet',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -890,8 +884,8 @@ class _CollateralRegistrationScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Customer: ${item.customerId}'),
-                          if (item.loanId != null)
-                            Text('Loan: ${item.loanId}'),
+                          if (item.creditId != null)
+                            Text('Credit: ${item.creditId}'),
                           Text(
                               'Weight: ${CollateralItem.formatWeightMilligrams(item.weightMilligrams)}'),
                           Text(
@@ -978,9 +972,8 @@ class _CollateralRegistrationScreenState
         // Registration-screen custody transitions are staff-initiated; the
         // state machine still rejects invalid transitions (e.g. a direct
         // inCustody → returned).
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
-      await db.close();
 
       setState(() {
         final updated = _registeredItems.last.transitionCustody(newStatus);
@@ -995,3 +988,4 @@ class _CollateralRegistrationScreenState
     }
   }
 }
+

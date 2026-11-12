@@ -1,10 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:credit_system/core/data/local/app_database.dart';
+import 'package:credit_system/core/data/local/connection/database_connection.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/customers/presentation/customer_search_screen.dart';
 
 void main() {
+  late AppDatabase db;
+
+  setUp(() async {
+    db = AppDatabase.forTesting(AppDatabaseConnection.openInMemoryConnection());
+    final now = DateTime.now().toUtc();
+    await db.into(db.shops).insert(
+      ShopEntry(
+        id: 'shop-123',
+        name: 'Test Shop',
+        currencyCode: 'LKR',
+        timezone: 'Asia/Colombo',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+  });
+
+  tearDown(() async {
+    await db.close();
+  });
+
   testWidgets('CustomerSearchScreen renders search form', (
     WidgetTester tester,
   ) async {
@@ -20,6 +43,7 @@ void main() {
             role: AppRole.manager,
             isActive: true,
           ),
+          database: db,
         ),
       ),
     );
@@ -45,6 +69,7 @@ void main() {
             role: AppRole.manager,
             isActive: true,
           ),
+          database: db,
         ),
       ),
     );
@@ -57,3 +82,4 @@ void main() {
     );
   });
 }
+

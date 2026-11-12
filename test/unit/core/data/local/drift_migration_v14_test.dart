@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'package:credit_system/core/data/local/app_database.dart';
 
-/// Regression coverage for the schema version 13 -> 14 rebuild of the `loans`
+/// Regression coverage for the schema version 13 -> 14 rebuild of the `credits`
 /// table (Story 4.3, Phase 2 / U-5).
 ///
 /// The rebuild adds the six approved Tier 1 cross-field CHECK constraints that
@@ -64,7 +64,7 @@ void main() {
     return AppDatabase.forTesting(executor);
   }
 
-  group('schema version 13 -> 14 rebuild of the loans table', () {
+  group('schema version 13 -> 14 rebuild of the credits table', () {
     test('a genuine version 13 database stays at version 13 when it is '
         'reopened without an upgrade', () async {
       seedV13Database(dbFile);
@@ -80,8 +80,8 @@ void main() {
       // The version 13 data is readable as it is.
       final row = await db
           .customSelect(
-            'SELECT status, workflow_status, term_preset_days FROM loans WHERE id = ?',
-            variables: [Variable<String>('loan-v13-pending')],
+            'SELECT status, workflow_status, term_preset_days FROM credits WHERE id = ?',
+            variables: [Variable<String>('credit-v13-pending')],
           )
           .getSingle();
       expect(row.read<String>('status'), equals('active'));
@@ -98,12 +98,12 @@ void main() {
       // on-disk schema still has TEXT customer ids.
       final nowEpoch = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
       await db.customStatement('''
-        INSERT INTO loans (
+        INSERT INTO credits (
           id, shop_id, customer_id, principal_cents, balance_cents, status,
           workflow_status, cancelled_at, cancellation_reason, due_date,
           created_at
         ) VALUES (
-          'loan-v13-tier1-violation', 'shop-v13', 'cust-v13', 500000, 500000,
+          'credit-v13-tier1-violation', 'shop-v13', 'cust-v13', 500000, 500000,
           'cancelled', 'disbursed', $nowEpoch,
           'Customer abandoned the agreement', $nowEpoch, $nowEpoch
         );
@@ -124,16 +124,16 @@ void main() {
 
       // Drift opens the database lazily, so the migration only runs once the
       // first query is issued.
-      await (db.select(db.loans)..where((l) => l.id.equals('loan-v13-pending')))
+      await (db.select(db.credits)..where((l) => l.id.equals('credit-v13-pending')))
           .getSingle();
 
-      expect(readUserVersion(dbFile), equals(20),
+      expect(readUserVersion(dbFile), equals(22),
           reason: 'Opening a version 13 database must migrate it to 20.');
-      expect(db.schemaVersion, equals(20));
+      expect(db.schemaVersion, equals(22));
 
       // The version 13 agreements survive the rebuild with their values.
-      final pending = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v13-pending')))
+      final pending = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v13-pending')))
           .getSingle();
       expect(pending.status, equals('active'));
       expect(pending.workflowStatus, equals('pending_disbursement'));
@@ -152,8 +152,8 @@ void main() {
       final db = openWithDeviceSemantics(dbFile);
       addTearDown(() async => db.close());
 
-      final disbursed = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v13-disbursed')))
+      final disbursed = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v13-disbursed')))
           .getSingle();
       expect(disbursed.workflowStatus, equals('disbursed'));
       expect(disbursed.termPresetDays, equals(60));
@@ -162,8 +162,8 @@ void main() {
 
       // A legacy version 12 backfilled record (disbursed, but with no
       // disbursement record) stays valid and unchanged.
-      final legacy = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v13-legacy')))
+      final legacy = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v13-legacy')))
           .getSingle();
       expect(legacy.workflowStatus, equals('disbursed'));
       expect(legacy.disbursedAt, isNull);
@@ -174,30 +174,30 @@ void main() {
       seedV13Database(dbFile);
 
       final first = openWithDeviceSemantics(dbFile);
-      await (first.select(first.loans)
-            ..where((l) => l.id.equals('loan-v13-pending')))
+      await (first.select(first.credits)
+            ..where((l) => l.id.equals('credit-v13-pending')))
           .getSingle();
       await first.close();
 
       // The migration must have recorded the new schema version on disk.
-      expect(readUserVersion(dbFile), equals(20));
+      expect(readUserVersion(dbFile), equals(22));
 
       // Second launch on the same file: the migration must not run again and
       // the database must open cleanly.
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(20));
-      final loan = await (second.select(second.loans)
-            ..where((l) => l.id.equals('loan-v13-pending')))
+      expect(second.schemaVersion, equals(22));
+      final credit = await (second.select(second.credits)
+            ..where((l) => l.id.equals('credit-v13-pending')))
           .getSingle();
-      expect(loan.balanceCents, equals(500000));
-      expect(loan.termPresetDays, equals(30));
+      expect(credit.balanceCents, equals(500000));
+      expect(credit.termPresetDays, equals(30));
 
       final item = await (second.select(second.collateralItems)
             ..where((c) => c.id.equals('coll-v13-a')))
           .getSingle();
-      expect(item.loanId, equals('loan-v13-pending'),
+      expect(item.creditId, equals('credit-v13-pending'),
           reason: 'The child reference must survive a full close/reopen cycle.');
     });
 
@@ -206,19 +206,19 @@ void main() {
 
       final first = openWithDeviceSemantics(dbFile);
       // Force the database open so the migration runs.
-      expect(await first.select(first.loans).get(), hasLength(3));
+      expect(await first.select(first.credits).get(), hasLength(3));
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(20),
+      expect(readUserVersion(dbFile), equals(22),
           reason: 'Drift must record the new schema version after the '
               'migration committed.');
 
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(await second.select(second.loans).get(), hasLength(3));
+      expect(await second.select(second.credits).get(), hasLength(3));
       expect(await second.select(second.collateralItems).get(), hasLength(3));
-      expect(readUserVersion(dbFile), equals(20));
+      expect(readUserVersion(dbFile), equals(22));
     });
 
     test('keeps every collateral item bound to its agreement', () async {
@@ -230,15 +230,15 @@ void main() {
       final items = await db.select(db.collateralItems).get();
       expect(items, hasLength(3));
 
-      final bound = items.where((i) => i.loanId != null).toList();
+      final bound = items.where((i) => i.creditId != null).toList();
       expect(bound, hasLength(2),
           reason: 'Both pledged items must still reference their agreement.');
       expect(
-        bound.map((i) => i.loanId),
-        containsAll(<String>['loan-v13-pending', 'loan-v13-disbursed']),
+        bound.map((i) => i.creditId),
+        containsAll(<String>['credit-v13-pending', 'credit-v13-disbursed']),
       );
 
-      final unbound = items.firstWhere((i) => i.loanId == null);
+      final unbound = items.firstWhere((i) => i.creditId == null);
       expect(unbound.id, equals('coll-v13-unbound'));
     });
 
@@ -271,7 +271,7 @@ void main() {
           id: 'coll-dangling',
           shopId: 'shop-v13',
           customerId: 1,
-          loanId: const Value('loan-does-not-exist'),
+          creditId: const Value('credit-does-not-exist'),
           itemReferenceId: 'COLL-DANGLING',
           category: 'gold',
           description: 'Dangling item',
@@ -285,7 +285,7 @@ void main() {
       );
     });
 
-    test('recreates the loans indexes', () async {
+    test('recreates the credits indexes', () async {
       seedV13Database(dbFile);
 
       final db = openWithDeviceSemantics(dbFile);
@@ -293,15 +293,15 @@ void main() {
 
       final indexRows = await db
           .customSelect(
-            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'loans';",
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'credits';",
           )
           .get();
       final indexNames = indexRows.map((r) => r.read<String>('name')).toList();
       expect(indexNames, containsAll(<String>[
-        'idx_loans_shop_id',
-        'idx_loans_shop_customer',
-        'idx_loans_shop_status',
-        'idx_loans_shop_customer_status',
+        'idx_credits_shop_id',
+        'idx_credits_shop_customer',
+        'idx_credits_shop_status',
+        'idx_credits_shop_customer_status',
       ]));
     });
 
@@ -315,50 +315,50 @@ void main() {
       // The orphan staging table from the failed attempt is gone ...
       final staging = await db
           .customSelect(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_loans_v14';",
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_credits_v14';",
           )
           .get();
       expect(staging, isEmpty);
 
       // ... and the authoritative rows were migrated, not lost.
-      expect(await db.select(db.loans).get(), hasLength(3));
+      expect(await db.select(db.credits).get(), hasLength(3));
       expect(await db.select(db.collateralItems).get(), hasLength(3));
-      final loan = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v13-pending')))
+      final credit = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v13-pending')))
           .getSingle();
-      expect(loan.balanceCents, equals(500000));
+      expect(credit.balanceCents, equals(500000));
     });
 
-    test('produces the same loans schema as a fresh installation', () async {
+    test('produces the same credits schema as a fresh installation', () async {
       seedV13Database(dbFile);
       final upgraded = openWithDeviceSemantics(dbFile);
-      await (upgraded.select(upgraded.loans)).get();
-      final upgradedSchema = await _describeTable(upgraded, 'loans');
-      final upgradedChecks = await _checkConstraints(upgraded, 'loans');
+      await (upgraded.select(upgraded.credits)).get();
+      final upgradedSchema = await _describeTable(upgraded, 'credits');
+      final upgradedChecks = await _checkConstraints(upgraded, 'credits');
       await upgraded.close();
 
       // A brand new database is created straight at schema version 15.
       final freshFile = File(p.join(tempDir.path, 'fresh.sqlite'));
       final fresh = openWithDeviceSemantics(freshFile);
       addTearDown(() async => fresh.close());
-      await (fresh.select(fresh.loans)).get();
+      await (fresh.select(fresh.credits)).get();
 
       expect(
         upgradedSchema,
-        equals(await _describeTable(fresh, 'loans')),
+        equals(await _describeTable(fresh, 'credits')),
         reason: 'An upgraded database must end up with the same columns, '
             'foreign keys and indexes as a freshly installed one.',
       );
       expect(
         upgradedChecks,
-        equals(await _checkConstraints(fresh, 'loans')),
+        equals(await _checkConstraints(fresh, 'credits')),
         reason: 'The upgraded table must carry exactly the same CHECK '
             'constraints as a freshly installed one.',
       );
     });
   });
 
-  group('Tier 1 CHECK constraints on the loans table', () {
+  group('Tier 1 CHECK constraints on the credits table', () {
     late AppDatabase db;
 
     setUp(() async {
@@ -398,8 +398,8 @@ void main() {
       ));
     });
 
-    /// Inserts a loan, returning the error if the database rejected it.
-    Future<Object?> insertLoan({
+    /// Inserts a credit, returning the error if the database rejected it.
+    Future<Object?> insertCredit({
       required String id,
       String status = 'active',
       String workflowStatus = 'pending_disbursement',
@@ -412,7 +412,7 @@ void main() {
     }) async {
       final now = DateTime.now().toUtc();
       try {
-        await db.into(db.loans).insert(LoansCompanion.insert(
+        await db.into(db.credits).insert(CreditsCompanion.insert(
           id: id,
           shopId: 'shop-v14',
           customerId: 1,
@@ -445,8 +445,8 @@ void main() {
       final now = DateTime.now().toUtc();
 
       // Violates only "cancelled status requires workflow_status = 'cancelled'".
-      final error = await insertLoan(
-        id: 'loan-c1',
+      final error = await insertCredit(
+        id: 'credit-c1',
         status: 'cancelled',
         workflowStatus: 'disbursed',
         cancelledAt: now,
@@ -457,8 +457,8 @@ void main() {
       // The otherwise identical row is accepted once the workflow status
       // matches, which isolates this constraint.
       expect(
-        await insertLoan(
-          id: 'loan-c1-ok',
+        await insertCredit(
+          id: 'credit-c1-ok',
           status: 'cancelled',
           workflowStatus: 'cancelled',
           cancelledAt: now,
@@ -472,8 +472,8 @@ void main() {
         () async {
       final now = DateTime.now().toUtc();
 
-      final error = await insertLoan(
-        id: 'loan-c2',
+      final error = await insertCredit(
+        id: 'credit-c2',
         status: 'cancelled',
         workflowStatus: 'cancelled',
         cancelledAt: now,
@@ -486,8 +486,8 @@ void main() {
       // Without the disbursement record the same cancelled agreement is
       // accepted.
       expect(
-        await insertLoan(
-          id: 'loan-c2-ok',
+        await insertCredit(
+          id: 'credit-c2-ok',
           status: 'cancelled',
           workflowStatus: 'cancelled',
           cancelledAt: now,
@@ -501,8 +501,8 @@ void main() {
         () async {
       final now = DateTime.now().toUtc();
 
-      final error = await insertLoan(
-        id: 'loan-c3',
+      final error = await insertCredit(
+        id: 'credit-c3',
         status: 'cancelled',
         workflowStatus: 'cancelled',
         cancelledAt: now,
@@ -513,8 +513,8 @@ void main() {
       expect(error, isA<sqlite.SqliteException>());
 
       expect(
-        await insertLoan(
-          id: 'loan-c3-ok',
+        await insertCredit(
+          id: 'credit-c3-ok',
           status: 'cancelled',
           workflowStatus: 'cancelled',
           cancelledAt: now,
@@ -528,8 +528,8 @@ void main() {
         () async {
       final now = DateTime.now().toUtc();
 
-      final error = await insertLoan(
-        id: 'loan-c4',
+      final error = await insertCredit(
+        id: 'credit-c4',
         status: 'settled',
         workflowStatus: 'pending_disbursement',
         settledAt: now,
@@ -537,8 +537,8 @@ void main() {
       expect(error, isA<sqlite.SqliteException>());
 
       expect(
-        await insertLoan(
-          id: 'loan-c4-ok',
+        await insertCredit(
+          id: 'credit-c4-ok',
           status: 'settled',
           workflowStatus: 'disbursed',
           settledAt: now,
@@ -552,28 +552,28 @@ void main() {
       final now = DateTime.now().toUtc();
 
       // A cancellation timestamp on a live agreement.
-      final withTimestamp = await insertLoan(
-        id: 'loan-c5',
+      final withTimestamp = await insertCredit(
+        id: 'credit-c5',
         status: 'active',
         cancelledAt: now,
       );
       expect(withTimestamp, isA<sqlite.SqliteException>());
 
       // A non-empty cancellation reason on a live agreement.
-      final withReason = await insertLoan(
-        id: 'loan-c5-b',
+      final withReason = await insertCredit(
+        id: 'credit-c5-b',
         status: 'active',
         cancellationReason: 'Customer abandoned the agreement',
       );
       expect(withReason, isA<sqlite.SqliteException>());
 
       // The same live agreement without cancellation details is accepted.
-      expect(await insertLoan(id: 'loan-c5-ok', status: 'active'), isNull);
+      expect(await insertCredit(id: 'credit-c5-ok', status: 'active'), isNull);
 
       // An empty cancellation reason is not a cancellation detail.
       expect(
-        await insertLoan(
-          id: 'loan-c5-ok-b',
+        await insertCredit(
+          id: 'credit-c5-ok-b',
           status: 'active',
           cancellationReason: '',
         ),
@@ -585,16 +585,16 @@ void main() {
         () async {
       final now = DateTime.now().toUtc();
 
-      final error = await insertLoan(
-        id: 'loan-c6',
+      final error = await insertCredit(
+        id: 'credit-c6',
         status: 'active',
         settledAt: now,
       );
       expect(error, isA<sqlite.SqliteException>());
 
       expect(
-        await insertLoan(
-          id: 'loan-c6-ok',
+        await insertCredit(
+          id: 'credit-c6-ok',
           status: 'settled',
           workflowStatus: 'disbursed',
           settledAt: now,
@@ -607,8 +607,8 @@ void main() {
       final now = DateTime.now().toUtc();
 
       expect(
-        await insertLoan(
-          id: 'loan-cancelled',
+        await insertCredit(
+          id: 'credit-cancelled',
           status: 'cancelled',
           workflowStatus: 'cancelled',
           cancelledAt: now,
@@ -617,8 +617,8 @@ void main() {
         isNull,
       );
 
-      final stored = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-cancelled')))
+      final stored = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-cancelled')))
           .getSingle();
       expect(stored.status, equals('cancelled'));
       expect(stored.workflowStatus, equals('cancelled'));
@@ -631,8 +631,8 @@ void main() {
       final now = DateTime.now().toUtc();
 
       expect(
-        await insertLoan(
-          id: 'loan-settled',
+        await insertCredit(
+          id: 'credit-settled',
           status: 'settled',
           workflowStatus: 'disbursed',
           settledAt: now,
@@ -642,8 +642,8 @@ void main() {
         isNull,
       );
 
-      final stored = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-settled')))
+      final stored = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-settled')))
           .getSingle();
       expect(stored.status, equals('settled'));
       expect(stored.workflowStatus, equals('disbursed'));
@@ -655,8 +655,8 @@ void main() {
       // Agreements that predate the disbursement workflow were backfilled to
       // 'disbursed' by the version 12 migration without a disbursement record.
       expect(
-        await insertLoan(
-          id: 'loan-legacy-disbursed',
+        await insertCredit(
+          id: 'credit-legacy-disbursed',
           status: 'active',
           workflowStatus: 'disbursed',
           termPresetDays: 60,
@@ -664,8 +664,8 @@ void main() {
         isNull,
       );
 
-      final stored = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-legacy-disbursed')))
+      final stored = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-legacy-disbursed')))
           .getSingle();
       expect(stored.workflowStatus, equals('disbursed'));
       expect(stored.disbursedAt, isNull);
@@ -740,7 +740,7 @@ Future<List<String>> _checkConstraints(AppDatabase db, String tableName) async {
 }
 
 /// Creates a genuine version 13 database on disk: the real foreign keys, the
-/// version 13 loans schema (with the version 13 columns and the version 13
+/// version 13 credits schema (with the version 13 columns and the version 13
 /// CHECK constraints, but **without** the Tier 1 constraints), agreements in
 /// the states a version 13 database can hold, collateral bound to them, and
 /// local audit/sync records.
@@ -817,7 +817,7 @@ void seedV13Database(File file, {bool withOrphanStagingTable = false}) {
       "created_at" INTEGER NOT NULL,
       "updated_at" INTEGER NOT NULL
     );
-    CREATE TABLE "loans" (
+    CREATE TABLE "credits" (
       "id" TEXT NOT NULL PRIMARY KEY,
       "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
       "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -849,7 +849,7 @@ void seedV13Database(File file, {bool withOrphanStagingTable = false}) {
       "id" TEXT NOT NULL PRIMARY KEY,
       "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
       "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
-      "loan_id" TEXT REFERENCES "loans" ("id") ON DELETE RESTRICT,
+      "credit_id" TEXT REFERENCES "credits" ("id") ON DELETE RESTRICT,
       "item_reference_id" TEXT NOT NULL,
       "category" TEXT NOT NULL,
       "description" TEXT NOT NULL,
@@ -901,10 +901,10 @@ void seedV13Database(File file, {bool withOrphanStagingTable = false}) {
       "updated_at" INTEGER NOT NULL,
       CHECK (status IN ('pending', 'resolved'))
     );
-    CREATE INDEX "idx_loans_shop_id" ON "loans" ("shop_id");
-    CREATE INDEX "idx_loans_shop_customer" ON "loans" ("shop_id", "customer_id");
-    CREATE INDEX "idx_loans_shop_status" ON "loans" ("shop_id", "status");
-    CREATE INDEX "idx_loans_shop_customer_status" ON "loans" ("shop_id", "customer_id", "status");
+    CREATE INDEX "idx_credits_shop_id" ON "credits" ("shop_id");
+    CREATE INDEX "idx_credits_shop_customer" ON "credits" ("shop_id", "customer_id");
+    CREATE INDEX "idx_credits_shop_status" ON "credits" ("shop_id", "status");
+    CREATE INDEX "idx_credits_shop_customer_status" ON "credits" ("shop_id", "customer_id", "status");
     PRAGMA user_version = 13;
   ''');
 
@@ -927,32 +927,32 @@ void seedV13Database(File file, {bool withOrphanStagingTable = false}) {
   ''');
   // An agreement awaiting disbursement, with an agreed 30-day term.
   db.execute('''
-    INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "due_date", "created_at")
-    VALUES ('loan-v13-pending', 'shop-v13', 'cust-v13', 500000, 500000, 'active', 'pending_disbursement', 30, $now, $now);
+    INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "due_date", "created_at")
+    VALUES ('credit-v13-pending', 'shop-v13', 'cust-v13', 500000, 500000, 'active', 'pending_disbursement', 30, $now, $now);
   ''');
   // An agreement whose cash was handed over, with a 60-day term and a
   // disbursement record.
   db.execute('''
-    INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at")
-    VALUES ('loan-v13-disbursed', 'shop-v13', 'cust-v13', 750000, 750000, 'active', 'disbursed', 60, $now, 'user-v13', $now, $now);
+    INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at")
+    VALUES ('credit-v13-disbursed', 'shop-v13', 'cust-v13', 750000, 750000, 'active', 'disbursed', 60, $now, 'user-v13', $now, $now);
   ''');
   // A legacy agreement that predates the disbursement workflow: backfilled to
   // 'disbursed' by the version 12 migration and therefore carrying no
   // disbursement record.
   db.execute('''
-    INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
-    VALUES ('loan-v13-legacy', 'shop-v13', 'cust-v13', 250000, 250000, 'active', 'disbursed', $now, $now);
+    INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
+    VALUES ('credit-v13-legacy', 'shop-v13', 'cust-v13', 250000, 250000, 'active', 'disbursed', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
-    VALUES ('coll-v13-a', 'shop-v13', 'cust-v13', 'loan-v13-pending', 'COLL-V13-A', 'gold', '22K gold necklace', 'Good', 5500, 1500000, 'in_custody', $now, $now);
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
+    VALUES ('coll-v13-a', 'shop-v13', 'cust-v13', 'credit-v13-pending', 'COLL-V13-A', 'gold', '22K gold necklace', 'Good', 5500, 1500000, 'in_custody', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
-    VALUES ('coll-v13-b', 'shop-v13', 'cust-v13', 'loan-v13-disbursed', 'COLL-V13-B', 'electronics', 'Laptop', 'Fair', 1200, 400000, 'in_custody', $now, $now);
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
+    VALUES ('coll-v13-b', 'shop-v13', 'cust-v13', 'credit-v13-disbursed', 'COLL-V13-B', 'electronics', 'Laptop', 'Fair', 1200, 400000, 'in_custody', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
     VALUES ('coll-v13-unbound', 'shop-v13', 'cust-v13', NULL, 'COLL-V13-C', 'valuables', 'Watch', 'Like New', 300, 900000, 'in_custody', $now, $now);
   ''');
   db.execute('''
@@ -965,18 +965,18 @@ void seedV13Database(File file, {bool withOrphanStagingTable = false}) {
   ''');
   db.execute('''
     INSERT INTO "sync_queue" ("id", "shop_id", "idempotency_key", "entity_type", "entity_id", "action_type", "payload_json", "status", "retry_count", "created_at")
-    VALUES ('sync-v13-a', 'shop-v13', '00000000-0000-4000-8000-000000000101', 'loan', 'loan-v13-pending', 'create_loan', '{"auditCategory":2}', 'pending_server_ack', 0, $now);
+    VALUES ('sync-v13-a', 'shop-v13', '00000000-0000-4000-8000-000000000101', 'credit', 'credit-v13-pending', 'create_credit', '{"auditCategory":2}', 'pending_server_ack', 0, $now);
   ''');
   db.execute('''
     INSERT INTO "sync_queue" ("id", "shop_id", "idempotency_key", "entity_type", "entity_id", "action_type", "payload_json", "status", "retry_count", "created_at")
-    VALUES ('sync-v13-b', 'shop-v13', '00000000-0000-4000-8000-000000000102', 'loan', 'loan-v13-disbursed', 'confirm_loan_disbursement', '{"auditCategory":4}', 'pending_server_ack', 0, $now);
+    VALUES ('sync-v13-b', 'shop-v13', '00000000-0000-4000-8000-000000000102', 'credit', 'credit-v13-disbursed', 'confirm_credit_disbursement', '{"auditCategory":4}', 'pending_server_ack', 0, $now);
   ''');
 
   if (withOrphanStagingTable) {
     // Exactly the state a device is left in when the rebuild fails: the
-    // staging table survives, the authoritative "loans" table is intact.
+    // staging table survives, the authoritative "credits" table is intact.
     db.execute('''
-      CREATE TABLE "_loans_v14" (
+      CREATE TABLE "_credits_v14" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
         "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -996,12 +996,13 @@ void seedV13Database(File file, {bool withOrphanStagingTable = false}) {
       );
     ''');
     db.execute('''
-      INSERT INTO "_loans_v14" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "due_date", "created_at")
-      VALUES ('loan-v13-pending', 'shop-v13', 'cust-v13', 500000, 500000, 'active', 'pending_disbursement', 30, $now, $now);
+      INSERT INTO "_credits_v14" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "due_date", "created_at")
+      VALUES ('credit-v13-pending', 'shop-v13', 'cust-v13', 500000, 500000, 'active', 'pending_disbursement', 30, $now, $now);
     ''');
   }
 
   db.close();
 }
+
 
 

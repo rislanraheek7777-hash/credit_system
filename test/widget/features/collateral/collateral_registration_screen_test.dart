@@ -76,7 +76,7 @@ void main() {
     expect(find.text('Item Reference ID'), findsOneWidget);
     expect(find.text('Shop ID'), findsOneWidget);
     expect(find.text('Customer ID'), findsOneWidget);
-    expect(find.text('Loan ID (optional)'), findsOneWidget);
+    expect(find.text('Credit ID (optional)'), findsOneWidget);
     expect(find.text('Category'), findsOneWidget);
     expect(find.text('Description'), findsOneWidget);
     expect(find.text('Condition Grade'), findsOneWidget);
@@ -362,3 +362,4 @@ void main() {
     await db.close();
   });
 }
+

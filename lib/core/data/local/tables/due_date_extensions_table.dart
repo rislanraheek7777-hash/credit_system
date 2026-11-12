@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'app_users_table.dart';
-import 'loans_table.dart';
+import 'credits_table.dart';
 import 'shops_table.dart';
 
 /// Local SQLite schema for due date extensions (Story 6.2, FR-26).
@@ -11,7 +11,7 @@ import 'shops_table.dart';
 /// mandatory justification, grantor user ID, and timestamp.
 @DataClassName('DueDateExtensionEntry')
 @TableIndex(name: 'idx_due_date_extensions_shop_id', columns: {#shopId})
-@TableIndex(name: 'idx_due_date_extensions_shop_loan', columns: {#shopId, #loanId})
+@TableIndex(name: 'idx_due_date_extensions_shop_credit', columns: {#shopId, #creditId})
 class DueDateExtensions extends Table {
   /// Canonical UUIDv4 primary key.
   TextColumn get id => text()();
@@ -20,9 +20,9 @@ class DueDateExtensions extends Table {
   TextColumn get shopId =>
       text().references(Shops, #id, onDelete: KeyAction.restrict)();
 
-  /// Associated loan agreement (immutable foreign key boundary).
-  TextColumn get loanId =>
-      text().references(Loans, #id, onDelete: KeyAction.restrict)();
+  /// Associated credit agreement (immutable foreign key boundary).
+  TextColumn get creditId =>
+      text().references(Credits, #id, onDelete: KeyAction.restrict)();
 
   /// Calendar due date prior to this extension (stored in UTC).
   DateTimeColumn get previousDueDate => dateTime()();
@@ -48,3 +48,4 @@ class DueDateExtensions extends Table {
         'CHECK (length(trim(reason)) > 0)',
       ];
 }
+

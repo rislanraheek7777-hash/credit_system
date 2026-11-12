@@ -9,9 +9,9 @@ void main() {
     test('SyncQueueEntry.create generates canonical UUIDv4 id and idempotencyKey', () {
       final entry = SyncQueueEntry.create(
         shopId: testShopId,
-        entityType: 'loan',
+        entityType: 'credit',
         entityId: testEntityId,
-        actionType: 'create_loan',
+        actionType: 'create_credit',
         payload: {'principal_minor_units': 5000000},
       );
 
@@ -59,9 +59,9 @@ void main() {
       expect(
         () => SyncQueueEntry.create(
           shopId: 'not-a-uuid',
-          entityType: 'loan',
+          entityType: 'credit',
           entityId: testEntityId,
-          actionType: 'create_loan',
+          actionType: 'create_credit',
           payload: {},
         ),
         throwsA(isA<ArgumentError>()),
@@ -70,9 +70,9 @@ void main() {
       expect(
         () => SyncQueueEntry.create(
           shopId: testShopId,
-          entityType: 'loan',
+          entityType: 'credit',
           entityId: 'invalid-entity-uuid',
-          actionType: 'create_loan',
+          actionType: 'create_credit',
           payload: {},
         ),
         throwsA(isA<ArgumentError>()),
@@ -85,7 +85,7 @@ void main() {
           shopId: testShopId,
           entityType: '',
           entityId: testEntityId,
-          actionType: 'create_loan',
+          actionType: 'create_credit',
           payload: {},
         ),
         throwsA(isA<ArgumentError>()),
@@ -94,7 +94,7 @@ void main() {
       expect(
         () => SyncQueueEntry.create(
           shopId: testShopId,
-          entityType: 'loan',
+          entityType: 'credit',
           entityId: testEntityId,
           actionType: '   ',
           payload: {},
@@ -108,9 +108,9 @@ void main() {
     test('pending_server_ack -> confirmed_by_server is valid and sets updatedAt', () {
       final entry = SyncQueueEntry.create(
         shopId: testShopId,
-        entityType: 'loan',
+        entityType: 'credit',
         entityId: testEntityId,
-        actionType: 'create_loan',
+        actionType: 'create_credit',
         payload: {},
       );
 
@@ -127,9 +127,9 @@ void main() {
     test('markConfirmed on already confirmed entry is idempotent', () {
       final entry = SyncQueueEntry.create(
         shopId: testShopId,
-        entityType: 'loan',
+        entityType: 'credit',
         entityId: testEntityId,
-        actionType: 'create_loan',
+        actionType: 'create_credit',
         payload: {},
       ).markConfirmed();
 
@@ -140,9 +140,9 @@ void main() {
     test('ILLEGAL TRANSITION: failed -> confirmed_by_server directly throws InvalidSyncStatusTransitionException', () {
       final failedEntry = SyncQueueEntry.create(
         shopId: testShopId,
-        entityType: 'loan',
+        entityType: 'credit',
         entityId: testEntityId,
-        actionType: 'create_loan',
+        actionType: 'create_credit',
         payload: {},
       ).markFailed('HTTP 500');
 
@@ -156,9 +156,9 @@ void main() {
     test('ILLEGAL TRANSITION: confirmed_by_server cannot transition to failed', () {
       final confirmedEntry = SyncQueueEntry.create(
         shopId: testShopId,
-        entityType: 'loan',
+        entityType: 'credit',
         entityId: testEntityId,
-        actionType: 'create_loan',
+        actionType: 'create_credit',
         payload: {},
       ).markConfirmed();
 
@@ -171,9 +171,9 @@ void main() {
     test('ILLEGAL TRANSITION: confirmed_by_server cannot be retried', () {
       final confirmedEntry = SyncQueueEntry.create(
         shopId: testShopId,
-        entityType: 'loan',
+        entityType: 'credit',
         entityId: testEntityId,
-        actionType: 'create_loan',
+        actionType: 'create_credit',
         payload: {},
       ).markConfirmed();
 
@@ -188,9 +188,9 @@ void main() {
     test('toMap and fromMap serialize and deserialize cleanly', () {
       final original = SyncQueueEntry.create(
         shopId: testShopId,
-        entityType: 'loan',
+        entityType: 'credit',
         entityId: testEntityId,
-        actionType: 'create_loan',
+        actionType: 'create_credit',
         payload: {
           'principal_minor_units': 5000000,
           'duration_days': 30,
@@ -237,9 +237,9 @@ void main() {
         'id': '33333333-3333-4333-8333-333333333333',
         'shop_id': testShopId,
         'idempotency_key': '44444444-4444-4444-8444-444444444444',
-        'entity_type': 'loan',
+        'entity_type': 'credit',
         'entity_id': testEntityId,
-        'action_type': 'create_loan',
+        'action_type': 'create_credit',
         'payload_json': '{unquoted_broken_json: 123',
         'status': 'pending_server_ack',
         'created_at': DateTime.now().toUtc().toIso8601String(),
@@ -288,3 +288,4 @@ void main() {
     });
   });
 }
+

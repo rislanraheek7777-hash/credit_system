@@ -63,7 +63,6 @@ class _CustomerPhotoExceptionReviewScreenState
 
   @override
   void dispose() {
-    _db.close();
     super.dispose();
   }
 
@@ -457,3 +456,4 @@ class _CustomerPhotoExceptionReviewScreenState
     );
   }
 }
+

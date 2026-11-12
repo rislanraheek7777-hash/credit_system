@@ -150,3 +150,4 @@ class DatabaseUrlNotFoundException implements Exception {
   @override
   String toString() => 'DATABASE_URL environment variable is not set';
 }
+

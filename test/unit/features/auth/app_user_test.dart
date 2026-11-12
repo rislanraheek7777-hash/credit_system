@@ -29,7 +29,7 @@ void main() {
     test('creates valid Custom user with explicitly assigned permissions', () {
       final customPerms = {
         AppPermission.viewCustomers,
-        AppPermission.viewOverdueLoans,
+        AppPermission.viewOverdueCredits,
         AppPermission.recordCustomerNotes,
       };
 
@@ -44,7 +44,7 @@ void main() {
 
       expect(user.role, equals(AppRole.custom));
       expect(user.effectivePermissions, equals(customPerms));
-      expect(user.hasPermission(AppPermission.viewOverdueLoans), isTrue);
+      expect(user.hasPermission(AppPermission.viewOverdueCredits), isTrue);
       expect(user.hasPermission(AppPermission.recordPayments), isFalse);
     });
 
@@ -126,14 +126,14 @@ void main() {
         fullName: 'Name',
         role: AppRole.custom,
         customPermissions: {
-          AppPermission.createLoans,
+          AppPermission.createCredits,
           AppPermission.recordPayments,
         },
       );
 
       final serialized = user.serializePermissions();
       expect(serialized, isNotNull);
-      expect(serialized, contains('createLoans'));
+      expect(serialized, contains('createCredits'));
       expect(serialized, contains('recordPayments'));
 
       final parsed = AppUser.parsePermissions(serialized);
@@ -220,3 +220,4 @@ void main() {
     });
   });
 }
+

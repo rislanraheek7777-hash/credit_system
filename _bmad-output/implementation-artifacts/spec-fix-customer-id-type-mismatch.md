@@ -13,7 +13,7 @@ context: []
 
 ## Intent
 
-**Problem:** An uncommitted, half-finished change converted the `Customers` Drift primary key from a UUID `TextColumn` to an auto-increment `IntColumn` (and `Loans.customerId` to `int`). Only `customer.dart`, `loan.dart`, `customers_table.dart`, `loans_table.dart` were updated, leaving ~200 `flutter analyze` errors (`String`↔`int` mismatches) across DAOs, services, screens, and the test suite.
+**Problem:** An uncommitted, half-finished change converted the `Customers` Drift primary key from a UUID `TextColumn` to an auto-increment `IntColumn` (and `Credits.customerId` to `int`). Only `customer.dart`, `credit.dart`, `customers_table.dart`, `credits_table.dart` were updated, leaving ~200 `flutter analyze` errors (`String`↔`int` mismatches) across DAOs, services, screens, and the test suite.
 
 **Approach:** Complete the ID-type change in one direction (per the Open Question decision), propagating `int` customer identity through every remaining table, model, DAO, service, screen, and test — then add the missing schema migration and drive `flutter analyze` and `flutter test` to green.
 
@@ -27,7 +27,7 @@ context: []
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| Existing DB upgrade | Local DB at schemaVersion 19 with TEXT customer ids | `onUpgrade` migrates customers/loans (and referencing tables) to INTEGER ids without data loss | Migration failure rolls back, DB left unchanged |
+| Existing DB upgrade | Local DB at schemaVersion 19 with TEXT customer ids | `onUpgrade` migrates customers/credits (and referencing tables) to INTEGER ids without data loss | Migration failure rolls back, DB left unchanged |
 | New install | Fresh DB at schemaVersion 20 | All customer-id columns INTEGER, auto-increment PK | N/A |
 | Model validation | `Customer(id: <int>)` | `id` never empty/invalid; validation consistent with `int` | `CustomerValidationException` |
 
@@ -38,20 +38,20 @@ context: []
 ## Code Map
 
 - `lib/core/data/local/tables/customers_table.dart` -- root change: `id` is now `IntColumn autoIncrement` (uncommitted)
-- `lib/core/data/local/tables/loans_table.dart:31` -- `customerId` already `IntColumn` referencing Customers.id
+- `lib/core/data/local/tables/credits_table.dart:31` -- `customerId` already `IntColumn` referencing Customers.id
 - `lib/core/data/local/tables/collateral_items_table.dart:31` -- `customerId` still `TextColumn` → must become Int if direction A
 - `lib/core/data/local/tables/customer_follow_ups_table.dart:27` -- `customerId` still `TextColumn`
 - `lib/core/data/local/tables/payments_table.dart:55` -- `customerId` still `TextColumn` (denormalized snapshot, no FK)
 - `lib/core/data/local/tables/customer_photo_exceptions_table.dart:25` -- `targetCustomerId` `TextColumn` (pre-onboarding id — likely stays String; confirm during implement)
 - `lib/features/customers/domain/models/customer.dart:34` -- `id` already `int`; `_validate()` at :146 uses `id.toString().isEmpty` (nonsense for int — remove or replace)
-- `lib/features/customers/domain/models/loan.dart:169` -- `customerId` already `int`
+- `lib/features/customers/domain/models/credit.dart:169` -- `customerId` already `int`
 - `lib/features/customers/domain/models/customer_follow_up.dart:27` -- `final String customerId` → int
 - `lib/features/customers/domain/models/receipt.dart:69` -- `final String customerId` → int
 - `lib/features/customers/domain/models/collateral_item.dart:129` -- `final String customerId` → int (validation :303, copyWith :337, equality :376)
 - `lib/features/customers/domain/models/customer_photo_exception.dart:60` -- `final String targetCustomerId` (likely stays String)
 - `lib/core/data/local/app_database.dart:110` -- `schemaVersion => 20`; `from < 20` block at :469-481 handles app_users email/phone only — **no migration for the customer-id retype yet**
-- `lib/core/data/local/app_database.g.dart` -- partially regenerated: `$CustomersTable.id` int (:2422), Loans.customerId int (:3857); CollateralItems (:4990), CustomerFollowUps (:8048), Payments (:11415) still `GeneratedColumn<String>`
-- `lib/features/customers/data/daos/loan_dao.dart`, `customer_dao.dart`, `correction_dao.dart`, `payment_dao.dart`, `overdue_dao.dart` -- hot spots with String↔int errors
+- `lib/core/data/local/app_database.g.dart` -- partially regenerated: `$CustomersTable.id` int (:2422), Credits.customerId int (:3857); CollateralItems (:4990), CustomerFollowUps (:8048), Payments (:11415) still `GeneratedColumn<String>`
+- `lib/features/customers/data/daos/credit_dao.dart`, `customer_dao.dart`, `correction_dao.dart`, `payment_dao.dart`, `overdue_dao.dart` -- hot spots with String↔int errors
 - `test/unit/**`, `test/widget/**` -- ~160 of the 200 errors; fixtures pass customer ids as String literals
 - `lib/main.dart` (5 errors) -- `MyApp`/`AuthWrapper`/`CustomerSearchScreen` reference errors, likely unrelated stale code
 - **Do not change:** `lib/core/data/remote/migrations/*.sql` (no customer tables server-side), monetary/decimal fields, unrelated widget logic
@@ -69,18 +69,18 @@ context: []
 
 **Acceptance Criteria:**
 - Given the repo at schemaVersion 20, when `flutter analyze` runs, then it reports **zero errors**
-- Given a database created at schemaVersion 19 with customer rows, when the app migrates, then all customer/loan/collateral rows retain their data with converted ids
+- Given a database created at schemaVersion 19 with customer rows, when the app migrates, then all customer/credit/collateral rows retain their data with converted ids
 - Given the full test suite, when `flutter test` runs, then all previously passing tests still pass
 
 ## Implementation Notes
 
 - Direction chosen: complete conversion to `int` (option A). Propagated `int` customer identity through all tables, models, DAOs, services, screens, and tests.
-- Added schemaVersion 19 to 20 migration in `app_database.dart`: rebuilds `customers` with INTEGER auto-increment PK reusing rowid, remaps `loans`/`collateral_items`/`customer_follow_ups`/`payments` through a temp remap table, preserves all rows. Wrapped in a single transaction with FK/legacy_alter_table toggled around it (rollback verified by new test).
+- Added schemaVersion 19 to 20 migration in `app_database.dart`: rebuilds `customers` with INTEGER auto-increment PK reusing rowid, remaps `credits`/`collateral_items`/`customer_follow_ups`/`payments` through a temp remap table, preserves all rows. Wrapped in a single transaction with FK/legacy_alter_table toggled around it (rollback verified by new test).
 - Regenerated `app_database.g.dart` via build_runner (not hand-edited).
 - `customer.dart` validation: replaced nonsense `id.toString().isEmpty` with `id < 0` check.
 - `lib/main.dart` stale references (`MyApp`/`AuthWrapper`/`CustomerSearchScreen`) resolved.
 - Reverted unrelated edits: `customer_dao._toCompanion` restored `createdAt`/`updatedAt`; `auth_service.dart` restored "no offline session → reject" branch; shared-phone sync event `entityId` restored to pre-onboarding UUID (int id travels in payload as `new_customer_id`).
-- Verification: `flutter analyze` → No issues found; `flutter test` → 973 pass, 14 fail (all 14 pre-existing at baseline e923de9 — verified in clean worktree; loan_dao ×10 audit-action string mismatch + missing validation branches, official_due_date ×2 timezone, loan_origination_screen ×2 pump timeouts). None involve customer-ID typing.
+- Verification: `flutter analyze` → No issues found; `flutter test` → 973 pass, 14 fail (all 14 pre-existing at baseline e923de9 — verified in clean worktree; credit_dao ×10 audit-action string mismatch + missing validation branches, official_due_date ×2 timezone, credit_origination_screen ×2 pump timeouts). None involve customer-ID typing.
 
 ## Spec Change Log
 
@@ -94,7 +94,7 @@ context: []
 | (blind) `customer.dart` uses `id < 0` while `collateral_item`/`receipt` use `customerId <= 0` | false | Intentional: `0` is the pending id in `customer_registration_service.dart` (`pendingId = 0`), so `Customer.id` must allow 0; referencing ids must be real (>=1). |
 | (blind) `customer_data_masking_service` converts ids to strings | false | `targetCustomerId`/photo signing use String by design (pre-onboarding id stays String); conversion is at the boundary, not leakage. |
 | (blind) Migration conflates app_users email/phone with customer-id retype | false | Single schemaVersion 19 to 20 bump is intended; guards make each step idempotent. |
-| (blind) `loan_dao.g.dart` dropped `syncQueue`/`collateralItems` accessors | false | No callers use `loanDao.syncQueue` or `loanDao.collateralItems` (grep confirmed). |
+| (blind) `credit_dao.g.dart` dropped `syncQueue`/`collateralItems` accessors | false | No callers use `creditDao.syncQueue` or `creditDao.collateralItems` (grep confirmed). |
 | (blind) `customer_search_screen`/`settings_screen` leak `AppDatabase` | defer | Pre-existing resource leak; appended to `deferred-work.md`. |
 | (blind) `shop_creation_screen` truncates shop id to 8 chars | defer | Pre-existing; appended to `deferred-work.md`. |
 | (blind) `login_screen` marks online auth as offline | false | The two `_isOfflineMode = true` sites are the offline-auth/fallback paths; online path sets `_isOfflineMode = false`. |
@@ -113,3 +113,4 @@ context: []
 - `flutter analyze` -- expected: `No issues found!` (zero errors)
 - `dart run build_runner build --delete-conflicting-outputs` -- expected: completes, `.g.dart` regenerated without errors
 - `flutter test` -- expected: all tests pass (baseline: 22/22 auth tests passing in `test_out2.txt`)
+

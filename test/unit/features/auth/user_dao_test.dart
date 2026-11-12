@@ -68,7 +68,7 @@ void main() {
     test('creates and retrieves custom staff with granular permissions', () async {
       final customPermissions = {
         AppPermission.viewCustomers,
-        AppPermission.viewOverdueLoans,
+        AppPermission.viewOverdueCredits,
         AppPermission.confirmCollateralReturn,
       };
 
@@ -154,7 +154,7 @@ void main() {
       final updated = await userDao.getUserById('user-003');
       expect(updated!.role, equals(AppRole.manager));
       expect(updated.sessionVersion, equals(2)); // Monotonically incremented!
-      expect(updated.hasPermission(AppPermission.confirmLoanDisbursement), isTrue);
+      expect(updated.hasPermission(AppPermission.confirmCreditDisbursement), isTrue);
     });
 
     test('DEACTIVATION & SESSION REVOCATION: deactivating user sets isActive=false and increments sessionVersion', () async {
@@ -481,3 +481,4 @@ void main() {
     });
   });
 }
+

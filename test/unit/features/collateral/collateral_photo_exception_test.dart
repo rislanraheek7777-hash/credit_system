@@ -376,3 +376,4 @@ void main() {
 extension CollateralPhotoExceptionStatusTesting on CollateralPhotoException {
   String get photoExceptionStatusValue => status.value;
 }
+

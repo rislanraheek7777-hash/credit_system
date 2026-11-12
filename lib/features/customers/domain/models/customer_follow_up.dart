@@ -23,7 +23,7 @@ enum FollowUpChannel {
 class CustomerFollowUp {
   final String id;
   final String shopId;
-  final String loanId;
+  final String creditId;
   final int customerId;
   final String staffId;
   final FollowUpChannel channel;
@@ -34,7 +34,7 @@ class CustomerFollowUp {
   CustomerFollowUp({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.customerId,
     required this.staffId,
     required this.channel,
@@ -55,7 +55,7 @@ class CustomerFollowUp {
           runtimeType == other.runtimeType &&
           id == other.id &&
           shopId == other.shopId &&
-          loanId == other.loanId &&
+          creditId == other.creditId &&
           customerId == other.customerId &&
           staffId == other.staffId &&
           channel == other.channel &&
@@ -67,7 +67,7 @@ class CustomerFollowUp {
   int get hashCode => Object.hash(
         id,
         shopId,
-        loanId,
+        creditId,
         customerId,
         staffId,
         channel,
@@ -76,3 +76,4 @@ class CustomerFollowUp {
         createdAt,
       );
 }
+

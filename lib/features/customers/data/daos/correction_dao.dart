@@ -4,9 +4,9 @@ import 'package:drift/drift.dart';
 import 'package:meta/meta.dart';
 import '../../../../core/data/local/app_database.dart';
 import '../../../../core/data/local/tables/app_users_table.dart';
-import '../../../../core/data/local/tables/loan_corrections_table.dart';
-import '../../../../core/data/local/tables/loan_ledger_entries_table.dart';
-import '../../../../core/data/local/tables/loans_table.dart';
+import '../../../../core/data/local/tables/credit_corrections_table.dart';
+import '../../../../core/data/local/tables/credit_ledger_entries_table.dart';
+import '../../../../core/data/local/tables/credits_table.dart';
 import '../../../../core/data/local/tables/payments_table.dart';
 import '../../../../core/data/local/tables/shops_table.dart';
 import '../../../../core/data/local/tables/sync_queue_table.dart';
@@ -14,7 +14,7 @@ import '../../../../core/money/money.dart';
 import '../../../../core/permissions/app_permission.dart';
 import '../../../../core/permissions/authorization_guard.dart';
 import '../../../../features/auth/domain/models/app_user.dart';
-import '../../../../features/customers/domain/models/loan.dart';
+import '../../../../features/customers/domain/models/credit.dart';
 import 'package:uuid/uuid.dart';
 
 part 'correction_dao.g.dart';
@@ -26,7 +26,7 @@ part 'correction_dao.g.dart';
 /// owning shop.
 ///
 /// Writes use `attachedDatabase.transaction()` with `BEGIN IMMEDIATE` semantics
-/// (Drift default), so the correction record, the loan lock/balance update,
+/// (Drift default), so the correction record, the credit lock/balance update,
 /// and the local audit/sync queue entry commit or roll back together — no
 /// partial state is ever visible (PRD FR-22).
 ///
@@ -36,13 +36,13 @@ part 'correction_dao.g.dart';
 /// NOTE (open accounting decision): The compensating financial entry for an
 /// approved correction is not posted to a separate ledger table. The
 /// `correctionAmountCents` is recorded explicitly on the correction row and
-/// `resultingBalanceCents` snapshots the loan balance after the adjustment.
+/// `resultingBalanceCents` snapshots the credit balance after the adjustment.
 /// The exact business-rule meaning of `correctionAmountCents` (full original
 /// payment vs. only the excess) and the placement of an immutable compensating
 /// entry require Product Owner / Architect approval before this path is
 /// considered complete. See the Story 5.5 open-decisions record.
 @DriftAccessor(
-  tables: [Loans, Payments, LoanCorrections, LoanLedgerEntries, SyncQueue, Shops, AppUsers],
+  tables: [Credits, Payments, CreditCorrections, CreditLedgerEntries, SyncQueue, Shops, AppUsers],
 )
 class CorrectionDao extends DatabaseAccessor<AppDatabase>
     with _$CorrectionDaoMixin {
@@ -73,18 +73,18 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// Audit event name for correction requests and decisions (PRD FR-31).
   static const String correctionAuditEvent = 'correction_request';
 
-  /// Converts a Drift [LoanCorrectionEntry] row into a domain [LoanCorrection].
-  LoanCorrection _toDomain(LoanCorrectionEntry entry) {
-    return LoanCorrection(
+  /// Converts a Drift [CreditCorrectionEntry] row into a domain [CreditCorrection].
+  CreditCorrection _toDomain(CreditCorrectionEntry entry) {
+    return CreditCorrection(
       id: entry.id,
       shopId: entry.shopId,
-      loanId: entry.loanId,
+      creditId: entry.creditId,
       originalPaymentId: entry.originalPaymentId,
       requestedByUserId: entry.requestedByUserId,
       createdAt: entry.createdAt,
       correctionAmountCents: entry.correctionAmountCents,
       reason: entry.reason,
-      status: LoanCorrectionStatus.fromValue(entry.status),
+      status: CreditCorrectionStatus.fromValue(entry.status),
       reviewedByUserId: entry.reviewedByUserId,
       reviewedAt: entry.reviewedAt,
       rejectionReason: entry.rejectionReason,
@@ -93,16 +93,16 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  /// Converts a Drift [LoanLedgerEntryEntry] row into a domain
-  /// [LoanLedgerEntry].
-  LoanLedgerEntry _toDomainLedger(LoanLedgerEntryEntry entry) {
-    return LoanLedgerEntry(
+  /// Converts a Drift [CreditLedgerEntryEntry] row into a domain
+  /// [CreditLedgerEntry].
+  CreditLedgerEntry _toDomainLedger(CreditLedgerEntryEntry entry) {
+    return CreditLedgerEntry(
       id: entry.id,
       shopId: entry.shopId,
-      loanId: entry.loanId,
+      creditId: entry.creditId,
       originalPaymentId: entry.originalPaymentId,
       correctionId: entry.correctionId,
-      entryType: LoanLedgerEntryType.fromValue(entry.entryType),
+      entryType: CreditLedgerEntryType.fromValue(entry.entryType),
       amountCents: entry.amountCents,
       preBalanceCents: entry.preBalanceCents,
       postBalanceCents: entry.postBalanceCents,
@@ -113,33 +113,33 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  /// Submits a correction request for a payment on [loanId].
+  /// Submits a correction request for a payment on [creditId].
   ///
   /// Steps:
   /// 1. Authorization: actor must be active and hold `requestCorrections`.
-  /// 2. Input validation: idempotency key, loan id, amount and reason must be
+  /// 2. Input validation: idempotency key, credit id, amount and reason must be
   ///    present; amount must be positive.
-  /// 3. Eligibility: the loan must exist in the actor's shop and must not
+  /// 3. Eligibility: the credit must exist in the actor's shop and must not
   ///    already have a pending correction (the correction lock).
   /// 4. Atomic transaction:
   ///    a. Insert idempotency guard row in `sync_queue` (unique constraint on
   ///       `(shop_id, idempotency_key)` prevents duplicates).
-  ///    b. Set `correctionPending = true` on the loan (activates the lock).
+  ///    b. Set `correctionPending = true` on the credit (activates the lock).
   ///    c. Insert the `pending_approval` correction row.
   ///    d. Insert the local audit/sync queue entry.
   ///
-  /// Returns the requested [LoanCorrection].
+  /// Returns the requested [CreditCorrection].
   ///
   /// Throws [PermissionDeniedException] when the actor is deactivated or does
   /// not hold `requestCorrections`.
-  /// Throws [ArgumentError] when [idempotencyKey], [loanId], [reason] is
+  /// Throws [ArgumentError] when [idempotencyKey], [creditId], [reason] is
   /// blank, or [amount] is not positive.
-  /// Throws [StateError] when the loan does not exist in the actor's shop or
-  /// when a correction is already pending for that loan.
-  Future<LoanCorrection> requestCorrection({
+  /// Throws [StateError] when the credit does not exist in the actor's shop or
+  /// when a correction is already pending for that credit.
+  Future<CreditCorrection> requestCorrection({
     required AppUser actor,
     required String idempotencyKey,
-    required String loanId,
+    required String creditId,
     required String? originalPaymentId,
     required Money amount,
     required String reason,
@@ -155,7 +155,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       isActive: actor.isActive,
       effectivePermissions: actor.effectivePermissions,
       permission: AppPermission.requestCorrections,
-      actionDescription: 'request a loan correction',
+      actionDescription: 'request a credit correction',
     );
 
     // --- Input validation ---
@@ -167,11 +167,11 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         'idempotencyKey cannot be empty',
       );
     }
-    if (loanId.trim().isEmpty) {
+    if (creditId.trim().isEmpty) {
       throw ArgumentError.value(
-        loanId,
-        'loanId',
-        'loanId cannot be empty',
+        creditId,
+        'creditId',
+        'creditId cannot be empty',
       );
     }
     if (amount.minorUnits <= 0) {
@@ -200,36 +200,36 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       );
     }
 
-    // --- The loan must exist in the actor's own shop ---
-    final loan = await loanDaoGetById(actor.shopId, loanId);
-    if (loan == null) {
+    // --- The credit must exist in the actor's own shop ---
+    final credit = await creditDaoGetById(actor.shopId, creditId);
+    if (credit == null) {
       throw StateError(
-        'Cannot request correction: loan ID "$loanId" not found in shop '
+        'Cannot request correction: credit ID "$creditId" not found in shop '
         '"${actor.shopId}".',
       );
     }
 
-    // --- A correction must not already be pending for this loan ---
-    if (loan.correctionPending) {
+    // --- A correction must not already be pending for this credit ---
+    if (credit.correctionPending) {
       throw StateError(
-        'Cannot request correction: loan ID "$loanId" already has a pending '
+        'Cannot request correction: credit ID "$creditId" already has a pending '
         'correction request. Payments are blocked until the existing request '
         'is approved or rejected.',
       );
     }
 
-    // --- Original payment, when supplied, must belong to this loan/shop ---
+    // --- Original payment, when supplied, must belong to this credit/shop ---
     if (originalPaymentId != null && originalPaymentId.isNotEmpty) {
       final payment = await (select(payments)
             ..where((p) =>
                 p.shopId.equals(actor.shopId) &
                 p.id.equals(originalPaymentId) &
-                p.loanId.equals(loanId)))
+                p.creditId.equals(creditId)))
           .getSingleOrNull();
       if (payment == null) {
         throw StateError(
           'Cannot request correction: payment ID "$originalPaymentId" not '
-          'found for loan ID "$loanId" in shop "${actor.shopId}".',
+          'found for credit ID "$creditId" in shop "${actor.shopId}".',
         );
       }
     }
@@ -239,18 +239,18 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     var duplicated = false;
 
     await attachedDatabase.transaction(() async {
-      // --- Re-read the loan inside the transaction to detect concurrent
+      // --- Re-read the credit inside the transaction to detect concurrent
       //     corrections/payments that changed the lock state. ---
-      final currentLoan = await loanDaoGetById(actor.shopId, loanId);
-      if (currentLoan == null) {
+      final currentCredit = await creditDaoGetById(actor.shopId, creditId);
+      if (currentCredit == null) {
         throw StateError(
-          'Cannot request correction: loan ID "$loanId" not found in shop '
+          'Cannot request correction: credit ID "$creditId" not found in shop '
           '"${actor.shopId}".',
         );
       }
-      if (currentLoan.correctionPending) {
+      if (currentCredit.correctionPending) {
         throw StateError(
-          'Cannot request correction: loan ID "$loanId" already has a pending '
+          'Cannot request correction: credit ID "$creditId" already has a pending '
           'correction request.',
         );
       }
@@ -269,7 +269,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'auditCategory': 6,
             'auditEvent': correctionAuditEvent,
             'actorId': actor.id,
-            'loanId': loanId,
+            'creditId': creditId,
             'originalPaymentId': originalPaymentId,
             'amountCents': amount.minorUnits,
             'reason': cleanReason,
@@ -287,30 +287,30 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         return;
       }
 
-      // --- Activate the correction lock on the loan ---
-      final affected = await (update(loans)
+      // --- Activate the correction lock on the credit ---
+      final affected = await (update(credits)
             ..where((l) =>
                 l.shopId.equals(actor.shopId) &
-                l.id.equals(loanId) &
+                l.id.equals(creditId) &
                 l.correctionPending.equals(false)))
-          .write(LoansCompanion(
+          .write(CreditsCompanion(
         correctionPending: Value(true),
       ));
 
       if (affected == 0) {
-        // Another writer modified the loan first. Roll back this transaction.
+        // Another writer modified the credit first. Roll back this transaction.
         throw StateError(
-          'Unable to request correction: the loan state changed concurrently '
-          'for loan ID "$loanId".',
+          'Unable to request correction: the credit state changed concurrently '
+          'for credit ID "$creditId".',
         );
       }
 
       // --- Insert the correction request row ---
-      await into(loanCorrections).insert(
-        LoanCorrectionsCompanion.insert(
+      await into(creditCorrections).insert(
+        CreditCorrectionsCompanion.insert(
           id: correctionId,
           shopId: actor.shopId,
-          loanId: loanId,
+          creditId: creditId,
           originalPaymentId: Value(originalPaymentId),
           requestedByUserId: actor.id,
           correctionAmountCents: amount.minorUnits,
@@ -338,7 +338,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'auditCategory': 6,
             'auditEvent': correctionAuditEvent,
             'actorId': actor.id,
-            'loanId': loanId,
+            'creditId': creditId,
             'originalPaymentId': originalPaymentId,
             'amountCents': amount.minorUnits,
             'reason': cleanReason,
@@ -370,34 +370,34 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// Steps:
   /// 1. Authorization: actor must be an active Shop Owner.
   /// 2. Eligibility: the correction must exist in the actor's shop, belong to
-  ///    a loan in that shop, and be in `pending_approval` status.
+  ///    a credit in that shop, and be in `pending_approval` status.
   /// 3. Atomic transaction:
   ///    a. Insert idempotency guard row in `sync_queue`.
   ///    b. Conditionally transition the correction to `approved` (WHERE status
   ///       = 'pending_approval'), recording the reviewer, decision timestamp
   ///       and resulting balance snapshot.
   ///    c. Lift the correction lock and apply the balance adjustment on the
-  ///       loan (`balanceCents += correctionAmountCents`).
+  ///       credit (`balanceCents += correctionAmountCents`).
   ///    d. Insert the local audit/sync queue entry.
   ///
   /// Rejection of a duplicate/already-decided request is refused with
   /// [StateError] so a correction cannot be approved twice.
   ///
   /// NOTE (open accounting decision): The balance adjustment applies
-  /// `correctionAmountCents` to the loan balance. The exact business-rule
+  /// `correctionAmountCents` to the credit balance. The exact business-rule
   /// meaning of `correctionAmountCents` (full original payment vs. only the
   /// excess) and any separate immutable compensating ledger entry require
   /// Product Owner / Architect approval before this path is considered
   /// complete.
   ///
-  /// Returns the approved [LoanCorrection].
+  /// Returns the approved [CreditCorrection].
   ///
   /// Throws [PermissionDeniedException] when the actor is not an active
   /// Shop Owner.
   /// Throws [ArgumentError] when [idempotencyKey] or [correctionId] is blank.
   /// Throws [StateError] when the correction does not exist in the actor's
   /// shop, is not pending, or has already been decided.
-  Future<LoanCorrection> approveCorrection({
+  Future<CreditCorrection> approveCorrection({
     required AppUser actor,
     required String idempotencyKey,
     required String correctionId,
@@ -447,14 +447,14 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
 
     await attachedDatabase.transaction(() async {
       // --- The correction must exist in the actor's own shop and be pending ---
-      final correction = await (select(loanCorrections)
+      final correction = await (select(creditCorrections)
             ..where((c) =>
                 c.shopId.equals(actor.shopId) &
                 c.id.equals(correctionId) &
                 c.status.equals('pending_approval')))
           .getSingleOrNull();
       if (correction == null) {
-        final existing = await (select(loanCorrections)
+        final existing = await (select(creditCorrections)
               ..where((c) =>
                   c.shopId.equals(actor.shopId) & c.id.equals(correctionId)))
             .getSingleOrNull();
@@ -485,7 +485,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'action': 'approve',
             'actorId': actor.id,
             'correctionId': correctionId,
-            'loanId': correction.loanId,
+            'creditId': correction.creditId,
             'amountCents': correction.correctionAmountCents,
             'reviewedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -501,16 +501,16 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         return;
       }
 
-      // --- Load the loan inside the transaction ---
-      final loan = await loanDaoGetById(actor.shopId, correction.loanId);
-      if (loan == null) {
+      // --- Load the credit inside the transaction ---
+      final credit = await creditDaoGetById(actor.shopId, correction.creditId);
+      if (credit == null) {
         throw StateError(
-          'Cannot approve correction: loan ID "${correction.loanId}" not '
+          'Cannot approve correction: credit ID "${correction.creditId}" not '
           'found in shop "${actor.shopId}".',
         );
       }
 
-      final newBalanceCents = loan.balanceCents + correction.correctionAmountCents;
+      final newBalanceCents = credit.balanceCents + correction.correctionAmountCents;
 
       // --- Record the immutable compensating debit ledger entry ---
       //
@@ -518,18 +518,18 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       // transaction" while "the original payment transaction is permanently
       // preserved without modification or deletion." This entry is the
       // immutable financial record of the reversal; it posts within the same
-      // transaction as the loan balance, correction record, lock lift, and
+      // transaction as the credit balance, correction record, lock lift, and
       // sync journal so none of them can diverge on failure.
-      await into(loanLedgerEntries).insert(
-        LoanLedgerEntriesCompanion.insert(
+      await into(creditLedgerEntries).insert(
+        CreditLedgerEntriesCompanion.insert(
           id: const Uuid().v4(),
           shopId: actor.shopId,
-          loanId: correction.loanId,
+          creditId: correction.creditId,
           originalPaymentId: Value(correction.originalPaymentId),
           correctionId: Value(correctionId),
           entryType: 'compensating_debit',
           amountCents: correction.correctionAmountCents,
-          preBalanceCents: loan.balanceCents,
+          preBalanceCents: credit.balanceCents,
           postBalanceCents: newBalanceCents,
           reason: correction.reason,
           recordedByUserId: actor.id,
@@ -539,12 +539,12 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       );
 
       // --- Conditionally approve the correction (only if still pending) ---
-      final correctedAffected = await (update(loanCorrections)
+      final correctedAffected = await (update(creditCorrections)
             ..where((c) =>
                 c.shopId.equals(actor.shopId) &
                 c.id.equals(correctionId) &
                 c.status.equals('pending_approval')))
-          .write(LoanCorrectionsCompanion(
+          .write(CreditCorrectionsCompanion(
         status: Value('approved'),
         reviewedByUserId: Value(actor.id),
         reviewedAt: Value(now),
@@ -562,22 +562,22 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       }
 
       // --- Lift the correction lock and apply the balance adjustment ---
-      final loanAffected = await (update(loans)
+      final creditAffected = await (update(credits)
             ..where((l) =>
                 l.shopId.equals(actor.shopId) &
-                l.id.equals(correction.loanId) &
+                l.id.equals(correction.creditId) &
                 l.correctionPending.equals(true)))
-          .write(LoansCompanion(
+          .write(CreditsCompanion(
         balanceCents: Value(newBalanceCents),
         correctionPending: Value(false),
       ));
 
-      if (loanAffected == 0) {
+      if (creditAffected == 0) {
         // The lock was already lifted by a concurrent writer. Roll back the
         // correction approval to keep state consistent.
         throw StateError(
-          'Cannot approve correction: the correction lock on loan ID '
-          '"${correction.loanId}" was already lifted concurrently.',
+          'Cannot approve correction: the correction lock on credit ID '
+          '"${correction.creditId}" was already lifted concurrently.',
         );
       }
 
@@ -596,9 +596,9 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'action': 'approve',
             'actorId': actor.id,
             'correctionId': correctionId,
-            'loanId': correction.loanId,
+            'creditId': correction.creditId,
             'amountCents': correction.correctionAmountCents,
-            'previousBalanceCents': loan.balanceCents,
+            'previousBalanceCents': credit.balanceCents,
             'newBalanceCents': newBalanceCents,
             'reviewedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -628,16 +628,16 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// Steps:
   /// 1. Authorization: actor must be an active Shop Owner.
   /// 2. Eligibility: the correction must exist in the actor's shop, belong to
-  ///    a loan in that shop, and be in `pending_approval` status.
+  ///    a credit in that shop, and be in `pending_approval` status.
   /// 3. Atomic transaction:
   ///    a. Insert idempotency guard row in `sync_queue`.
   ///    b. Conditionally transition the correction to `rejected`, recording the
   ///       mandatory rejection reason, reviewer and decision timestamp.
-  ///    c. Lift the correction lock on the loan. The loan balance is NOT
+  ///    c. Lift the correction lock on the credit. The credit balance is NOT
   ///       altered.
   ///    d. Insert the local audit/sync queue entry.
   ///
-  /// Returns the rejected [LoanCorrection].
+  /// Returns the rejected [CreditCorrection].
   ///
   /// Throws [PermissionDeniedException] when the actor is not an active
   /// Shop Owner.
@@ -645,7 +645,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// [rejectionReason] is blank.
   /// Throws [StateError] when the correction does not exist in the actor's
   /// shop, is not pending, or has already been decided.
-  Future<LoanCorrection> rejectCorrection({
+  Future<CreditCorrection> rejectCorrection({
     required AppUser actor,
     required String idempotencyKey,
     required String correctionId,
@@ -704,14 +704,14 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
 
     await attachedDatabase.transaction(() async {
       // --- The correction must exist in the actor's own shop and be pending ---
-      final correction = await (select(loanCorrections)
+      final correction = await (select(creditCorrections)
             ..where((c) =>
                 c.shopId.equals(actor.shopId) &
                 c.id.equals(correctionId) &
                 c.status.equals('pending_approval')))
           .getSingleOrNull();
       if (correction == null) {
-        final existing = await (select(loanCorrections)
+        final existing = await (select(creditCorrections)
               ..where((c) =>
                   c.shopId.equals(actor.shopId) & c.id.equals(correctionId)))
             .getSingleOrNull();
@@ -742,7 +742,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'action': 'reject',
             'actorId': actor.id,
             'correctionId': correctionId,
-            'loanId': correction.loanId,
+            'creditId': correction.creditId,
             'rejectionReason': cleanRejectionReason,
             'reviewedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -759,12 +759,12 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       }
 
       // --- Conditionally reject the correction (only if still pending) ---
-      final rejectedAffected = await (update(loanCorrections)
+      final rejectedAffected = await (update(creditCorrections)
             ..where((c) =>
                 c.shopId.equals(actor.shopId) &
                 c.id.equals(correctionId) &
                 c.status.equals('pending_approval')))
-          .write(LoanCorrectionsCompanion(
+          .write(CreditCorrectionsCompanion(
         status: Value('rejected'),
         reviewedByUserId: Value(actor.id),
         reviewedAt: Value(now),
@@ -781,19 +781,19 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       }
 
       // --- Lift the correction lock. Balance is intentionally unchanged. ---
-      final loanAffected = await (update(loans)
+      final creditAffected = await (update(credits)
             ..where((l) =>
                 l.shopId.equals(actor.shopId) &
-                l.id.equals(correction.loanId) &
+                l.id.equals(correction.creditId) &
                 l.correctionPending.equals(true)))
-          .write(LoansCompanion(
+          .write(CreditsCompanion(
         correctionPending: Value(false),
       ));
 
-      if (loanAffected == 0) {
+      if (creditAffected == 0) {
         throw StateError(
-          'Cannot reject correction: the correction lock on loan ID '
-          '"${correction.loanId}" was already lifted concurrently.',
+          'Cannot reject correction: the correction lock on credit ID '
+          '"${correction.creditId}" was already lifted concurrently.',
         );
       }
 
@@ -812,7 +812,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'action': 'reject',
             'actorId': actor.id,
             'correctionId': correctionId,
-            'loanId': correction.loanId,
+            'creditId': correction.creditId,
             'rejectionReason': cleanRejectionReason,
             'reviewedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -837,18 +837,18 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     return rejected;
   }
 
-  /// Records a Shop Owner manual balance adjustment (debit or credit) on [loanId].
+  /// Records a Shop Owner manual balance adjustment (debit or credit) on [creditId].
   ///
   /// PRD FR-22: manual balance adjustments are controlled, immutable ledger
-  /// entries linked to the loan. A debit increases the outstanding balance;
+  /// entries linked to the credit. A debit increases the outstanding balance;
   /// a credit decreases it. The original payment history is never altered.
   ///
   /// Steps:
   /// 1. Authorization: actor must be an active Shop Owner.
-  /// 2. Input validation: idempotency key, loan id, amount and reason must be
+  /// 2. Input validation: idempotency key, credit id, amount and reason must be
   ///    present; amount must be positive; adjustment type must be a manual
   ///    adjustment (not `compensating_debit`).
-  /// 3. Eligibility: the loan must exist in the actor's shop and must not
+  /// 3. Eligibility: the credit must exist in the actor's shop and must not
   ///    have a pending correction (the Story 5.3/5.5 correction lock blocks
   ///    balance-changing transactions against an unverified balance).
   /// 4. Atomic transaction:
@@ -856,26 +856,26 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   ///       `(shop_id, idempotency_key)` prevents duplicates).
   ///    b. Insert the immutable ledger entry (`adjustment_debit` or
   ///       `adjustment_credit`) with pre/post balance snapshot.
-  ///    c. Conditionally update the loan balance (WHERE correction_pending =
+  ///    c. Conditionally update the credit balance (WHERE correction_pending =
   ///       false).
   ///    d. Insert the local audit/sync queue entry.
   ///
-  /// Returns the created [LoanLedgerEntry].
+  /// Returns the created [CreditLedgerEntry].
   ///
   /// Throws [PermissionDeniedException] when the actor is deactivated or is
   /// not a Shop Owner.
-  /// Throws [ArgumentError] when [idempotencyKey], [loanId] or [reason] is
+  /// Throws [ArgumentError] when [idempotencyKey], [creditId] or [reason] is
   /// blank, when [amount] is not positive, or when [adjustmentType] is
   /// `compensating_debit`.
-  /// Throws [StateError] when the loan does not exist in the actor's shop,
-  /// when a correction is pending on the loan, when a credit would make the
-  /// balance negative, or when the loan state changed concurrently.
-  Future<LoanLedgerEntry> adjustBalance({
+  /// Throws [StateError] when the credit does not exist in the actor's shop,
+  /// when a correction is pending on the credit, when a credit would make the
+  /// balance negative, or when the credit state changed concurrently.
+  Future<CreditLedgerEntry> adjustBalance({
     required AppUser actor,
     required String idempotencyKey,
-    required String loanId,
+    required String creditId,
     required Money amount,
-    required LoanLedgerEntryType adjustmentType,
+    required CreditLedgerEntryType adjustmentType,
     required String reason,
     required DateTime recordedAt,
   }) async {
@@ -888,7 +888,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     AuthorizationGuard.checkOwnerAdministrativeAction(
       isActive: actor.isActive,
       actorRole: actor.role,
-      actionDescription: 'adjust a loan balance',
+      actionDescription: 'adjust a credit balance',
     );
 
     // --- Input validation ---
@@ -900,11 +900,11 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         'idempotencyKey cannot be empty',
       );
     }
-    if (loanId.trim().isEmpty) {
+    if (creditId.trim().isEmpty) {
       throw ArgumentError.value(
-        loanId,
-        'loanId',
-        'loanId cannot be empty',
+        creditId,
+        'creditId',
+        'creditId cannot be empty',
       );
     }
     if (amount.minorUnits <= 0) {
@@ -916,7 +916,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     }
     // Manual adjustments use adjustment_debit / adjustment_credit only;
     // compensating_debit is reserved for approved corrections.
-    if (adjustmentType == LoanLedgerEntryType.compensatingDebit) {
+    if (adjustmentType == CreditLedgerEntryType.compensatingDebit) {
       throw ArgumentError.value(
         adjustmentType,
         'adjustmentType',
@@ -948,20 +948,20 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     final adjustmentId = const Uuid().v4();
 
     await attachedDatabase.transaction(() async {
-      // --- The loan must exist in the actor's own shop ---
-      final loan = await loanDaoGetById(actor.shopId, loanId);
-      if (loan == null) {
+      // --- The credit must exist in the actor's own shop ---
+      final credit = await creditDaoGetById(actor.shopId, creditId);
+      if (credit == null) {
         throw StateError(
-          'Cannot adjust balance: loan ID "$loanId" not found in shop '
+          'Cannot adjust balance: credit ID "$creditId" not found in shop '
           '"${actor.shopId}".',
         );
       }
 
       // --- Story 5.3 / 5.5 correction lock: while a correction is pending,
       //     balance adjustments are blocked against the unverified balance. ---
-      if (loan.correctionPending) {
+      if (credit.correctionPending) {
         throw StateError(
-          'Cannot adjust balance: loan ID "$loanId" has a pending correction '
+          'Cannot adjust balance: credit ID "$creditId" has a pending correction '
           'request. Balance adjustments are blocked until the correction is '
           'approved or rejected.',
         );
@@ -970,20 +970,20 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       // --- Compute the new balance based on adjustment type ---
       int newBalanceCents;
       switch (adjustmentType) {
-        case LoanLedgerEntryType.adjustmentDebit:
-          newBalanceCents = loan.balanceCents + amount.minorUnits;
+        case CreditLedgerEntryType.adjustmentDebit:
+          newBalanceCents = credit.balanceCents + amount.minorUnits;
           break;
-        case LoanLedgerEntryType.adjustmentCredit:
-          newBalanceCents = loan.balanceCents - amount.minorUnits;
+        case CreditLedgerEntryType.adjustmentCredit:
+          newBalanceCents = credit.balanceCents - amount.minorUnits;
           if (newBalanceCents < 0) {
             throw StateError(
               'Cannot adjust balance: credit of ${amount.minorUnits} would '
-              'make the balance of loan ID "$loanId" negative '
-              '(current balance: ${loan.balanceCents}).',
+              'make the balance of credit ID "$creditId" negative '
+              '(current balance: ${credit.balanceCents}).',
             );
           }
           break;
-        case LoanLedgerEntryType.compensatingDebit:
+        case CreditLedgerEntryType.compensatingDebit:
           // Unreachable: rejected above, but keep the switch exhaustive.
           throw ArgumentError.value(
             adjustmentType,
@@ -999,14 +999,14 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
           shopId: actor.shopId,
           idempotencyKey: key,
           entityType: adjustmentEntityType,
-          entityId: loanId,
+          entityId: creditId,
           actionType: adjustBalanceActionType,
           payloadJson: jsonEncode({
             'auditCategory': 7,
             'auditEvent': adjustmentAuditEvent,
             'action': 'adjust_balance',
             'actorId': actor.id,
-            'loanId': loanId,
+            'creditId': creditId,
             'adjustmentType': adjustmentType.value,
             'amountCents': amount.minorUnits,
             'reason': cleanReason,
@@ -1026,16 +1026,16 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       }
 
       // --- Record the immutable ledger entry ---
-      await into(loanLedgerEntries).insert(
-        LoanLedgerEntriesCompanion.insert(
+      await into(creditLedgerEntries).insert(
+        CreditLedgerEntriesCompanion.insert(
           id: adjustmentId,
           shopId: actor.shopId,
-          loanId: loanId,
+          creditId: creditId,
           originalPaymentId: const Value.absent(),
           correctionId: const Value.absent(),
           entryType: adjustmentType.value,
           amountCents: amount.minorUnits,
-          preBalanceCents: loan.balanceCents,
+          preBalanceCents: credit.balanceCents,
           postBalanceCents: newBalanceCents,
           reason: cleanReason,
           recordedByUserId: actor.id,
@@ -1044,21 +1044,21 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
-      // --- Conditionally update the loan balance ---
-      final affected = await (update(loans)
+      // --- Conditionally update the credit balance ---
+      final affected = await (update(credits)
             ..where((l) =>
                 l.shopId.equals(actor.shopId) &
-                l.id.equals(loanId) &
+                l.id.equals(creditId) &
                 l.correctionPending.equals(false)))
-        .write(LoansCompanion(
+        .write(CreditsCompanion(
       balanceCents: Value(newBalanceCents),
     ));
 
       if (affected == 0) {
-        // Another writer modified the loan first. Roll back this transaction.
+        // Another writer modified the credit first. Roll back this transaction.
         throw StateError(
-          'Unable to adjust balance: the loan state changed concurrently '
-          'for loan ID "$loanId".',
+          'Unable to adjust balance: the credit state changed concurrently '
+          'for credit ID "$creditId".',
         );
       }
 
@@ -1076,10 +1076,10 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'auditEvent': adjustmentAuditEvent,
             'action': 'adjust_balance',
             'actorId': actor.id,
-            'loanId': loanId,
+            'creditId': creditId,
             'adjustmentType': adjustmentType.value,
             'amountCents': amount.minorUnits,
-            'previousBalanceCents': loan.balanceCents,
+            'previousBalanceCents': credit.balanceCents,
             'newBalanceCents': newBalanceCents,
             'recordedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -1105,25 +1105,25 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Retrieves a ledger entry by id strictly scoped within [shopId].
-  Future<LoanLedgerEntry?> getLedgerEntryById(
+  Future<CreditLedgerEntry?> getLedgerEntryById(
     String shopId,
     String ledgerEntryId,
   ) async {
-    final entry = await (select(loanLedgerEntries)
+    final entry = await (select(creditLedgerEntries)
           ..where((e) =>
               e.shopId.equals(shopId) & e.id.equals(ledgerEntryId)))
         .getSingleOrNull();
     return entry != null ? _toDomainLedger(entry) : null;
   }
 
-  /// Retrieves all ledger entries for a loan strictly scoped within [shopId].
-  Future<List<LoanLedgerEntry>> getLedgerEntriesByLoan(
+  /// Retrieves all ledger entries for a credit strictly scoped within [shopId].
+  Future<List<CreditLedgerEntry>> getLedgerEntriesByCredit(
     String shopId,
-    String loanId, {
+    String creditId, {
     int? limit,
   }) async {
-    final query = select(loanLedgerEntries)
-      ..where((e) => e.shopId.equals(shopId) & e.loanId.equals(loanId))
+    final query = select(creditLedgerEntries)
+      ..where((e) => e.shopId.equals(shopId) & e.creditId.equals(creditId))
       ..orderBy([(e) => OrderingTerm.desc(e.createdAt)]);
     if (limit != null) {
       query.limit(limit);
@@ -1134,7 +1134,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
 
   /// Resolves the outcome of a balance adjustment already recorded under
   /// [idempotencyKey].
-  Future<LoanLedgerEntry> _resolveRecordedAdjustment({
+  Future<CreditLedgerEntry> _resolveRecordedAdjustment({
     required String shopId,
     required String idempotencyKey,
     SyncQueueRecord? claim,
@@ -1166,11 +1166,11 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       );
     }
 
-    // The guard row references the affected loan (entityId = loanId).
-    final query = select(loanLedgerEntries)
+    // The guard row references the affected credit (entityId = creditId).
+    final query = select(creditLedgerEntries)
           ..where((e) =>
               e.shopId.equals(shopId) &
-              e.loanId.equals(claimed.entityId) &
+              e.creditId.equals(claimed.entityId) &
               e.entryType.equals(entryType) &
               e.amountCents.equals(amountCents) &
               e.reason.equals(reason ?? '') &
@@ -1186,22 +1186,22 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Retrieves a correction by id strictly scoped within [shopId].
-  Future<LoanCorrection?> getCorrectionById(String shopId, String correctionId) async {
-    final entry = await (select(loanCorrections)
+  Future<CreditCorrection?> getCorrectionById(String shopId, String correctionId) async {
+    final entry = await (select(creditCorrections)
           ..where((c) =>
               c.shopId.equals(shopId) & c.id.equals(correctionId)))
         .getSingleOrNull();
     return entry != null ? _toDomain(entry) : null;
   }
 
-  /// Retrieves all corrections for [loanId] strictly scoped within [shopId].
-  Future<List<LoanCorrection>> getCorrectionsByLoan(
+  /// Retrieves all corrections for [creditId] strictly scoped within [shopId].
+  Future<List<CreditCorrection>> getCorrectionsByCredit(
     String shopId,
-    String loanId, {
+    String creditId, {
     int? limit,
   }) async {
-    final query = select(loanCorrections)
-      ..where((c) => c.shopId.equals(shopId) & c.loanId.equals(loanId))
+    final query = select(creditCorrections)
+      ..where((c) => c.shopId.equals(shopId) & c.creditId.equals(creditId))
       ..orderBy([(c) => OrderingTerm.desc(c.createdAt)]);
     if (limit != null) {
       query.limit(limit);
@@ -1211,12 +1211,12 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Retrieves all corrections in [shopId] matching [status].
-  Future<List<LoanCorrection>> getCorrectionsByStatus(
+  Future<List<CreditCorrection>> getCorrectionsByStatus(
     String shopId,
     String status, {
     int? limit,
   }) async {
-    final query = select(loanCorrections)
+    final query = select(creditCorrections)
       ..where((c) => c.shopId.equals(shopId) & c.status.equals(status))
       ..orderBy([(c) => OrderingTerm.desc(c.createdAt)]);
     if (limit != null) {
@@ -1240,7 +1240,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
 
   /// Resolves the outcome of a correction operation already recorded under
   /// [idempotencyKey].
-  Future<LoanCorrection> _resolveRecordedCorrection({
+  Future<CreditCorrection> _resolveRecordedCorrection({
     required String shopId,
     required String idempotencyKey,
     SyncQueueRecord? claim,
@@ -1271,14 +1271,14 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     // requested action and the correction really is in the expected state.
     final action = claimed.actionType;
     if (action == approveCorrectionActionType &&
-        correction.status != LoanCorrectionStatus.approved) {
+        correction.status != CreditCorrectionStatus.approved) {
       throw StateError(
         'Idempotency key "$idempotencyKey" refers to an approval that did not '
         'complete for correction "${claimed.entityId}".',
       );
     }
     if (action == rejectCorrectionActionType &&
-        correction.status != LoanCorrectionStatus.rejected) {
+        correction.status != CreditCorrectionStatus.rejected) {
       throw StateError(
         'Idempotency key "$idempotencyKey" refers to a rejection that did not '
         'complete for correction "${claimed.entityId}".',
@@ -1288,21 +1288,21 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     return correction;
   }
 
-  /// Helper to fetch a loan by id within a shop (avoids constructing a second
+  /// Helper to fetch a credit by id within a shop (avoids constructing a second
   /// DAO inside each transaction branch).
-  Future<Loan?> loanDaoGetById(String shopId, String loanId) async {
-    final entry = await (select(loans)
-          ..where((l) => l.shopId.equals(shopId) & l.id.equals(loanId)))
+  Future<Credit?> creditDaoGetById(String shopId, String creditId) async {
+    final entry = await (select(credits)
+          ..where((l) => l.shopId.equals(shopId) & l.id.equals(creditId)))
         .getSingleOrNull();
     if (entry == null) return null;
-    return Loan(
+    return Credit(
       id: entry.id,
       shopId: entry.shopId,
       customerId: entry.customerId,
       principalCents: entry.principalCents,
       balanceCents: entry.balanceCents,
-      status: LoanStatus.fromValue(entry.status),
-      workflowStatus: LoanWorkflowStatus.fromValue(entry.workflowStatus),
+      status: CreditStatus.fromValue(entry.status),
+      workflowStatus: CreditWorkflowStatus.fromValue(entry.workflowStatus),
       dueDate: entry.dueDate,
       createdAt: entry.createdAt,
       settledAt: entry.settledAt,
@@ -1317,17 +1317,17 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   }
 }
 
-/// Status of a loan correction request (Story 5.5).
-enum LoanCorrectionStatus {
+/// Status of a credit correction request (Story 5.5).
+enum CreditCorrectionStatus {
   pendingApproval('pending_approval'),
   approved('approved'),
   rejected('rejected');
 
   final String value;
-  const LoanCorrectionStatus(this.value);
+  const CreditCorrectionStatus(this.value);
 
-  static LoanCorrectionStatus fromValue(String value) {
-    for (final status in LoanCorrectionStatus.values) {
+  static CreditCorrectionStatus fromValue(String value) {
+    for (final status in CreditCorrectionStatus.values) {
       if (status.value == value) {
         return status;
       }
@@ -1335,34 +1335,34 @@ enum LoanCorrectionStatus {
     throw ArgumentError.value(
       value,
       'value',
-      'Invalid LoanCorrectionStatus string representation',
+      'Invalid CreditCorrectionStatus string representation',
     );
   }
 }
 
-/// Clean architecture domain entity representing a loan correction request
+/// Clean architecture domain entity representing a credit correction request
 /// (Story 5.5).
 @immutable
-class LoanCorrection {
+class CreditCorrection {
   final String id;
   final String shopId;
-  final String loanId;
+  final String creditId;
   final String? originalPaymentId;
   final String requestedByUserId;
   final DateTime createdAt;
   final int correctionAmountCents;
   final String reason;
-  final LoanCorrectionStatus status;
+  final CreditCorrectionStatus status;
   final String? reviewedByUserId;
   final DateTime? reviewedAt;
   final String? rejectionReason;
   final int? resultingBalanceCents;
   final DateTime updatedAt;
 
-  const LoanCorrection({
+  const CreditCorrection({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     this.originalPaymentId,
     required this.requestedByUserId,
     required this.createdAt,
@@ -1376,17 +1376,17 @@ class LoanCorrection {
     required this.updatedAt,
   });
 
-  bool get isPending => status == LoanCorrectionStatus.pendingApproval;
-  bool get isApproved => status == LoanCorrectionStatus.approved;
-  bool get isRejected => status == LoanCorrectionStatus.rejected;
+  bool get isPending => status == CreditCorrectionStatus.pendingApproval;
+  bool get isApproved => status == CreditCorrectionStatus.approved;
+  bool get isRejected => status == CreditCorrectionStatus.rejected;
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is LoanCorrection &&
+    return other is CreditCorrection &&
         other.id == id &&
         other.shopId == shopId &&
-        other.loanId == loanId &&
+        other.creditId == creditId &&
         other.originalPaymentId == originalPaymentId &&
         other.requestedByUserId == requestedByUserId &&
         other.createdAt == createdAt &&
@@ -1404,7 +1404,7 @@ class LoanCorrection {
   int get hashCode => Object.hash(
         id,
         shopId,
-        loanId,
+        creditId,
         originalPaymentId,
         requestedByUserId,
         createdAt,
@@ -1420,16 +1420,16 @@ class LoanCorrection {
 }
 
 /// Kind of financial ledger entry (Story 5.5, PRD FR-22).
-enum LoanLedgerEntryType {
+enum CreditLedgerEntryType {
   compensatingDebit('compensating_debit'),
   adjustmentDebit('adjustment_debit'),
   adjustmentCredit('adjustment_credit');
 
   final String value;
-  const LoanLedgerEntryType(this.value);
+  const CreditLedgerEntryType(this.value);
 
-  static LoanLedgerEntryType fromValue(String value) {
-    for (final type in LoanLedgerEntryType.values) {
+  static CreditLedgerEntryType fromValue(String value) {
+    for (final type in CreditLedgerEntryType.values) {
       if (type.value == value) {
         return type;
       }
@@ -1437,7 +1437,7 @@ enum LoanLedgerEntryType {
     throw ArgumentError.value(
       value,
       'value',
-      'Invalid LoanLedgerEntryType string representation',
+      'Invalid CreditLedgerEntryType string representation',
     );
   }
 }
@@ -1450,13 +1450,13 @@ enum LoanLedgerEntryType {
 /// payment record is permanently preserved. Manual adjustments
 /// (`adjustmentDebit`, `adjustmentCredit`) share the same vocabulary.
 @immutable
-class LoanLedgerEntry {
+class CreditLedgerEntry {
   final String id;
   final String shopId;
-  final String loanId;
+  final String creditId;
   final String? originalPaymentId;
   final String? correctionId;
-  final LoanLedgerEntryType entryType;
+  final CreditLedgerEntryType entryType;
   final int amountCents;
   final int preBalanceCents;
   final int postBalanceCents;
@@ -1465,10 +1465,10 @@ class LoanLedgerEntry {
   final DateTime recordedAt;
   final DateTime createdAt;
 
-  const LoanLedgerEntry({
+  const CreditLedgerEntry({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     this.originalPaymentId,
     this.correctionId,
     required this.entryType,
@@ -1481,17 +1481,17 @@ class LoanLedgerEntry {
     required this.createdAt,
   });
 
-  bool get isCompensatingDebit => entryType == LoanLedgerEntryType.compensatingDebit;
-  bool get isAdjustmentDebit => entryType == LoanLedgerEntryType.adjustmentDebit;
-  bool get isAdjustmentCredit => entryType == LoanLedgerEntryType.adjustmentCredit;
+  bool get isCompensatingDebit => entryType == CreditLedgerEntryType.compensatingDebit;
+  bool get isAdjustmentDebit => entryType == CreditLedgerEntryType.adjustmentDebit;
+  bool get isAdjustmentCredit => entryType == CreditLedgerEntryType.adjustmentCredit;
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is LoanLedgerEntry &&
+    return other is CreditLedgerEntry &&
         other.id == id &&
         other.shopId == shopId &&
-        other.loanId == loanId &&
+        other.creditId == creditId &&
         other.originalPaymentId == originalPaymentId &&
         other.correctionId == correctionId &&
         other.entryType == entryType &&
@@ -1508,7 +1508,7 @@ class LoanLedgerEntry {
   int get hashCode => Object.hash(
         id,
         shopId,
-        loanId,
+        creditId,
         originalPaymentId,
         correctionId,
         entryType,
@@ -1521,3 +1521,4 @@ class LoanLedgerEntry {
         createdAt,
       );
 }
+

@@ -7,7 +7,7 @@ mixin _$CollateralDiscrepancyDaoMixin on DatabaseAccessor<AppDatabase> {
   $ShopsTable get shops => attachedDatabase.shops;
   $CustomersTable get customers => attachedDatabase.customers;
   $AppUsersTable get appUsers => attachedDatabase.appUsers;
-  $LoansTable get loans => attachedDatabase.loans;
+  $CreditsTable get credits => attachedDatabase.credits;
   $CollateralItemsTable get collateralItems => attachedDatabase.collateralItems;
   $CollateralDiscrepanciesTable get collateralDiscrepancies =>
       attachedDatabase.collateralDiscrepancies;
@@ -24,8 +24,8 @@ class CollateralDiscrepancyDaoManager {
       $$CustomersTableTableManager(_db.attachedDatabase, _db.customers);
   $$AppUsersTableTableManager get appUsers =>
       $$AppUsersTableTableManager(_db.attachedDatabase, _db.appUsers);
-  $$LoansTableTableManager get loans =>
-      $$LoansTableTableManager(_db.attachedDatabase, _db.loans);
+  $$CreditsTableTableManager get credits =>
+      $$CreditsTableTableManager(_db.attachedDatabase, _db.credits);
   $$CollateralItemsTableTableManager get collateralItems =>
       $$CollateralItemsTableTableManager(
         _db.attachedDatabase,

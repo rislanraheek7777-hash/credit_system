@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'package:credit_system/core/data/local/app_database.dart';
 
-/// Regression coverage for the schema version 14 -> 15 rebuild of the `loans`
+/// Regression coverage for the schema version 14 -> 15 rebuild of the `credits`
 /// table (Story 4.4).
 ///
 /// The rebuild adds the nullable `documentSnapshotId` TEXT column for the
@@ -27,7 +27,7 @@ import 'package:credit_system/core/data/local/app_database.dart';
 ///
 /// Ensure that after the upgrade:
 /// - The schema version advances to 15.
-/// - Existing loan records are preserved with `documentSnapshotId` = NULL.
+/// - Existing credit records are preserved with `documentSnapshotId` = NULL.
 /// - The column is readable and writable through the generated Drift API.
 void main() {
   late Directory tempDir;
@@ -83,7 +83,7 @@ void main() {
   }
 
   /// Seeds a genuine version 14 database on disk. Creates the minimal schema
-  /// required for the migration tests: shops, app_users, customers, and loans
+  /// required for the migration tests: shops, app_users, customers, and credits
   /// tables with their version-14 CHECK constraints. Other tables are created
   /// empty to avoid column/value count mismatches.
   void seedV14Database(File file) {
@@ -132,7 +132,7 @@ void main() {
         "updated_at" INTEGER NOT NULL
       );''');
     db.execute('''\
-      CREATE TABLE "loans" (
+      CREATE TABLE "credits" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
         "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -179,29 +179,29 @@ void main() {
     // An agreement awaiting disbursement, with an agreed 30-day term.
     db.execute(
       '''\
-      INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "due_date", "created_at")
-      VALUES ('loan-v14-pending', 'shop-v14', 'cust-v14', 500000, 500000, 'active', 'pending_disbursement', 30, $now, $now);''',
+      INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "due_date", "created_at")
+      VALUES ('credit-v14-pending', 'shop-v14', 'cust-v14', 500000, 500000, 'active', 'pending_disbursement', 30, $now, $now);''',
     );
     // An agreement whose cash was handed over, with a 60-day term and a
     // disbursement record.
     db.execute(
       '''\
-      INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at")
-      VALUES ('loan-v14-disbursed', 'shop-v14', 'cust-v14', 750000, 750000, 'active', 'disbursed', 60, $now, 'user-v14', $now, $now);''',
+      INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at")
+      VALUES ('credit-v14-disbursed', 'shop-v14', 'cust-v14', 750000, 750000, 'active', 'disbursed', 60, $now, 'user-v14', $now, $now);''',
     );
     // A legacy agreement that predates the disbursement workflow: backfilled to
     // 'disbursed' by the version 12 migration and therefore carrying no
     // disbursement record.
     db.execute(
       '''\
-      INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
-      VALUES ('loan-v14-legacy', 'shop-v14', 'cust-v14', 250000, 250000, 'active', 'disbursed', $now, $now);''',
+      INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
+      VALUES ('credit-v14-legacy', 'shop-v14', 'cust-v14', 250000, 250000, 'active', 'disbursed', $now, $now);''',
     );
 
     db.close();
   }
 
-  group('schema version 14 -> 15 migration of the loans table', () {
+  group('schema version 14 -> 15 migration of the credits table', () {
     test('a genuine version 14 database stays at version 14 when it is reopened without an upgrade', () async {
       final file = File(p.join(tempDir.path, 'v14_no_migration.sqlite'));
       seedV14Database(file);
@@ -217,13 +217,13 @@ void main() {
       final db = openWithoutMigrations(file);
       addTearDown(() async => db.close());
 
-      // Read the loan row through raw sqlite (the typed Drift API expects the
+      // Read the credit row through raw sqlite (the typed Drift API expects the
       // `correctionPending` column which is absent from a genuine v14 file).
       final raw = sqlite.sqlite3.open(file.path);
       try {
         final rows = raw.select(
-          'SELECT status FROM loans WHERE id = ?',
-          ['loan-v14-pending'],
+          'SELECT status FROM credits WHERE id = ?',
+          ['credit-v14-pending'],
         );
         expect(rows.first.values.first, equals('active'));
       } finally {
@@ -254,15 +254,15 @@ void main() {
       // Drift opens the database lazily, so the migration only runs once the
       // first query is issued.
       await (db.select(
-        db.loans,
-      )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
+        db.credits,
+      )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
 
       expect(
         readUserVersion(file),
-        equals(20),
+        equals(22),
         reason: 'Opening a version 14 database must migrate it to 15.',
       );
-      expect(db.schemaVersion, equals(20));
+      expect(db.schemaVersion, equals(22));
     });
 
     test(
@@ -275,43 +275,43 @@ void main() {
         addTearDown(() async => db.close());
 
         await (db.select(
-          db.loans,
-        )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
+          db.credits,
+        )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
 
-        expect(readUserVersion(file), equals(20));
+        expect(readUserVersion(file), equals(22));
 
-        // All existing loans must have documentSnapshotId = NULL.
+        // All existing credits must have documentSnapshotId = NULL.
         // The column is nullable with no default, so old rows get NULL automatically.
         final pending = await (db.select(
-          db.loans,
-        )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
+          db.credits,
+        )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
         expect(
           pending.documentSnapshotId,
           isNull,
-          reason: 'Pending loan must have documentSnapshotId = NULL.',
+          reason: 'Pending credit must have documentSnapshotId = NULL.',
         );
 
         final disbursed = await (db.select(
-          db.loans,
-        )..where((l) => l.id.equals('loan-v14-disbursed'))).getSingle();
+          db.credits,
+        )..where((l) => l.id.equals('credit-v14-disbursed'))).getSingle();
         expect(
           disbursed.documentSnapshotId,
           isNull,
-          reason: 'Disbursed loan must have documentSnapshotId = NULL.',
+          reason: 'Disbursed credit must have documentSnapshotId = NULL.',
         );
 
         final legacy = await (db.select(
-          db.loans,
-        )..where((l) => l.id.equals('loan-v14-legacy'))).getSingle();
+          db.credits,
+        )..where((l) => l.id.equals('credit-v14-legacy'))).getSingle();
         expect(
           legacy.documentSnapshotId,
           isNull,
-          reason: 'Legacy loan must have documentSnapshotId = NULL.',
+          reason: 'Legacy credit must have documentSnapshotId = NULL.',
         );
       },
     );
 
-    test('newly inserted loans can set documentSnapshotId', () async {
+    test('newly inserted credits can set documentSnapshotId', () async {
       final file = File(p.join(tempDir.path, 'v15_new_insert.sqlite'));
       seedV14Database(file);
 
@@ -319,17 +319,17 @@ void main() {
       addTearDown(() async => db.close());
 
       await (db.select(
-        db.loans,
-      )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
+        db.credits,
+      )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
 
-      expect(readUserVersion(file), equals(20));
+      expect(readUserVersion(file), equals(22));
 
-      // Insert a new loan with a documentSnapshotId.
+      // Insert a new credit with a documentSnapshotId.
       await db
-          .into(db.loans)
+          .into(db.credits)
           .insert(
-            LoansCompanion.insert(
-              id: 'loan-v15-new',
+            CreditsCompanion.insert(
+              id: 'credit-v15-new',
               shopId: 'shop-v14',
               customerId: 1,
               principalCents: 500000,
@@ -344,12 +344,12 @@ void main() {
           );
 
       final inserted = await (db.select(
-        db.loans,
-      )..where((l) => l.id.equals('loan-v15-new'))).getSingle();
+        db.credits,
+      )..where((l) => l.id.equals('credit-v15-new'))).getSingle();
       expect(
         inserted.documentSnapshotId,
         equals('snap-2026-10-23-alpha'),
-        reason: 'Newly inserted loan should persist the documentSnapshotId.',
+        reason: 'Newly inserted credit should persist the documentSnapshotId.',
       );
     });
 
@@ -362,11 +362,11 @@ void main() {
       final first = openWithDeviceSemantics(file);
       addTearDown(() async => first.close());
       await (first.select(
-        first.loans,
-      )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
+        first.credits,
+      )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
 
       // Verify the migration ran and persisted version 15 on disk.
-      expect(readUserVersion(file), equals(20));
+      expect(readUserVersion(file), equals(22));
 
       await first.close();
 
@@ -374,18 +374,19 @@ void main() {
       final second = openWithDeviceSemantics(file);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(20));
-      expect(readUserVersion(file), equals(20));
+      expect(second.schemaVersion, equals(22));
+      expect(readUserVersion(file), equals(22));
 
       // Data must be intact after close/reopen.
-      final loan = await (second.select(
-        second.loans,
-      )..where((l) => l.id.equals('loan-v14-pending'))).getSingle();
-      expect(loan.balanceCents, equals(500000));
-      expect(loan.termPresetDays, equals(30));
-      expect(loan.documentSnapshotId, isNull);
+      final credit = await (second.select(
+        second.credits,
+      )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
+      expect(credit.balanceCents, equals(500000));
+      expect(credit.termPresetDays, equals(30));
+      expect(credit.documentSnapshotId, isNull);
     });
   });
 }
+
 
 

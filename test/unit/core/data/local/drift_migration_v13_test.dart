@@ -8,11 +8,11 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'package:credit_system/core/data/local/app_database.dart';
 
-/// Regression coverage for the schema version 12 -> 13 rebuild of the `loans`
+/// Regression coverage for the schema version 12 -> 13 rebuild of the `credits`
 /// table (Story 4.3).
 ///
-/// The rebuild is destructive to the identity of the `loans` table, and
-/// `collateral_items.loan_id` references `loans(id)` with `ON DELETE
+/// The rebuild is destructive to the identity of the `credits` table, and
+/// `collateral_items.credit_id` references `credits(id)` with `ON DELETE
 /// RESTRICT`. These tests exercise the migration the way a *device* runs it:
 ///
 /// - a persistent database file (not an in-memory database),
@@ -20,7 +20,7 @@ import 'package:credit_system/core/data/local/app_database.dart';
 ///   exactly as `AppDatabaseConnection.openSandboxedConnection` does,
 /// - a version 12 schema that carries the real foreign keys.
 ///
-/// Without foreign-key enforcement the rebuild's `DROP TABLE "loans"` never
+/// Without foreign-key enforcement the rebuild's `DROP TABLE "credits"` never
 /// trips the `RESTRICT` action, so a migration test that omits it passes while
 /// the same migration fails on a device.
 void main() {
@@ -49,7 +49,7 @@ void main() {
     return AppDatabase.forTesting(executor);
   }
 
-  group('schema version 12 -> 13 rebuild of the loans table', () {
+  group('schema version 12 -> 13 rebuild of the credits table', () {
     test(
         'completes with foreign-key enforcement enabled and populated child '
         'rows', () async {
@@ -59,19 +59,19 @@ void main() {
       final db = openWithDeviceSemantics(dbFile);
       addTearDown(() async => db.close());
 
-      final loan = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v12')))
+      final credit = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v12')))
           .getSingle();
-      expect(loan.principalCents, equals(500000));
-      expect(loan.balanceCents, equals(500000));
-      expect(loan.status, equals('active'));
-      expect(loan.workflowStatus, equals('pending_disbursement'));
-      expect(loan.termPresetDays, isNull);
-      expect(loan.customDueDate, isNull);
-      expect(loan.disbursedAt, isNull);
-      expect(loan.disbursedByUserId, isNull);
-      expect(loan.cancelledAt, isNull);
-      expect(loan.cancellationReason, isNull);
+      expect(credit.principalCents, equals(500000));
+      expect(credit.balanceCents, equals(500000));
+      expect(credit.status, equals('active'));
+      expect(credit.workflowStatus, equals('pending_disbursement'));
+      expect(credit.termPresetDays, isNull);
+      expect(credit.customDueDate, isNull);
+      expect(credit.disbursedAt, isNull);
+      expect(credit.disbursedByUserId, isNull);
+      expect(credit.cancelledAt, isNull);
+      expect(credit.cancellationReason, isNull);
     });
 
     test('keeps every collateral item bound to its agreement', () async {
@@ -83,20 +83,20 @@ void main() {
       final items = await db.select(db.collateralItems).get();
       expect(items, hasLength(3));
 
-      final bound = items.where((i) => i.loanId != null).toList();
+      final bound = items.where((i) => i.creditId != null).toList();
       expect(bound, hasLength(2),
           reason: 'Both pledged items must still reference their agreement.');
       expect(
-        bound.every((i) => i.loanId == 'loan-v12'),
+        bound.every((i) => i.creditId == 'credit-v12'),
         isTrue,
         reason: 'Rebuilding the parent table must keep the child rows bound.',
       );
 
-      final unbound = items.firstWhere((i) => i.loanId == null);
+      final unbound = items.firstWhere((i) => i.creditId == null);
       expect(unbound.id, equals('coll-v12-unbound'));
     });
 
-    test('preserves existing customer, collateral, loan and audit records',
+    test('preserves existing customer, collateral, credit and audit records',
         () async {
       seedV12Database(dbFile);
 
@@ -119,14 +119,14 @@ void main() {
       expect(user.username, equals('v12.staff'));
       expect(user.role, equals('manager'));
 
-      // Loan data.
-      expect(await db.select(db.loans).get(), hasLength(1));
+      // Credit data.
+      expect(await db.select(db.credits).get(), hasLength(1));
 
       // Collateral data.
       expect(await db.select(db.collateralItems).get(), hasLength(3));
 
       // Grandchild rows: the collateral photo exception and the custody event
-      // both reference a collateral item, which references the loan.
+      // both reference a collateral item, which references the credit.
       expect(await db.select(db.collateralPhotoExceptions).get(), hasLength(1));
       expect(await db.select(db.collateralCustodyEvents).get(), hasLength(1));
 
@@ -135,38 +135,38 @@ void main() {
       expect(syncRows, hasLength(2));
       expect(
         syncRows.map((r) => r.actionType),
-        containsAll(<String>['create_loan', 'confirm_loan_disbursement']),
+        containsAll(<String>['create_credit', 'confirm_credit_disbursement']),
       );
-      expect(syncRows.firstWhere((r) => r.actionType == 'create_loan').entityId,
-          equals('loan-v12'));
+      expect(syncRows.firstWhere((r) => r.actionType == 'create_credit').entityId,
+          equals('credit-v12'));
     });
 
     test('reopens successfully at the current schema version', () async {
       seedV12Database(dbFile);
 
       final first = openWithDeviceSemantics(dbFile);
-      await (first.select(first.loans)..where((l) => l.id.equals('loan-v12')))
+      await (first.select(first.credits)..where((l) => l.id.equals('credit-v12')))
           .getSingle();
       await first.close();
 
       // The migration must have recorded the new schema version on disk.
-      expect(readUserVersion(dbFile), equals(20));
+      expect(readUserVersion(dbFile), equals(22));
 
       // Second launch on the same file: the migration must not run again and
       // the database must open cleanly.
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(20));
-      final loan = await (second.select(second.loans)
-            ..where((l) => l.id.equals('loan-v12')))
+      expect(second.schemaVersion, equals(22));
+      final credit = await (second.select(second.credits)
+            ..where((l) => l.id.equals('credit-v12')))
           .getSingle();
-      expect(loan.balanceCents, equals(500000));
+      expect(credit.balanceCents, equals(500000));
 
       final item = await (second.select(second.collateralItems)
             ..where((c) => c.id.equals('coll-v12-a')))
           .getSingle();
-      expect(item.loanId, equals('loan-v12'),
+      expect(item.creditId, equals('credit-v12'),
           reason: 'The child reference must survive a full close/reopen cycle.');
     });
 
@@ -175,19 +175,19 @@ void main() {
 
       final first = openWithDeviceSemantics(dbFile);
       // Force the database open so the migration runs.
-      expect(await first.select(first.loans).get(), hasLength(1));
+      expect(await first.select(first.credits).get(), hasLength(1));
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(20),
+      expect(readUserVersion(dbFile), equals(22),
           reason: 'Drift must record the new schema version after the '
               'migration committed.');
 
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(await second.select(second.loans).get(), hasLength(1));
+      expect(await second.select(second.credits).get(), hasLength(1));
       expect(await second.select(second.collateralItems).get(), hasLength(3));
-      expect(readUserVersion(dbFile), equals(20));
+      expect(readUserVersion(dbFile), equals(22));
     });
 
     test('repairs a database left half-migrated by a failed attempt',
@@ -200,16 +200,16 @@ void main() {
       // The orphan staging table from the failed attempt is gone ...
       final staging = await db
           .customSelect(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_loans_v13';",
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_credits_v13';",
           )
           .get();
       expect(staging, isEmpty);
 
       // ... and the authoritative rows were migrated, not lost.
-      final loan = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v12')))
+      final credit = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v12')))
           .getSingle();
-      expect(loan.balanceCents, equals(500000));
+      expect(credit.balanceCents, equals(500000));
       expect(await db.select(db.collateralItems).get(), hasLength(3));
     });
 
@@ -233,7 +233,7 @@ void main() {
           id: 'coll-dangling',
           shopId: 'shop-v12',
           customerId: 1,
-          loanId: const Value('loan-does-not-exist'),
+          creditId: const Value('credit-does-not-exist'),
           itemReferenceId: 'COLL-DANGLING',
           category: 'gold',
           description: 'Dangling item',
@@ -258,22 +258,22 @@ void main() {
           reason: 'The rebuilt table must not leave dangling references.');
     });
 
-    test('produces the same loans schema as a fresh installation', () async {
+    test('produces the same credits schema as a fresh installation', () async {
       seedV12Database(dbFile);
       final upgraded = openWithDeviceSemantics(dbFile);
-      await (upgraded.select(upgraded.loans)).get();
-      final upgradedSchema = await _describeTable(upgraded, 'loans');
+      await (upgraded.select(upgraded.credits)).get();
+      final upgradedSchema = await _describeTable(upgraded, 'credits');
       await upgraded.close();
 
       // A brand new database is created straight at the current schema version.
       final freshFile = File(p.join(tempDir.path, 'fresh.sqlite'));
       final fresh = openWithDeviceSemantics(freshFile);
       addTearDown(() async => fresh.close());
-      await (fresh.select(fresh.loans)).get();
+      await (fresh.select(fresh.credits)).get();
 
       expect(
         upgradedSchema,
-        equals(await _describeTable(fresh, 'loans')),
+        equals(await _describeTable(fresh, 'credits')),
         reason: 'An upgraded database must end up with the same columns, '
             'foreign keys and indexes as a freshly installed one.',
       );
@@ -325,7 +325,7 @@ Future<List<String>> _describeTable(AppDatabase db, String tableName) async {
 }
 
 /// Creates a faithful version 12 database on disk, exactly as a device would
-/// hold it after Stories 4.1 and 4.2 shipped: the real foreign keys, a loan
+/// hold it after Stories 4.1 and 4.2 shipped: the real foreign keys, a credit
 /// with pledged collateral bound to it, a grandchild photo-exception and
 /// custody-event row, and local audit/sync records.
 void seedV12Database(File file, {bool withOrphanStagingTable = false}) {
@@ -387,7 +387,7 @@ void seedV12Database(File file, {bool withOrphanStagingTable = false}) {
       "created_at" INTEGER NOT NULL,
       "updated_at" INTEGER NOT NULL
     );
-    CREATE TABLE "loans" (
+    CREATE TABLE "credits" (
       "id" TEXT NOT NULL PRIMARY KEY,
       "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
       "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -403,7 +403,7 @@ void seedV12Database(File file, {bool withOrphanStagingTable = false}) {
       "id" TEXT NOT NULL PRIMARY KEY,
       "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
       "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
-      "loan_id" TEXT REFERENCES "loans" ("id") ON DELETE RESTRICT,
+      "credit_id" TEXT REFERENCES "credits" ("id") ON DELETE RESTRICT,
       "item_reference_id" TEXT NOT NULL,
       "category" TEXT NOT NULL,
       "description" TEXT NOT NULL,
@@ -458,19 +458,19 @@ void seedV12Database(File file, {bool withOrphanStagingTable = false}) {
     VALUES ('cust-v12', 'shop-v12', 'V12 Customer', '198512345678', '+94 77 123 4567', '45 Park Road', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
-    VALUES ('loan-v12', 'shop-v12', 'cust-v12', 500000, 500000, 'active', 'pending_disbursement', $now, $now);
+    INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
+    VALUES ('credit-v12', 'shop-v12', 'cust-v12', 500000, 500000, 'active', 'pending_disbursement', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
-    VALUES ('coll-v12-a', 'shop-v12', 'cust-v12', 'loan-v12', 'COLL-V12-A', 'gold', '22K gold necklace', 'Good', 5500, 1500000, 'in_custody', $now, $now);
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
+    VALUES ('coll-v12-a', 'shop-v12', 'cust-v12', 'credit-v12', 'COLL-V12-A', 'gold', '22K gold necklace', 'Good', 5500, 1500000, 'in_custody', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
-    VALUES ('coll-v12-b', 'shop-v12', 'cust-v12', 'loan-v12', 'COLL-V12-B', 'electronics', 'Laptop', 'Fair', 1200, 400000, 'in_custody', $now, $now);
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
+    VALUES ('coll-v12-b', 'shop-v12', 'cust-v12', 'credit-v12', 'COLL-V12-B', 'electronics', 'Laptop', 'Fair', 1200, 400000, 'in_custody', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
     VALUES ('coll-v12-unbound', 'shop-v12', 'cust-v12', NULL, 'COLL-V12-C', 'valuables', 'Watch', 'Like New', 300, 900000, 'in_custody', $now, $now);
   ''');
   db.execute('''
@@ -483,19 +483,19 @@ void seedV12Database(File file, {bool withOrphanStagingTable = false}) {
   ''');
   db.execute('''
     INSERT INTO "sync_queue" ("id", "shop_id", "idempotency_key", "entity_type", "entity_id", "action_type", "payload_json", "status", "retry_count", "created_at")
-    VALUES ('sync-v12-a', 'shop-v12', '00000000-0000-4000-8000-000000000001', 'loan', 'loan-v12', 'create_loan', '{"auditCategory":2}', 'pending_server_ack', 0, $now);
+    VALUES ('sync-v12-a', 'shop-v12', '00000000-0000-4000-8000-000000000001', 'credit', 'credit-v12', 'create_credit', '{"auditCategory":2}', 'pending_server_ack', 0, $now);
   ''');
   db.execute('''
     INSERT INTO "sync_queue" ("id", "shop_id", "idempotency_key", "entity_type", "entity_id", "action_type", "payload_json", "status", "retry_count", "created_at")
-    VALUES ('sync-v12-b', 'shop-v12', '00000000-0000-4000-8000-000000000002', 'loan', 'loan-v12', 'confirm_loan_disbursement', '{"auditCategory":4}', 'pending_server_ack', 0, $now);
+    VALUES ('sync-v12-b', 'shop-v12', '00000000-0000-4000-8000-000000000002', 'credit', 'credit-v12', 'confirm_credit_disbursement', '{"auditCategory":4}', 'pending_server_ack', 0, $now);
   ''');
 
   if (withOrphanStagingTable) {
     // Exactly the state a device is left in when the rebuild fails with
     // foreign-key enforcement enabled: the staging table survives, the
-    // authoritative "loans" table is still intact.
+    // authoritative "credits" table is still intact.
     db.execute('''
-      CREATE TABLE "_loans_v13" (
+      CREATE TABLE "_credits_v13" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
         "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -515,12 +515,13 @@ void seedV12Database(File file, {bool withOrphanStagingTable = false}) {
       );
     ''');
     db.execute('''
-      INSERT INTO "_loans_v13" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
-      VALUES ('loan-v12', 'shop-v12', 'cust-v12', 500000, 500000, 'active', 'pending_disbursement', $now, $now);
+      INSERT INTO "_credits_v13" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
+      VALUES ('credit-v12', 'shop-v12', 'cust-v12', 500000, 500000, 'active', 'pending_disbursement', $now, $now);
     ''');
   }
 
   db.close();
 }
+
 
 

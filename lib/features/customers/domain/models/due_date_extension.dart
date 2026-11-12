@@ -5,7 +5,7 @@ import 'package:meta/meta.dart';
 class DueDateExtension {
   final String id;
   final String shopId;
-  final String loanId;
+  final String creditId;
   final DateTime previousDueDate;
   final DateTime newDueDate;
   final String reason;
@@ -15,7 +15,7 @@ class DueDateExtension {
   DueDateExtension({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required DateTime previousDueDate,
     required DateTime newDueDate,
     required this.reason,
@@ -36,7 +36,7 @@ class DueDateExtension {
           runtimeType == other.runtimeType &&
           id == other.id &&
           shopId == other.shopId &&
-          loanId == other.loanId &&
+          creditId == other.creditId &&
           previousDueDate == other.previousDueDate &&
           newDueDate == other.newDueDate &&
           reason == other.reason &&
@@ -47,7 +47,7 @@ class DueDateExtension {
   int get hashCode => Object.hash(
         id,
         shopId,
-        loanId,
+        creditId,
         previousDueDate,
         newDueDate,
         reason,
@@ -55,3 +55,4 @@ class DueDateExtension {
         createdAt,
       );
 }
+

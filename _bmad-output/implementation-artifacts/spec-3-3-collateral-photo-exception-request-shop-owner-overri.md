@@ -107,3 +107,4 @@
 - **PRD:** FR-15 (Mandatory Collateral Photographs & Shop Owner Exception Workflow)
 - **AD-4:** Clean Architecture Layering
 - **AD-6:** Granular RBAC & Audit
+

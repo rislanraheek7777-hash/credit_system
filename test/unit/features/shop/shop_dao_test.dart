@@ -108,8 +108,8 @@ void main() {
           id: 'tx-sync-uuid-1',
           shopId: 'shop-uuid-104',
           idempotencyKey: 'idemp-key-001',
-          entityType: 'loan',
-          entityId: 'loan-uuid-001',
+          entityType: 'credit',
+          entityId: 'credit-uuid-001',
           actionType: 'create',
           payloadJson: '{"principalCents": 100000}',
           createdAt: DateTime.now().toUtc(),
@@ -137,3 +137,4 @@ void main() {
     });
   });
 }
+

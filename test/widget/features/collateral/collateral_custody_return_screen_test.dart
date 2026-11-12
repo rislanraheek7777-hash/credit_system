@@ -9,7 +9,7 @@ import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_custody_event.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/collateral/presentation/collateral_custody_return_screen.dart';
 
 void main() {
@@ -19,7 +19,7 @@ void main() {
 
     const shopId = 'shop-return-1';
     const customerId = 1;
-    const loanId = 'loan-return-1';
+    const creditId = 'credit-return-1';
     const cashierId = 'user-cashier-return';
     const ownerId = 'user-owner-return';
 
@@ -47,15 +47,15 @@ void main() {
           updatedAt: now,
         ),
       );
-      await db.into(db.loans).insert(
-        LoanEntry(
-          id: loanId,
+      await db.into(db.credits).insert(
+        CreditEntry(
+          id: creditId,
           shopId: shopId,
           customerId: customerId,
           principalCents: 100000,
           balanceCents: 100000,
           status: 'active',
-          workflowStatus: LoanWorkflowStatus.pendingDisbursement.value,
+          workflowStatus: CreditWorkflowStatus.pendingDisbursement.value,
           dueDate: now.add(const Duration(days: 30)),
           createdAt: now,
           correctionPending: false,
@@ -93,13 +93,13 @@ void main() {
       required String itemId,
       required String itemReferenceId,
       CollateralCustodyStatus status = CollateralCustodyStatus.inCustody,
-      String? itemLoanId,
+      String? itemCreditId,
     }) async {
       final item = CollateralItem(
         id: itemId,
         shopId: shopId,
         customerId: customerId,
-        loanId: itemLoanId,
+        creditId: itemCreditId,
         itemReferenceId: itemReferenceId,
         category: CollateralItemCategory.gold,
         description: 'Test collateral item',
@@ -135,7 +135,7 @@ void main() {
       WidgetTester tester,
       AppUser currentUser, {
       int? filterCustomerId,
-      String? filterLoanId,
+      String? filterCreditId,
     }) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -143,7 +143,7 @@ void main() {
             shopId: shopId,
             currentUser: currentUser,
             customerId: filterCustomerId,
-            loanId: filterLoanId,
+            creditId: filterCreditId,
             database: db,
           ),
         ),
@@ -192,13 +192,13 @@ void main() {
         itemId: 'item-r-1',
         itemReferenceId: 'COLL-R-001',
         status: CollateralCustodyStatus.inCustody,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
       await createItem(
         itemId: 'item-r-2',
         itemReferenceId: 'COLL-R-002',
         status: CollateralCustodyStatus.returned,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
 
       await pumpScreen(tester, owner());
@@ -211,7 +211,7 @@ void main() {
       expect(find.textContaining('COLL-R-002'), findsOneWidget);
       expect(find.text('Custody: in custody'), findsOneWidget);
       expect(find.text('Custody: returned'), findsOneWidget);
-      expect(find.text('Loan: $loanId'), findsNWidgets(2));
+      expect(find.text('Credit: $creditId'), findsNWidgets(2));
       expect(find.text('Customer: $customerId'), findsNWidgets(2));
       expect(find.textContaining('Test collateral item'), findsAtLeastNWidgets(2));
     });
@@ -386,7 +386,7 @@ void main() {
         shopId, 'item-r-9', cashierId,
         'Item reported damaged on return',
         actor: cashier(),
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
 
       await pumpScreen(tester, owner());
@@ -419,20 +419,20 @@ void main() {
       expect(all.first.resolvedAt, isNotNull);
     });
 
-    testWidgets('items on the same loan transition independently', (
+    testWidgets('items on the same credit transition independently', (
       WidgetTester tester,
     ) async {
       await createItem(
         itemId: 'item-r-10',
         itemReferenceId: 'COLL-R-010',
         status: CollateralCustodyStatus.inCustody,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
       await createItem(
         itemId: 'item-r-11',
         itemReferenceId: 'COLL-R-011',
         status: CollateralCustodyStatus.inCustody,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
 
       await pumpScreen(tester, cashier());
@@ -451,7 +451,7 @@ void main() {
       expect(find.text('Custody: handover reported'), findsOneWidget);
       expect(find.text('COLL-R-010 (gold)'), findsOneWidget);
 
-      // Sibling item on the same loan is unchanged and still actionable
+      // Sibling item on the same credit is unchanged and still actionable
       expect(find.textContaining('COLL-R-011'), findsOneWidget);
       expect(find.text('Custody: in custody'), findsOneWidget);
       expect(
@@ -493,7 +493,7 @@ void main() {
         reportedByUserId: cashierId,
         reason: 'history test',
         actor: cashier(),
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
 
       await pumpScreen(tester, owner());
@@ -570,14 +570,14 @@ void main() {
       expect(find.text('Exception / Held'), findsNothing);
     });
 
-    testWidgets('Shop Owner administratively closes settled loan with exceptionHeld item', (
+    testWidgets('Shop Owner administratively closes settled credit with exceptionHeld item', (
       WidgetTester tester,
     ) async {
-      // Mark loan as settled
-      await (db.update(db.loans)..where((l) => l.id.equals(loanId))).write(
-        LoansCompanion(
+      // Mark credit as settled
+      await (db.update(db.credits)..where((l) => l.id.equals(creditId))).write(
+        CreditsCompanion(
           status: const Value('settled'),
-          workflowStatus: Value(LoanWorkflowStatus.disbursed.value),
+          workflowStatus: Value(CreditWorkflowStatus.disbursed.value),
           settledAt: Value(DateTime.now().toUtc()),
           balanceCents: const Value(0),
         ),
@@ -587,18 +587,18 @@ void main() {
         itemId: 'item-r-admin-1',
         itemReferenceId: 'COLL-R-ADMIN-1',
         status: CollateralCustodyStatus.exceptionHeld,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
 
-      await pumpScreen(tester, owner(), filterLoanId: loanId);
+      await pumpScreen(tester, owner(), filterCreditId: creditId);
 
-      // Button should be visible for owner on settled loan with exception item
+      // Button should be visible for owner on settled credit with exception item
       expect(find.byKey(const Key('btn_administrative_closure')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('btn_administrative_closure')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Close Loan (Collateral Exception)'), findsOneWidget);
+      expect(find.text('Close Credit (Collateral Exception)'), findsOneWidget);
 
       await submitReason(
         tester,
@@ -607,8 +607,8 @@ void main() {
       await pumpUntilText(tester, 'Closed (Collateral Exception)');
 
       // Success message and banner should appear
-      expect(find.text('Loan administratively closed with collateral exception.'), findsOneWidget);
-      expect(find.byKey(const Key('loan_closure_banner')), findsOneWidget);
+      expect(find.text('Credit administratively closed with collateral exception.'), findsOneWidget);
+      expect(find.byKey(const Key('credit_closure_banner')), findsOneWidget);
       expect(find.text('Closed (Collateral Exception)'), findsOneWidget);
       expect(find.textContaining('Police impounded item COLL-R-ADMIN-1 permanently'), findsOneWidget);
 
@@ -619,10 +619,10 @@ void main() {
     testWidgets('Cashier cannot see administrative closure button', (
       WidgetTester tester,
     ) async {
-      await (db.update(db.loans)..where((l) => l.id.equals(loanId))).write(
-        LoansCompanion(
+      await (db.update(db.credits)..where((l) => l.id.equals(creditId))).write(
+        CreditsCompanion(
           status: const Value('settled'),
-          workflowStatus: Value(LoanWorkflowStatus.disbursed.value),
+          workflowStatus: Value(CreditWorkflowStatus.disbursed.value),
           settledAt: Value(DateTime.now().toUtc()),
           balanceCents: const Value(0),
         ),
@@ -632,26 +632,26 @@ void main() {
         itemId: 'item-r-admin-2',
         itemReferenceId: 'COLL-R-ADMIN-2',
         status: CollateralCustodyStatus.exceptionHeld,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
 
-      await pumpScreen(tester, cashier(), filterLoanId: loanId);
+      await pumpScreen(tester, cashier(), filterCreditId: creditId);
 
       expect(find.byKey(const Key('btn_administrative_closure')), findsNothing);
     });
 
-    testWidgets('Administrative closure button not shown on active (unsettled) loan', (
+    testWidgets('Administrative closure button not shown on active (unsettled) credit', (
       WidgetTester tester,
     ) async {
-      // Loan is active (balance > 0)
+      // Credit is active (balance > 0)
       await createItem(
         itemId: 'item-r-admin-3',
         itemReferenceId: 'COLL-R-ADMIN-3',
         status: CollateralCustodyStatus.exceptionHeld,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
 
-      await pumpScreen(tester, owner(), filterLoanId: loanId);
+      await pumpScreen(tester, owner(), filterCreditId: creditId);
 
       expect(find.byKey(const Key('btn_administrative_closure')), findsNothing);
     });
@@ -659,10 +659,10 @@ void main() {
     testWidgets('Administrative closure button not shown if items are still inCustody', (
       WidgetTester tester,
     ) async {
-      await (db.update(db.loans)..where((l) => l.id.equals(loanId))).write(
-        LoansCompanion(
+      await (db.update(db.credits)..where((l) => l.id.equals(creditId))).write(
+        CreditsCompanion(
           status: const Value('settled'),
-          workflowStatus: Value(LoanWorkflowStatus.disbursed.value),
+          workflowStatus: Value(CreditWorkflowStatus.disbursed.value),
           settledAt: Value(DateTime.now().toUtc()),
           balanceCents: const Value(0),
         ),
@@ -673,18 +673,19 @@ void main() {
         itemId: 'item-r-admin-4a',
         itemReferenceId: 'COLL-R-ADMIN-4A',
         status: CollateralCustodyStatus.exceptionHeld,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
       await createItem(
         itemId: 'item-r-admin-4b',
         itemReferenceId: 'COLL-R-ADMIN-4B',
         status: CollateralCustodyStatus.inCustody,
-        itemLoanId: loanId,
+        itemCreditId: creditId,
       );
 
-      await pumpScreen(tester, owner(), filterLoanId: loanId);
+      await pumpScreen(tester, owner(), filterCreditId: creditId);
 
       expect(find.byKey(const Key('btn_administrative_closure')), findsNothing);
     });
   });
 }
+

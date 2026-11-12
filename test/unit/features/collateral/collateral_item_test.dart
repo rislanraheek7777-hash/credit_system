@@ -32,7 +32,7 @@ void main() {
       expect(item.custodyStatus, equals(CollateralCustodyStatus.inCustody));
       expect(item.photoUri, isNull);
       expect(item.photoHash, isNull);
-      expect(item.loanId, isNull);
+      expect(item.creditId, isNull);
     });
 
     test('CollateralItem.estimatedValue returns Money with correct cents', () {
@@ -725,3 +725,4 @@ void main() {
     });
   });
 }
+

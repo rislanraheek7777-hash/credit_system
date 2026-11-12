@@ -12,20 +12,20 @@ enum AppPermission {
   /// View unmasked sensitive identity data (full NIC and residential address).
   viewSensitiveCustomerData('viewSensitiveCustomerData'),
 
-  /// Create new loan agreements and register attached pledged items.
-  createLoans('createLoans'),
+  /// Create new credit agreements and register attached pledged items.
+  createCredits('createCredits'),
 
   /// Confirm physical cash disbursement and record disbursement handover.
-  confirmLoanDisbursement('confirmLoanDisbursement'),
+  confirmCreditDisbursement('confirmCreditDisbursement'),
 
-  /// Record partial payments and full settlements against disbursed loans.
+  /// Record partial payments and full settlements against disbursed credits.
   recordPayments('recordPayments'),
 
   /// View payment histories and reprint existing payment receipts.
   viewAndReprintReceipts('viewAndReprintReceipts'),
 
-  /// Access and review overdue loan queues and delinquency reports.
-  viewOverdueLoans('viewOverdueLoans'),
+  /// Access and review overdue credit queues and delinquency reports.
+  viewOverdueCredits('viewOverdueCredits'),
 
   /// Record customer interaction notes, follow-up calls, and promises to pay.
   recordCustomerNotes('recordCustomerNotes'),
@@ -75,10 +75,10 @@ enum AppRole {
   /// Shop Owner: Full access to all 14 permissions and sole authority for administrative actions.
   shopOwner('shop_owner', 'Shop Owner'),
 
-  /// Manager: Senior staff handling loan disbursements, customer identity unmasking, and reports.
+  /// Manager: Senior staff handling credit disbursements, customer identity unmasking, and reports.
   manager('manager', 'Manager'),
 
-  /// Cashier: Counter staff handling customer intake, loan creation, and payments.
+  /// Cashier: Counter staff handling customer intake, credit creation, and payments.
   cashier('cashier', 'Cashier'),
 
   /// Custom: Granular custom permissions explicitly assigned by the Shop Owner.
@@ -122,7 +122,7 @@ class RolePermissionTemplates {
   static const Set<AppPermission> cashierPermissions = {
     AppPermission.viewCustomers,
     AppPermission.registerCustomers,
-    AppPermission.createLoans,
+    AppPermission.createCredits,
     AppPermission.recordPayments,
     AppPermission.viewAndReprintReceipts,
     AppPermission.recordCustomerNotes,
@@ -132,8 +132,8 @@ class RolePermissionTemplates {
   static const Set<AppPermission> managerPermissions = {
     ...cashierPermissions,
     AppPermission.viewSensitiveCustomerData,
-    AppPermission.confirmLoanDisbursement,
-    AppPermission.viewOverdueLoans,
+    AppPermission.confirmCreditDisbursement,
+    AppPermission.viewOverdueCredits,
     AppPermission.requestCorrections,
     AppPermission.confirmCollateralReturn,
     AppPermission.viewFinancialReports,
@@ -157,3 +157,4 @@ class RolePermissionTemplates {
     }
   }
 }
+

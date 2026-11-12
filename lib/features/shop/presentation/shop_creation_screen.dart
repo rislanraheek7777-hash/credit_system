@@ -143,10 +143,6 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
         }
       }
 
-      if (widget.database == null) {
-        await db.close();
-      }
-
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -404,3 +400,4 @@ class _ShopCreationScreenState extends State<ShopCreationScreen> {
     );
   }
 }
+

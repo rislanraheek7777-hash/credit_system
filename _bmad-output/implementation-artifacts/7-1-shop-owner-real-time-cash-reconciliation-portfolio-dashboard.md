@@ -10,7 +10,7 @@ So that I can monitor shop financial health at a glance.
 
 ## Acceptance Criteria
 
-- Dashboard shows real-time cash position, outstanding loans, collections.
+- Dashboard shows real-time cash position, outstanding credits, collections.
 - Data refreshes without full page reload.
 - Multi-tenant isolated.
 

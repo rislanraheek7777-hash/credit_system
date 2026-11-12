@@ -1,4 +1,4 @@
-﻿import 'package:meta/meta.dart';
+import 'package:meta/meta.dart';
 
 import 'package:credit_system/core/money/money.dart';
 
@@ -112,7 +112,7 @@ enum CollateralCustodyStatus {
 /// floating point. Weight is stored as integer milligrams — never as Dart `double`.
 ///
 /// Binds:
-/// - FR-13: Multi-item collateral registration per loan
+/// - FR-13: Multi-item collateral registration per credit
 /// - FR-14: Decimal weight calibration without floating point
 /// - FR-16: Independent per-item custody tracking
 /// - AD-2: Integer minor units / weight precision
@@ -128,8 +128,8 @@ class CollateralItem {
   /// Associated customer borrower (database-assigned integer id).
   final int customerId;
 
-  /// Optional associated loan UUID (nullable until Epic 4 enforces binding).
-  final String? loanId;
+  /// Optional associated credit UUID (nullable until Epic 4 enforces binding).
+  final String? creditId;
 
   /// Unique item reference within the shop (e.g., "COLL-001").
   final String itemReferenceId;
@@ -168,7 +168,7 @@ class CollateralItem {
     required this.id,
     required this.shopId,
     required this.customerId,
-    this.loanId,
+    this.creditId,
     required this.itemReferenceId,
     required this.category,
     required this.description,
@@ -335,7 +335,7 @@ class CollateralItem {
     String? id,
     String? shopId,
     int? customerId,
-    String? loanId,
+    String? creditId,
     String? itemReferenceId,
     CollateralItemCategory? category,
     String? description,
@@ -352,7 +352,7 @@ class CollateralItem {
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
       customerId: customerId ?? this.customerId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       itemReferenceId: itemReferenceId ?? this.itemReferenceId,
       category: category ?? this.category,
       description: description ?? this.description,
@@ -374,7 +374,7 @@ class CollateralItem {
         other.id == id &&
         other.shopId == shopId &&
         other.customerId == customerId &&
-        other.loanId == loanId &&
+        other.creditId == creditId &&
         other.itemReferenceId == itemReferenceId &&
         other.category == category &&
         other.description == description &&
@@ -391,7 +391,7 @@ class CollateralItem {
         id,
         shopId,
         customerId,
-        loanId,
+        creditId,
         itemReferenceId,
         category,
         description,
@@ -410,4 +410,5 @@ class CollateralItem {
         'value: $estimatedValueCents cents, custody: ${custodyStatus.value})';
   }
 }
+
 

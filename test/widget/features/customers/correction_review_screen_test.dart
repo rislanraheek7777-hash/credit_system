@@ -7,7 +7,7 @@ import 'package:credit_system/core/money/money.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/correction_dao.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:credit_system/features/customers/presentation/correction_review_screen.dart';
 import 'package:uuid/uuid.dart';
 
@@ -17,8 +17,8 @@ const customerAlphaId = 1;
 const String ownerAlphaId = 'review-owner-alpha-1111-1111-1111-111111111104';
 const String ownerBetaId = 'review-owner-beta-1111-1111-1111-111111111110';
 const String managerAlphaId = 'review-mgr-alpha-1111-1111-1111-111111111105';
-const String loanAlphaId = 'review-loan-alpha-1111-1111-1111-111111111106';
-const String loanBetaId = 'review-loan-beta-1111-1111-1111-111111111107';
+const String creditAlphaId = 'review-credit-alpha-1111-1111-1111-111111111106';
+const String creditBetaId = 'review-credit-beta-1111-1111-1111-111111111107';
 const String paymentAlphaId = 'review-pay-alpha-1111-1111-1111-111111111108';
 
 /// Pumps until the screen shows either a success or an error outcome and
@@ -38,7 +38,7 @@ Future<String> pumpUntilOutcome(WidgetTester tester) async {
   fail('pumpUntilOutcome: neither a success nor an error was displayed.');
 }
 
-/// Seeds two shops, an owner, a manager, customers, loans, and payments.
+/// Seeds two shops, an owner, a manager, customers, credits, and payments.
 Future<void> seedReviewData(AppDatabase db) async {
   final now = DateTime.now().toUtc();
 
@@ -116,10 +116,10 @@ Future<void> seedReviewData(AppDatabase db) async {
     ),
   );
 
-  // Loan in shop Alpha.
-  await db.into(db.loans).insert(
-    LoansCompanion.insert(
-      id: loanAlphaId,
+  // Credit in shop Alpha.
+  await db.into(db.credits).insert(
+    CreditsCompanion.insert(
+      id: creditAlphaId,
       shopId: shopAlphaId,
       customerId: customerAlphaId,
       principalCents: 500000,
@@ -135,10 +135,10 @@ Future<void> seedReviewData(AppDatabase db) async {
     ),
   );
 
-  // Loan in shop Beta.
-  await db.into(db.loans).insert(
-    LoansCompanion.insert(
-      id: loanBetaId,
+  // Credit in shop Beta.
+  await db.into(db.credits).insert(
+    CreditsCompanion.insert(
+      id: creditBetaId,
       shopId: shopBetaId,
       customerId: customerAlphaId,
       principalCents: 400000,
@@ -159,7 +159,7 @@ Future<void> seedReviewData(AppDatabase db) async {
     PaymentsCompanion.insert(
       id: paymentAlphaId,
       shopId: shopAlphaId,
-      loanId: loanAlphaId,
+      creditId: creditAlphaId,
       receiptNumber: 'RCP-ALPHA-001',
       amountCents: 200000,
       preBalanceCents: 500000,
@@ -180,7 +180,7 @@ Future<void> seedReviewData(AppDatabase db) async {
     PaymentsCompanion.insert(
       id: 'review-pay-beta-1111-1111-1111-111111111109',
       shopId: shopBetaId,
-      loanId: loanBetaId,
+      creditId: creditBetaId,
       receiptNumber: 'RCP-BETA-001',
       amountCents: 100000,
       preBalanceCents: 300000,
@@ -225,11 +225,11 @@ AppUser manager({bool isActive = true}) => AppUser(
     );
 
 /// Submits a pending correction via the DAO and returns it.
-Future<LoanCorrection> seedPendingCorrection(AppDatabase db) async {
+Future<CreditCorrection> seedPendingCorrection(AppDatabase db) async {
   return CorrectionDao(db).requestCorrection(
     actor: manager(),
     idempotencyKey: const Uuid().v4(),
-    loanId: loanAlphaId,
+    creditId: creditAlphaId,
     originalPaymentId: paymentAlphaId,
     amount: Money.fromCents(200000),
     reason: 'Typographical error: entered 35,000 instead of 3,500.',
@@ -285,7 +285,7 @@ void main() {
       await seedPendingCorrection(db);
       await openScreen(tester, db, actor: owner());
 
-      expect(find.textContaining('Loan ${loanAlphaId.substring(0, 8)}'),
+      expect(find.textContaining('Credit ${creditAlphaId.substring(0, 8)}'),
           findsOneWidget);
       expect(find.textContaining('Original payment:'), findsOneWidget);
       expect(find.textContaining('Correction amount: Rs. 2,000.00'),
@@ -308,7 +308,7 @@ void main() {
       await CorrectionDao(db).requestCorrection(
         actor: ownerBeta(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanBetaId,
+        creditId: creditBetaId,
         originalPaymentId: 'review-pay-beta-1111-1111-1111-111111111109',
         amount: Money.fromCents(100000),
         reason: 'Cross-shop correction.',
@@ -317,7 +317,7 @@ void main() {
 
       await openScreen(tester, db, actor: owner());
 
-      expect(find.textContaining('Loan ${loanBetaId.substring(0, 8)}'),
+      expect(find.textContaining('Credit ${creditBetaId.substring(0, 8)}'),
           findsNothing);
       expect(find.textContaining('Cross-shop correction'), findsNothing);
     });
@@ -338,15 +338,15 @@ void main() {
       expect(outcome, equals('success'));
 
       final correctionDao = CorrectionDao(db);
-      final corrections = await correctionDao.getCorrectionsByLoan(
-          shopAlphaId, loanAlphaId);
+      final corrections = await correctionDao.getCorrectionsByCredit(
+          shopAlphaId, creditAlphaId);
       expect(corrections, hasLength(1));
-      expect(corrections.first.status, equals(LoanCorrectionStatus.approved));
+      expect(corrections.first.status, equals(CreditCorrectionStatus.approved));
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopAlphaId, loanAlphaId);
-      expect(loan?.balanceCents, equals(500000)); // 300000 + 200000
-      expect(loan?.correctionPending, isFalse);
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopAlphaId, creditAlphaId);
+      expect(credit?.balanceCents, equals(500000)); // 300000 + 200000
+      expect(credit?.correctionPending, isFalse);
     });
 
     testWidgets('reject requires a non-empty reason',
@@ -365,9 +365,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // The reject button remains disabled; no rejection occurred.
-      final corrections = await CorrectionDao(db).getCorrectionsByLoan(
-          shopAlphaId, loanAlphaId);
-      expect(corrections.first.status, equals(LoanCorrectionStatus.pendingApproval));
+      final corrections = await CorrectionDao(db).getCorrectionsByCredit(
+          shopAlphaId, creditAlphaId);
+      expect(corrections.first.status, equals(CreditCorrectionStatus.pendingApproval));
     });
 
     testWidgets('reject invokes the DAO correctly',
@@ -376,8 +376,8 @@ void main() {
       await openScreen(tester, db, actor: owner());
 
       // Get the correction ID to find the reject button by key.
-      final correction = await CorrectionDao(db).getCorrectionsByLoan(
-          shopAlphaId, loanAlphaId);
+      final correction = await CorrectionDao(db).getCorrectionsByCredit(
+          shopAlphaId, creditAlphaId);
       await tester.tap(
           find.byKey(Key('review_reject_${correction.first.id}')));
       await tester.pumpAndSettle();
@@ -402,16 +402,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.pumpAndSettle();
 
-      final updated = await CorrectionDao(db).getCorrectionsByLoan(
-          shopAlphaId, loanAlphaId);
-      expect(updated.first.status, equals(LoanCorrectionStatus.rejected));
+      final updated = await CorrectionDao(db).getCorrectionsByCredit(
+          shopAlphaId, creditAlphaId);
+      expect(updated.first.status, equals(CreditCorrectionStatus.rejected));
       expect(updated.first.rejectionReason,
           equals('Not a genuine error.'));
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopAlphaId, loanAlphaId);
-      expect(loan?.balanceCents, equals(300000)); // unchanged
-      expect(loan?.correctionPending, isFalse);
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopAlphaId, creditAlphaId);
+      expect(credit?.balanceCents, equals(300000)); // unchanged
+      expect(credit?.correctionPending, isFalse);
     });
 
     testWidgets('duplicate taps do not submit repeated actions',
@@ -426,10 +426,10 @@ void main() {
       await pumpUntilOutcome(tester);
 
       // The approval was applied once.
-      final corrections = await CorrectionDao(db).getCorrectionsByLoan(
-          shopAlphaId, loanAlphaId);
+      final corrections = await CorrectionDao(db).getCorrectionsByCredit(
+          shopAlphaId, creditAlphaId);
       expect(corrections, hasLength(1));
-      expect(corrections.first.status, equals(LoanCorrectionStatus.approved));
+      expect(corrections.first.status, equals(CreditCorrectionStatus.approved));
     });
 
     testWidgets('successful approval updates the displayed queue',
@@ -437,7 +437,7 @@ void main() {
       await seedPendingCorrection(db);
       await openScreen(tester, db, actor: owner());
 
-      expect(find.textContaining('Loan ${loanAlphaId.substring(0, 8)}'),
+      expect(find.textContaining('Credit ${creditAlphaId.substring(0, 8)}'),
           findsOneWidget);
 
       await tester.tap(find.text('Approve').first);
@@ -447,7 +447,7 @@ void main() {
       await pumpUntilOutcome(tester);
 
       // The pending correction disappears from the queue.
-      expect(find.textContaining('Loan ${loanAlphaId.substring(0, 8)}'),
+      expect(find.textContaining('Credit ${creditAlphaId.substring(0, 8)}'),
           findsNothing);
       expect(find.text('No pending correction requests.'), findsOneWidget);
     });
@@ -478,17 +478,18 @@ void main() {
       final correction = await CorrectionDao(db).requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanAlphaId,
+        creditId: creditAlphaId,
         originalPaymentId: paymentAlphaId,
         amount: Money.fromCents(50000),
         reason: 'Workflow coexistence test.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
-      expect(correction.status, equals(LoanCorrectionStatus.pendingApproval));
+      expect(correction.status, equals(CreditCorrectionStatus.pendingApproval));
 
       final corrections =
-          await CorrectionDao(db).getCorrectionsByLoan(shopAlphaId, loanAlphaId);
+          await CorrectionDao(db).getCorrectionsByCredit(shopAlphaId, creditAlphaId);
       expect(corrections.length, equals(1));
     });
   });
 }
+

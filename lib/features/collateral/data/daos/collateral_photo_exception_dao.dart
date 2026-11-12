@@ -187,3 +187,4 @@ class CollateralPhotoExceptionDao extends DatabaseAccessor<AppDatabase>
     }
   }
 }
+

@@ -7,12 +7,13 @@ mixin _$OverdueDaoMixin on DatabaseAccessor<AppDatabase> {
   $ShopsTable get shops => attachedDatabase.shops;
   $CustomersTable get customers => attachedDatabase.customers;
   $AppUsersTable get appUsers => attachedDatabase.appUsers;
-  $LoansTable get loans => attachedDatabase.loans;
+  $CreditsTable get credits => attachedDatabase.credits;
   $DueDateExtensionsTable get dueDateExtensions =>
       attachedDatabase.dueDateExtensions;
   $CustomerFollowUpsTable get customerFollowUps =>
       attachedDatabase.customerFollowUps;
-  $LoanResolutionsTable get loanResolutions => attachedDatabase.loanResolutions;
+  $CreditResolutionsTable get creditResolutions =>
+      attachedDatabase.creditResolutions;
   $SyncQueueTable get syncQueue => attachedDatabase.syncQueue;
   OverdueDaoManager get managers => OverdueDaoManager(this);
 }
@@ -26,8 +27,8 @@ class OverdueDaoManager {
       $$CustomersTableTableManager(_db.attachedDatabase, _db.customers);
   $$AppUsersTableTableManager get appUsers =>
       $$AppUsersTableTableManager(_db.attachedDatabase, _db.appUsers);
-  $$LoansTableTableManager get loans =>
-      $$LoansTableTableManager(_db.attachedDatabase, _db.loans);
+  $$CreditsTableTableManager get credits =>
+      $$CreditsTableTableManager(_db.attachedDatabase, _db.credits);
   $$DueDateExtensionsTableTableManager get dueDateExtensions =>
       $$DueDateExtensionsTableTableManager(
         _db.attachedDatabase,
@@ -38,10 +39,10 @@ class OverdueDaoManager {
         _db.attachedDatabase,
         _db.customerFollowUps,
       );
-  $$LoanResolutionsTableTableManager get loanResolutions =>
-      $$LoanResolutionsTableTableManager(
+  $$CreditResolutionsTableTableManager get creditResolutions =>
+      $$CreditResolutionsTableTableManager(
         _db.attachedDatabase,
-        _db.loanResolutions,
+        _db.creditResolutions,
       );
   $$SyncQueueTableTableManager get syncQueue =>
       $$SyncQueueTableTableManager(_db.attachedDatabase, _db.syncQueue);

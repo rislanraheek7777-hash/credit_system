@@ -50,3 +50,4 @@ Establish the secure, multi-tenant architectural foundation for the Credit Manag
 - Story 1.1 (Money Value Object & converters) is the foundational dependency for Story 1.2 (Database foundations).
 - Story 1.2 (Dual-tier database foundations & migration harness) is the prerequisite for Story 1.3 (RLS policies & audit trigger) and Story 1.4 (WAL archiving).
 - Stories 1.1 through 1.5 establish the foundational infrastructure required before UI/business stories (1.6 through 1.9) and downstream epics (Epics 2 through 7).
+

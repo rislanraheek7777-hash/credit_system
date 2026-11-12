@@ -17,7 +17,7 @@ class ReceiptPdfService {
   /// The rendered PDF includes:
   /// - Shop branding snapshot (name, address, phone, tax ID, footer notes)
   /// - Receipt reference number
-  /// - Loan reference
+  /// - Credit reference
   /// - Customer identifier (masked NIC per RBAC)
   /// - Payment date/time (UTC)
   /// - Amount paid, pre/post balance
@@ -69,7 +69,7 @@ class ReceiptPdfService {
           pw.SizedBox(height: 8),
           // Transaction details
           pw.Text('Receipt Number: ${receipt.receiptNumber}'),
-          pw.Text('Loan Reference: ${receipt.loanId}'),
+          pw.Text('Credit Reference: ${receipt.creditId}'),
           pw.Text('Customer Name: ${receipt.customerName}'),
           pw.Text('Customer NIC: $maskedNic'),
           pw.Text('Payment Type: ${receipt.paymentTypeLabel}'),
@@ -141,3 +141,4 @@ class ReceiptPdfService {
     );
   }
 }
+

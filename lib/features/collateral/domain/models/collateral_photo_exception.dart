@@ -290,3 +290,4 @@ class CollateralPhotoException {
     return 'CollateralPhotoException(id: $id, itemId: $collateralItemId, status: ${status.value}, reason: $requestReason)';
   }
 }
+

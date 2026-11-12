@@ -1,17 +1,17 @@
 // Story 7.1: Shop Owner Real-Time Cash Reconciliation & Portfolio Dashboard
 import 'package:flutter/material.dart';
 
-import '../customers/data/daos/loan_dao.dart';
-import '../customers/domain/models/loan.dart';
+import '../customers/data/daos/credit_dao.dart';
+import '../customers/domain/models/credit.dart';
 
 class PortfolioDashboardPage extends StatelessWidget {
   const PortfolioDashboardPage({
     super.key,
-    required this.loanDao,
+    required this.creditDao,
     required this.shopId,
   });
 
-  final LoanDao loanDao;
+  final CreditDao creditDao;
   final String shopId;
 
   @override
@@ -19,8 +19,8 @@ class PortfolioDashboardPage extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: StreamBuilder<List<Loan>>(
-        stream: loanDao.watchLoansByShopId(shopId),
+      body: StreamBuilder<List<Credit>>(
+        stream: creditDao.watchCreditsByShopId(shopId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -29,11 +29,11 @@ class PortfolioDashboardPage extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final loans = snapshot.data!;
+          final credits = snapshot.data!;
           final totalPrincipalCents =
-              loans.fold<int>(0, (sum, l) => sum + l.principalCents);
+              credits.fold<int>(0, (sum, l) => sum + l.principalCents);
           final totalOutstandingCents =
-              loans.fold<int>(0, (sum, l) => sum + l.balanceCents);
+              credits.fold<int>(0, (sum, l) => sum + l.balanceCents);
           final totalCollectedCents =
               totalPrincipalCents - totalOutstandingCents;
           final collectionRate = totalPrincipalCents == 0
@@ -74,43 +74,44 @@ class PortfolioDashboardPage extends StatelessWidget {
                             ),
                       ),
                       const SizedBox(height: 12),
-                      GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 1.35,
-                        children: [
-                          _SummaryCard(
-                            title: 'Active Loans',
-                            value: loans.length.toString(),
-                            icon: Icons.account_balance_wallet_rounded,
-                            color: colorScheme.primary,
-                          ),
-                          _SummaryCard(
-                            title: 'Outstanding',
-                            value: _formatCents(totalOutstandingCents),
-                            icon: Icons.pending_actions_rounded,
-                            color: Colors.orange.shade700,
-                          ),
-                          _SummaryCard(
-                            title: 'Collected',
-                            value: _formatCents(totalCollectedCents),
-                            icon: Icons.check_circle_rounded,
-                            color: Colors.green.shade700,
-                          ),
-                          _SummaryCard(
-                            title: 'Collection Rate',
-                            value: '${(collectionRate * 100).toStringAsFixed(1)}%',
-                            icon: Icons.trending_up_rounded,
-                            color: colorScheme.tertiary,
-                          ),
-                        ],
+                      SizedBox(
+                        height: 170,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _SummaryCard(
+                              title: 'Active Credits',
+                              value: credits.length.toString(),
+                              icon: Icons.account_balance_wallet_rounded,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            _SummaryCard(
+                              title: 'Outstanding',
+                              value: _formatCents(totalOutstandingCents),
+                              icon: Icons.pending_actions_rounded,
+                              color: Colors.orange.shade700,
+                            ),
+                            const SizedBox(width: 12),
+                            _SummaryCard(
+                              title: 'Collected',
+                              value: _formatCents(totalCollectedCents),
+                              icon: Icons.check_circle_rounded,
+                              color: Colors.green.shade700,
+                            ),
+                            const SizedBox(width: 12),
+                            _SummaryCard(
+                              title: 'Collection Rate',
+                              value: '${(collectionRate * 100).toStringAsFixed(1)}%',
+                              icon: Icons.trending_up_rounded,
+                              color: colorScheme.tertiary,
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Loan Portfolio',
+                        'Credit Portfolio',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -120,7 +121,7 @@ class PortfolioDashboardPage extends StatelessWidget {
                   ),
                 ),
               ),
-              if (loans.isEmpty)
+              if (credits.isEmpty)
                 const SliverFillRemaining(
                   child: Center(
                     child: Column(
@@ -129,7 +130,7 @@ class PortfolioDashboardPage extends StatelessWidget {
                         Icon(Icons.inbox_rounded, size: 64, color: Colors.grey),
                         SizedBox(height: 12),
                         Text(
-                          'No loans yet',
+                          'No credits yet',
                           style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
                       ],
@@ -140,7 +141,7 @@ class PortfolioDashboardPage extends StatelessWidget {
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final loan = loans[index];
+                      final credit = credits[index];
                       return Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -162,7 +163,7 @@ class PortfolioDashboardPage extends StatelessWidget {
                               ),
                             ),
                             title: Text(
-                              'Loan ${loan.id}',
+                              'Credit ${credit.id}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -172,17 +173,17 @@ class PortfolioDashboardPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _LoanMetricRow(
+                                  _CreditMetricRow(
                                     label: 'Principal',
-                                    value: _formatCents(loan.principalCents),
+                                    value: _formatCents(credit.principalCents),
                                   ),
-                                  _LoanMetricRow(
+                                  _CreditMetricRow(
                                     label: 'Balance',
-                                    value: _formatCents(loan.balanceCents),
+                                    value: _formatCents(credit.balanceCents),
                                   ),
-                                  _LoanMetricRow(
+                                  _CreditMetricRow(
                                     label: 'Status',
-                                    value: loan.status.value,
+                                    value: credit.status.value,
                                   ),
                                 ],
                               ),
@@ -195,7 +196,7 @@ class PortfolioDashboardPage extends StatelessWidget {
                         ),
                       );
                     },
-                    childCount: loans.length,
+                    childCount: credits.length,
                   ),
                 ),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -231,9 +232,8 @@ class _SummaryCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(8),
@@ -243,8 +243,10 @@ class _SummaryCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 24),
             ),
+            const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   value,
@@ -269,8 +271,8 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-class _LoanMetricRow extends StatelessWidget {
-  const _LoanMetricRow({required this.label, required this.value});
+class _CreditMetricRow extends StatelessWidget {
+  const _CreditMetricRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -297,3 +299,4 @@ class _LoanMetricRow extends StatelessWidget {
     );
   }
 }
+

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../../../../core/data/local/app_database.dart';
 import '../../../../core/data/local/tables/app_users_table.dart';
-import '../../../../core/data/local/tables/loans_table.dart';
+import '../../../../core/data/local/tables/credits_table.dart';
 import '../../../../core/data/local/tables/payments_table.dart';
 import '../../../../core/data/local/tables/shops_table.dart';
 import '../../../../core/data/local/tables/sync_queue_table.dart';
@@ -11,12 +11,12 @@ import '../../../../core/money/money.dart';
 import '../../../../core/permissions/app_permission.dart';
 import '../../../../core/permissions/authorization_guard.dart';
 import '../../../../features/auth/domain/models/app_user.dart';
-import '../../../../features/customers/domain/models/loan.dart';
-import '../../../../features/customers/domain/models/loan_term.dart';
+import '../../../../features/customers/domain/models/credit.dart';
+import '../../../../features/customers/domain/models/credit_term.dart';
 import '../../../../features/customers/domain/models/receipt.dart';
 import '../../../shop/data/daos/shop_dao.dart';
 import 'customer_dao.dart';
-import 'loan_dao.dart';
+import 'credit_dao.dart';
 import 'package:uuid/uuid.dart';
 
 part 'payment_dao.g.dart';
@@ -31,7 +31,7 @@ part 'payment_dao.g.dart';
 /// (Drift default), so the payment record, balance update, receipt snapshot,
 /// and local audit/sync queue entry commit or roll back together — no partial
 /// state is ever visible (PRD FR-22).
-@DriftAccessor(tables: [Loans, Payments, SyncQueue, Shops, AppUsers])
+@DriftAccessor(tables: [Credits, Payments, SyncQueue, Shops, AppUsers])
 class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
   PaymentDao(super.db);
 
@@ -52,7 +52,7 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
     return Receipt(
       id: entry.id,
       shopId: entry.shopId,
-      loanId: entry.loanId,
+      creditId: entry.creditId,
       receiptNumber: entry.receiptNumber,
       amountCents: entry.amountCents,
       preBalanceCents: entry.preBalanceCents,
@@ -74,19 +74,19 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
     );
   }
 
-  /// Records a cash payment against a disbursed loan in an atomic transaction.
+  /// Records a cash payment against a disbursed credit in an atomic transaction.
   ///
   /// Steps:
   /// 1. Authorization: actor must be active and hold `recordPayments`.
   /// 2. Idempotency fast path: repeat submission with same key returns the
   ///    existing receipt without re-posting.
-  /// 3. Eligibility: loan must exist in actor's shop, be disbursed, and have
+  /// 3. Eligibility: credit must exist in actor's shop, be disbursed, and have
   ///    a positive outstanding balance.
   /// 4. Overpayment block: amount must not exceed the current balance.
   /// 5. Atomic transaction:
   ///    a. Insert idempotency guard row in `sync_queue` (unique constraint
   ///       on `(shop_id, idempotency_key)` prevents duplicates).
-  ///    b. Conditionally update the loan balance (only if still positive and
+  ///    b. Conditionally update the credit balance (only if still positive and
   ///       not already settled by a concurrent writer).
   ///    c. Insert the payment/receipt row with full branding snapshot.
   ///    d. Insert the local audit/sync queue entry.
@@ -96,16 +96,16 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
   /// Throws [PermissionDeniedException] when the actor is deactivated or does
   /// not hold `recordPayments`.
   /// Throws [ArgumentError] when [idempotencyKey] is blank, [amount] is not
-  /// positive, or [loanId] is blank.
-  /// Throws [StateError] when the loan does not exist in the actor's shop,
+  /// positive, or [creditId] is blank.
+  /// Throws [StateError] when the credit does not exist in the actor's shop,
   /// when the idempotency key is already in use by another operation, or
-  /// when the loan is not eligible for payment.
-  /// Throws [LoanOverpaymentException] when the payment exceeds the
+  /// when the credit is not eligible for payment.
+  /// Throws [CreditOverpaymentException] when the payment exceeds the
   /// outstanding balance.
   Future<Receipt> recordPayment({
     required AppUser actor,
     required String idempotencyKey,
-    required String loanId,
+    required String creditId,
     required Money amount,
     required DateTime recordedAt,
   }) async {
@@ -119,7 +119,7 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
       isActive: actor.isActive,
       effectivePermissions: actor.effectivePermissions,
       permission: AppPermission.recordPayments,
-      actionDescription: 'record a loan payment',
+      actionDescription: 'record a credit payment',
     );
 
     // --- Input validation ---
@@ -144,44 +144,44 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
     if (claimed != null) {
       return _resolveRecordedPayment(
         shopId: actor.shopId,
-        loanId: loanId,
+        creditId: creditId,
         idempotencyKey: key,
         claim: claimed,
       );
     }
 
-    // --- The loan must exist in the actor's own shop ---
-    final loanDao = LoanDao(db);
-    final loan = await loanDao.getLoanById(actor.shopId, loanId);
-    if (loan == null) {
+    // --- The credit must exist in the actor's own shop ---
+    final creditDao = CreditDao(db);
+    final credit = await creditDao.getCreditById(actor.shopId, creditId);
+    if (credit == null) {
       throw StateError(
-        'Cannot record payment: loan ID "$loanId" not found in shop '
+        'Cannot record payment: credit ID "$creditId" not found in shop '
         '"${actor.shopId}".',
       );
     }
 
-    // --- The loan must be disbursed and eligible for payment ---
-    if (!loan.isDisbursed) {
-      throw const LoanOverpaymentException(
-        'Payments cannot be recorded on loans that have not been disbursed.',
+    // --- The credit must be disbursed and eligible for payment ---
+    if (!credit.isDisbursed) {
+      throw const CreditOverpaymentException(
+        'Payments cannot be recorded on credits that have not been disbursed.',
       );
     }
-    if (loan.status == LoanStatus.settled) {
-      throw const LoanOverpaymentException(
-        'Payments cannot be recorded on a settled loan.',
+    if (credit.status == CreditStatus.settled) {
+      throw const CreditOverpaymentException(
+        'Payments cannot be recorded on a settled credit.',
       );
     }
-    if (loan.balanceCents <= 0) {
-      throw const LoanOverpaymentException(
-        'The loan has no outstanding balance.',
+    if (credit.balanceCents <= 0) {
+      throw const CreditOverpaymentException(
+        'The credit has no outstanding balance.',
       );
     }
 
     // --- Overpayment block ---
-    if (amount.minorUnits > loan.balanceCents) {
-      throw LoanOverpaymentException(
+    if (amount.minorUnits > credit.balanceCents) {
+      throw CreditOverpaymentException(
         'Payment of ${amount.format()} exceeds the outstanding balance of '
-        '${Money.fromCents(loan.balanceCents).format()}.',
+        '${Money.fromCents(credit.balanceCents).format()}.',
       );
     }
 
@@ -190,7 +190,7 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
     final shop = await shopDao.getShopById(actor.shopId);
     final customerDao = CustomerDao(db);
     final customer =
-        await customerDao.getCustomerById(actor.shopId, loan.customerId);
+        await customerDao.getCustomerById(actor.shopId, credit.customerId);
 
     // Generate a deterministic receipt number.
     final receiptNumber =
@@ -201,24 +201,24 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
     var duplicated = false;
 
     await attachedDatabase.transaction(() async {
-      // --- Re-read the loan inside the transaction to get the current
+      // --- Re-read the credit inside the transaction to get the current
       //     balance. This prevents TOCTOU races where another concurrent
       //     payment changed the balance after our initial read. ---
-      final currentLoan = await loanDao.getLoanById(actor.shopId, loanId);
-      if (currentLoan == null) {
+      final currentCredit = await creditDao.getCreditById(actor.shopId, creditId);
+      if (currentCredit == null) {
         throw StateError(
-          'Cannot record payment: loan ID "$loanId" not found in shop '
+          'Cannot record payment: credit ID "$creditId" not found in shop '
           '"${actor.shopId}".',
         );
       }
 
       // --- Story 5.5 correction lock: while a correction is pending on this
-      //     loan, new payments are blocked until a Shop Owner approves or
+      //     credit, new payments are blocked until a Shop Owner approves or
       //     rejects the pending correction. Enforced inside the transaction
       //     lock, not merely in the UI. ---
-      if (currentLoan.correctionPending) {
-        throw LoanCorrectionPendingException(
-          'Cannot record payment: loan ID "$loanId" has a pending correction '
+      if (currentCredit.correctionPending) {
+        throw CreditCorrectionPendingException(
+          'Cannot record payment: credit ID "$creditId" has a pending correction '
           'request. Payments are blocked until a Shop Owner approves or '
           'rejects the correction.',
         );
@@ -226,10 +226,10 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
 
       // --- Overpayment block: check against the current balance inside
       //     the transaction, after acquiring the write lock. ---
-      if (amount.minorUnits > currentLoan.balanceCents) {
-        throw LoanOverpaymentException(
+      if (amount.minorUnits > currentCredit.balanceCents) {
+        throw CreditOverpaymentException(
           'Payment of ${amount.format()} exceeds the outstanding balance of '
-          '${Money.fromCents(currentLoan.balanceCents).format()}.',
+          '${Money.fromCents(currentCredit.balanceCents).format()}.',
         );
       }
 
@@ -241,20 +241,20 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
           shopId: actor.shopId,
           idempotencyKey: key,
           entityType: paymentEntityType,
-          entityId: loanId,
+          entityId: creditId,
           actionType: recordPaymentActionType,
           payloadJson: jsonEncode({
             'auditCategory': paymentRecordingAuditCategory,
             'auditEvent': paymentRecordingAuditEvent,
             'actorId': actor.id,
-            'loanId': loanId,
+            'creditId': creditId,
             'receiptNumber': receiptNumber,
             'amountCents': amount.minorUnits,
-            'preBalanceCents': currentLoan.balanceCents,
+            'preBalanceCents': currentCredit.balanceCents,
             'postBalanceCents':
-                currentLoan.balanceCents - amount.minorUnits,
+                currentCredit.balanceCents - amount.minorUnits,
             'paymentType':
-                amount.minorUnits == currentLoan.balanceCents
+                amount.minorUnits == currentCredit.balanceCents
                     ? 'full_settlement'
                     : 'partial',
             'recordedAt': now.toIso8601String(),
@@ -272,34 +272,34 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
         return;
       }
 
-      // --- Conditional balance update: only if the loan is still eligible.
+      // --- Conditional balance update: only if the credit is still eligible.
       //     The WHERE clause checks status and workflow status; the balance
       //     check was already performed above inside the transaction lock. ---
-      final newBalanceCents = currentLoan.balanceCents - amount.minorUnits;
+      final newBalanceCents = currentCredit.balanceCents - amount.minorUnits;
       final isFullSettlement = newBalanceCents == 0;
 
-      final affected = await (update(loans)
+      final affected = await (update(credits)
             ..where((l) =>
                 l.shopId.equals(actor.shopId) &
-                l.id.equals(loan.id) &
+                l.id.equals(credit.id) &
                 l.workflowStatus.equals(
-                    LoanWorkflowStatus.disbursed.value) &
+                    CreditWorkflowStatus.disbursed.value) &
                 l.status.isIn([
-                  LoanStatus.active.value,
-                  LoanStatus.overdue.value,
+                  CreditStatus.active.value,
+                  CreditStatus.overdue.value,
                 ])))
-          .write(LoansCompanion(
+          .write(CreditsCompanion(
         balanceCents: Value(newBalanceCents),
         status: Value(
-            isFullSettlement ? LoanStatus.settled.value : LoanStatus.active.value),
+            isFullSettlement ? CreditStatus.settled.value : CreditStatus.active.value),
         settledAt: Value(isFullSettlement ? now : null),
       ));
 
       if (affected == 0) {
-        // Another writer modified the loan first. Roll back this transaction.
-        final refreshed = await loanDao.getLoanById(actor.shopId, loan.id);
-        throw LoanOverpaymentException(
-          'Unable to record payment: the loan balance or state changed '
+        // Another writer modified the credit first. Roll back this transaction.
+        final refreshed = await creditDao.getCreditById(actor.shopId, credit.id);
+        throw CreditOverpaymentException(
+          'Unable to record payment: the credit balance or state changed '
           'concurrently (current balance: '
           '${refreshed != null ? Money.fromCents(refreshed.balanceCents).format() : 'unknown'}).',
         );
@@ -310,16 +310,16 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
         PaymentsCompanion.insert(
           id: Uuid().v4(),
           shopId: actor.shopId,
-          loanId: loanId,
+          creditId: creditId,
           receiptNumber: receiptNumber,
           amountCents: amount.minorUnits,
-          preBalanceCents: currentLoan.balanceCents,
+          preBalanceCents: currentCredit.balanceCents,
           postBalanceCents: newBalanceCents,
           paymentType:
               isFullSettlement ? 'full_settlement' : 'partial',
           recordedAt: now,
           recordedByUserId: actor.id,
-          customerId: loan.customerId,
+          customerId: credit.customerId,
           customerName: customer?.fullName ?? 'Not recorded',
           customerNic: customer?.nic ?? 'Not recorded',
           shopName: shop?.name ?? 'Not recorded',
@@ -338,16 +338,16 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
           shopId: actor.shopId,
           idempotencyKey: Uuid().v4(),
           entityType: paymentEntityType,
-          entityId: loanId,
+          entityId: creditId,
           actionType: recordPaymentActionType,
           payloadJson: jsonEncode({
             'auditCategory': paymentRecordingAuditCategory,
             'auditEvent': paymentRecordingAuditEvent,
             'actorId': actor.id,
-            'loanId': loanId,
+            'creditId': creditId,
             'receiptNumber': receiptNumber,
             'amountCents': amount.minorUnits,
-            'preBalanceCents': currentLoan.balanceCents,
+            'preBalanceCents': currentCredit.balanceCents,
             'postBalanceCents': newBalanceCents,
             'paymentType':
                 isFullSettlement ? 'full_settlement' : 'partial',
@@ -364,7 +364,7 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
     if (duplicated) {
       return _resolveRecordedPayment(
         shopId: actor.shopId,
-        loanId: loanId,
+        creditId: creditId,
         idempotencyKey: key,
       );
     }
@@ -377,14 +377,14 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
     return _toDomain(entry);
   }
 
-  /// Retrieves all payments for a loan, ordered by recorded date descending.
-  Future<List<Receipt>> getPaymentsByLoan(
+  /// Retrieves all payments for a credit, ordered by recorded date descending.
+  Future<List<Receipt>> getPaymentsByCredit(
     String shopId,
-    String loanId, {
+    String creditId, {
     int? limit,
   }) async {
     final query = select(payments)
-      ..where((p) => p.shopId.equals(shopId) & p.loanId.equals(loanId))
+      ..where((p) => p.shopId.equals(shopId) & p.creditId.equals(creditId))
       ..orderBy([(p) => OrderingTerm.desc(p.recordedAt)]);
     if (limit != null) {
       query.limit(limit);
@@ -421,7 +421,7 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
   /// [idempotencyKey].
   Future<Receipt> _resolveRecordedPayment({
     required String shopId,
-    required String loanId,
+    required String creditId,
     required String idempotencyKey,
     SyncQueueRecord? claim,
   }) async {
@@ -431,10 +431,10 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
     if (claimed == null ||
         claimed.entityType != paymentEntityType ||
         claimed.actionType != recordPaymentActionType ||
-        claimed.entityId != loanId) {
+        claimed.entityId != creditId) {
       throw StateError(
         'Idempotency key "$idempotencyKey" is already in use for a different '
-        'operation or loan.',
+        'operation or credit.',
       );
     }
 
@@ -477,3 +477,4 @@ class PaymentDao extends DatabaseAccessor<AppDatabase> with _$PaymentDaoMixin {
 
   String _two(int value) => value.toString().padLeft(2, '0');
 }
+

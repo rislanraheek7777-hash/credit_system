@@ -144,3 +144,4 @@ class CollateralDiscrepancyDao extends DatabaseAccessor<AppDatabase>
     return rowsAffected;
   }
 }
+

@@ -69,7 +69,6 @@ class _CollateralPhotoExceptionReviewScreenState
 
   @override
   void dispose() {
-    _db.close();
     super.dispose();
   }
 
@@ -502,3 +501,4 @@ class _CollateralPhotoExceptionReviewScreenState
     );
   }
 }
+

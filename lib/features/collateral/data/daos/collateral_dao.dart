@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/data/local/tables/collateral_items_table.dart';
-import 'package:credit_system/core/data/local/tables/loan_administrative_closures_table.dart';
-import 'package:credit_system/core/data/local/tables/loans_table.dart';
+import 'package:credit_system/core/data/local/tables/credit_administrative_closures_table.dart';
+import 'package:credit_system/core/data/local/tables/credits_table.dart';
 import 'package:credit_system/core/data/local/tables/sync_queue_table.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/core/permissions/authorization_guard.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
-import 'package:credit_system/features/collateral/domain/models/loan_administrative_closure.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/collateral/domain/models/credit_administrative_closure.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:uuid/uuid.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_custody_event_dao.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_discrepancy_dao.dart';
@@ -19,7 +19,7 @@ import 'package:credit_system/features/collateral/domain/models/collateral_item.
 
 part 'collateral_dao.g.dart';
 
-/// Data Access Object for collateral items (Story 3.1) and loan-level
+/// Data Access Object for collateral items (Story 3.1) and credit-level
 /// administrative closure workflow (Story 3.5, PRD FR-16, AD-3).
 ///
 /// All queries are strictly scoped to [shopId] to enforce tenant isolation.
@@ -29,8 +29,8 @@ part 'collateral_dao.g.dart';
 @DriftAccessor(
   tables: [
     CollateralItems,
-    LoanAdministrativeClosures,
-    Loans,
+    CreditAdministrativeClosures,
+    Credits,
     SyncQueue,
   ],
 )
@@ -50,7 +50,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
       id: entry.id,
       shopId: entry.shopId,
       customerId: entry.customerId,
-      loanId: entry.loanId,
+      creditId: entry.creditId,
       itemReferenceId: entry.itemReferenceId,
       category: CollateralItemCategory.fromValue(entry.category),
       description: entry.description,
@@ -71,7 +71,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
       id: Value(item.id),
       shopId: Value(item.shopId),
       customerId: Value(item.customerId),
-      loanId: Value(item.loanId),
+      creditId: Value(item.creditId),
       itemReferenceId: Value(item.itemReferenceId),
       category: Value(item.category.value),
       description: Value(item.description),
@@ -90,7 +90,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
   ///
   /// Validates that the item belongs to [shopId] before insertion.
   /// Throws [sqlite.SqliteException] if foreign key constraints are violated
-  /// (e.g., referenced shop, customer, or loan does not exist).
+  /// (e.g., referenced shop, customer, or credit does not exist).
   /// Throws [ArgumentError] if the item reference ID already exists in the shop.
   Future<void> createCollateralItem(CollateralItem item) async {
     if (item.shopId.trim().isEmpty) {
@@ -191,27 +191,27 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
     return entries.map(_toDomain).toList();
   }
 
-  /// Retrieves all collateral items linked to [loanId] strictly scoped within [shopId].
+  /// Retrieves all collateral items linked to [creditId] strictly scoped within [shopId].
   ///
-  /// Returns `null` loans (items not yet bound to a loan) are excluded.
-  Future<List<CollateralItem>> getCollateralItemsByLoanId(
+  /// Returns `null` credits (items not yet bound to a credit) are excluded.
+  Future<List<CollateralItem>> getCollateralItemsByCreditId(
     String shopId,
-    String loanId,
+    String creditId,
   ) async {
     final query = select(collateralItems)
       ..where((c) =>
-          c.shopId.equals(shopId) & c.loanId.equals(loanId))
+          c.shopId.equals(shopId) & c.creditId.equals(creditId))
       ..orderBy([(c) => OrderingTerm.desc(c.createdAt)]);
     final entries = await query.get();
     return entries.map(_toDomain).toList();
   }
 
-  /// Retrieves all collateral items not yet bound to any loan in [shopId].
+  /// Retrieves all collateral items not yet bound to any credit in [shopId].
   ///
-  /// Useful for Epic 4 to find available collateral for new loans.
+  /// Useful for Epic 4 to find available collateral for new credits.
   Future<List<CollateralItem>> getUnboundCollateralItems(String shopId) async {
     final query = select(collateralItems)
-      ..where((c) => c.shopId.equals(shopId) & c.loanId.isNull())
+      ..where((c) => c.shopId.equals(shopId) & c.creditId.isNull())
       ..orderBy([(c) => OrderingTerm.desc(c.createdAt)]);
     final entries = await query.get();
     return entries.map(_toDomain).toList();
@@ -247,7 +247,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
       id: const Value.absent(),
       shopId: const Value.absent(),
       customerId: const Value.absent(),
-      loanId: Value(item.loanId),
+      creditId: Value(item.creditId),
       itemReferenceId: Value(item.itemReferenceId),
       category: Value(item.category.value),
       description: Value(item.description),
@@ -269,18 +269,18 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
         .write(companion);
   }
 
-  /// Associates a collateral item with a loan within [shopId].
+  /// Associates a collateral item with a credit within [shopId].
   ///
   /// Throws [StateError] if the item does not exist in the shop.
-  Future<void> associateWithLoan(
+  Future<void> associateWithCredit(
     String shopId,
     String itemId,
-    String loanId,
+    String creditId,
   ) async {
     final existing = await getCollateralItemById(shopId, itemId);
     if (existing == null) {
       throw StateError(
-        'Cannot associate with loan: collateral item ID "$itemId" not found in shop "$shopId".',
+        'Cannot associate with credit: collateral item ID "$itemId" not found in shop "$shopId".',
       );
     }
 
@@ -290,7 +290,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
           id: const Value.absent(),
           shopId: const Value.absent(),
           customerId: const Value.absent(),
-          loanId: Value(loanId),
+          creditId: Value(creditId),
           itemReferenceId: const Value.absent(),
           category: const Value.absent(),
           description: const Value.absent(),
@@ -393,7 +393,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
           id: const Value.absent(),
           shopId: const Value.absent(),
           customerId: const Value.absent(),
-          loanId: const Value.absent(),
+          creditId: const Value.absent(),
           itemReferenceId: const Value.absent(),
           category: const Value.absent(),
           description: const Value.absent(),
@@ -471,7 +471,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
             id: const Value.absent(),
             shopId: const Value.absent(),
             customerId: const Value.absent(),
-            loanId: const Value.absent(),
+            creditId: const Value.absent(),
             itemReferenceId: const Value.absent(),
             category: const Value.absent(),
             description: const Value.absent(),
@@ -670,7 +670,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
             id: const Value.absent(),
             shopId: const Value.absent(),
             customerId: const Value.absent(),
-            loanId: const Value.absent(),
+            creditId: const Value.absent(),
             itemReferenceId: const Value.absent(),
             category: const Value.absent(),
             description: const Value.absent(),
@@ -738,68 +738,68 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
     return _discrepancyDao.getDiscrepanciesByCollateralItemId(shopId, collateralItemId);
   }
 
-  /// Converts a Drift [LoanAdministrativeClosureEntry] row into a domain
-  /// [LoanAdministrativeClosure].
-  LoanAdministrativeClosure _toDomainClosure(
-      LoanAdministrativeClosureEntry entry) {
-    return LoanAdministrativeClosure(
+  /// Converts a Drift [CreditAdministrativeClosureEntry] row into a domain
+  /// [CreditAdministrativeClosure].
+  CreditAdministrativeClosure _toDomainClosure(
+      CreditAdministrativeClosureEntry entry) {
+    return CreditAdministrativeClosure(
       id: entry.id,
       shopId: entry.shopId,
-      loanId: entry.loanId,
+      creditId: entry.creditId,
       reason: entry.reason,
       closedByUserId: entry.closedByUserId,
-      itemIds: LoanAdministrativeClosure.parseItemIdsJson(entry.itemIdsJson),
+      itemIds: CreditAdministrativeClosure.parseItemIdsJson(entry.itemIdsJson),
       createdAt: entry.createdAt.toUtc(),
     );
   }
 
-  /// Retrieves the administrative closure record for [loanId] within [shopId],
+  /// Retrieves the administrative closure record for [creditId] within [shopId],
   /// or null if none exists.
-  Future<LoanAdministrativeClosure?> getAdministrativeClosureByLoanId(
+  Future<CreditAdministrativeClosure?> getAdministrativeClosureByCreditId(
     String shopId,
-    String loanId,
+    String creditId,
   ) async {
-    final query = select(loanAdministrativeClosures)
-      ..where((c) => c.shopId.equals(shopId) & c.loanId.equals(loanId));
+    final query = select(creditAdministrativeClosures)
+      ..where((c) => c.shopId.equals(shopId) & c.creditId.equals(creditId));
     final entry = await query.getSingleOrNull();
     return entry != null ? _toDomainClosure(entry) : null;
   }
 
-  /// Checks whether [loanId] within [shopId] has an administrative closure record.
-  Future<bool> isLoanAdministrativelyClosed(
+  /// Checks whether [creditId] within [shopId] has an administrative closure record.
+  Future<bool> isCreditAdministrativelyClosed(
     String shopId,
-    String loanId,
+    String creditId,
   ) async {
-    final closure = await getAdministrativeClosureByLoanId(shopId, loanId);
+    final closure = await getAdministrativeClosureByCreditId(shopId, creditId);
     return closure != null;
   }
 
-  /// Checks whether [loanId] within [shopId] is in `settled` status.
-  Future<bool> isLoanSettled(String shopId, String loanId) async {
-    final loanRows = await (select(loans)
-          ..where((l) => l.shopId.equals(shopId) & l.id.equals(loanId)))
+  /// Checks whether [creditId] within [shopId] is in `settled` status.
+  Future<bool> isCreditSettled(String shopId, String creditId) async {
+    final creditRows = await (select(credits)
+          ..where((l) => l.shopId.equals(shopId) & l.id.equals(creditId)))
         .get();
-    if (loanRows.isEmpty) return false;
-    return loanRows.first.status == LoanStatus.settled.value;
+    if (creditRows.isEmpty) return false;
+    return creditRows.first.status == CreditStatus.settled.value;
   }
 
-  /// Executes an administrative closure for a settled loan with collateral items
+  /// Executes an administrative closure for a settled credit with collateral items
   /// in Exception / Held status (Story 3.5, PRD FR-16, AD-3).
   ///
   /// Requirements:
   /// - Only an active Shop Owner can perform this action (enforced via [AuthorizationGuard]).
   /// - [reason] must be non-empty.
   /// - [idempotencyKey] must be non-empty (duplicate submissions with same key are idempotent no-ops).
-  /// - The loan must exist within [shopId] and have status `settled`.
-  /// - The loan must have at least one collateral item in [CollateralCustodyStatus.exceptionHeld].
-  /// - All items for the loan must be in a terminal custody state (`returned` or `exceptionHeld`).
+  /// - The credit must exist within [shopId] and have status `settled`.
+  /// - The credit must have at least one collateral item in [CollateralCustodyStatus.exceptionHeld].
+  /// - All items for the credit must be in a terminal custody state (`returned` or `exceptionHeld`).
   ///   Any active/unresolved items (`handoverRequested`, `handoverReported`, `discrepancy`, `inCustody`)
   ///   block administrative closure.
-  /// - Writes a Category 11 SyncQueue audit entry and a [LoanAdministrativeClosures] record atomically.
+  /// - Writes a Category 11 SyncQueue audit entry and a [CreditAdministrativeClosures] record atomically.
   /// - Collateral items remain in `exceptionHeld` custody (no mutation occurs to items).
   Future<void> executeAdministrativeClosure(
     String shopId,
-    String loanId, {
+    String creditId, {
     required AppUser actor,
     required String reason,
     required String idempotencyKey,
@@ -814,20 +814,20 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
       isActive: actor.isActive,
       actorRole: actor.role,
       actionDescription:
-          'execute loan-level administrative closure for loan "$loanId"',
+          'execute credit-level administrative closure for credit "$creditId"',
     );
 
     final cleanReason = reason.trim();
     if (cleanReason.isEmpty) {
       throw ArgumentError(
-        'A non-empty business rationale is required for loan administrative closure.',
+        'A non-empty business rationale is required for credit administrative closure.',
       );
     }
 
     final trimmedKey = idempotencyKey.trim();
     if (trimmedKey.isEmpty) {
       throw ArgumentError(
-        'An idempotency key is required for loan administrative closure.',
+        'An idempotency key is required for credit administrative closure.',
       );
     }
 
@@ -844,35 +844,35 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
         return;
       }
 
-      // 2. Check if the loan already has an administrative closure under a different key
-      final existingClosure = await getAdministrativeClosureByLoanId(shopId, loanId);
+      // 2. Check if the credit already has an administrative closure under a different key
+      final existingClosure = await getAdministrativeClosureByCreditId(shopId, creditId);
       if (existingClosure != null) {
         throw StateError(
-          'Loan "$loanId" has already undergone administrative closure.',
+          'Credit "$creditId" has already undergone administrative closure.',
         );
       }
 
-      // 3. Verify loan exists and is settled
-      final loanRows = await (select(loans)
-            ..where((l) => l.shopId.equals(shopId) & l.id.equals(loanId)))
+      // 3. Verify credit exists and is settled
+      final creditRows = await (select(credits)
+            ..where((l) => l.shopId.equals(shopId) & l.id.equals(creditId)))
           .get();
-      if (loanRows.isEmpty) {
+      if (creditRows.isEmpty) {
         throw StateError(
-          'Cannot administratively close loan: loan ID "$loanId" not found in shop "$shopId".',
+          'Cannot administratively close credit: credit ID "$creditId" not found in shop "$shopId".',
         );
       }
-      final loanEntry = loanRows.first;
-      if (loanEntry.status != LoanStatus.settled.value) {
+      final creditEntry = creditRows.first;
+      if (creditEntry.status != CreditStatus.settled.value) {
         throw StateError(
-          'Cannot administratively close loan "$loanId": loan is not fully settled (current status: "${loanEntry.status}").',
+          'Cannot administratively close credit "$creditId": credit is not fully settled (current status: "${creditEntry.status}").',
         );
       }
 
       // 4. Verify collateral items
-      final items = await getCollateralItemsByLoanId(shopId, loanId);
+      final items = await getCollateralItemsByCreditId(shopId, creditId);
       if (items.isEmpty) {
         throw StateError(
-          'Cannot administratively close loan "$loanId": no collateral items found.',
+          'Cannot administratively close credit "$creditId": no collateral items found.',
         );
       }
 
@@ -881,7 +881,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
           .toList();
       if (exceptionItems.isEmpty) {
         throw StateError(
-          'Cannot administratively close loan "$loanId": at least one collateral item must be in exception held status.',
+          'Cannot administratively close credit "$creditId": at least one collateral item must be in exception held status.',
         );
       }
 
@@ -895,7 +895,7 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
             .map((i) => '${i.itemReferenceId} (${i.custodyStatus.value})')
             .join(', ');
         throw StateError(
-          'Cannot administratively close loan "$loanId": all items must be in terminal custody (returned or exception held), but items are still active/unresolved: $unresolvedRefs.',
+          'Cannot administratively close credit "$creditId": all items must be in terminal custody (returned or exception held), but items are still active/unresolved: $unresolvedRefs.',
         );
       }
 
@@ -909,14 +909,14 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
           id: const Uuid().v4(),
           shopId: shopId,
           idempotencyKey: trimmedKey,
-          entityType: 'loan',
-          entityId: loanId,
+          entityType: 'credit',
+          entityId: creditId,
           actionType: 'close_collateral_exception',
           payloadJson: jsonEncode({
             'auditCategory': 11,
-            'auditEvent': 'loan_administrative_closure',
+            'auditEvent': 'credit_administrative_closure',
             'actorId': actor.id,
-            'loanId': loanId,
+            'creditId': creditId,
             'reason': cleanReason,
             'exceptionItemIds': exceptionItemIds,
             'shopId': shopId,
@@ -927,12 +927,12 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
-      // 6. Insert into loan_administrative_closures
-      await into(loanAdministrativeClosures).insert(
-        LoanAdministrativeClosuresCompanion.insert(
+      // 6. Insert into credit_administrative_closures
+      await into(creditAdministrativeClosures).insert(
+        CreditAdministrativeClosuresCompanion.insert(
           id: closureId,
           shopId: shopId,
-          loanId: loanId,
+          creditId: creditId,
           reason: cleanReason,
           closedByUserId: actor.id,
           itemIdsJson: jsonEncode(exceptionItemIds),
@@ -942,40 +942,45 @@ class CollateralDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  /// Dynamically derives the overall workflow status string for a loan (AD-3).
+  /// Dynamically derives the overall workflow status string for a credit (AD-3).
   Future<String> deriveOverallWorkflowStatus(
     String shopId,
-    Loan loan,
+    Credit credit,
   ) async {
-    if (loan.status == LoanStatus.cancelled) {
+    if (credit.status == CreditStatus.cancelled) {
       return 'Cancelled';
     }
-    if (loan.status != LoanStatus.settled) {
-      switch (loan.workflowStatus) {
-        case LoanWorkflowStatus.pendingDisbursement:
+    if (credit.status != CreditStatus.settled) {
+      switch (credit.workflowStatus) {
+        case CreditWorkflowStatus.pendingDisbursement:
           return 'Pending Disbursement';
-        case LoanWorkflowStatus.disbursed:
+        case CreditWorkflowStatus.disbursed:
           return 'Disbursed';
-        case LoanWorkflowStatus.cancelled:
+        case CreditWorkflowStatus.cancelled:
           return 'Cancelled';
-        case LoanWorkflowStatus.overdue:
+        case CreditWorkflowStatus.overdue:
           return 'Overdue';
       }
     }
 
-    // Loan is settled financially
+    // Credit is settled financially
     final isClosedException =
-        await isLoanAdministrativelyClosed(shopId, loan.id);
+        await isCreditAdministrativelyClosed(shopId, credit.id);
     if (isClosedException) {
       return 'Closed (Collateral Exception)';
     }
 
-    final items = await getCollateralItemsByLoanId(shopId, loan.id);
-    if (items.isNotEmpty &&
-        items.every((i) => i.custodyStatus == CollateralCustodyStatus.returned)) {
+    final items = await getCollateralItemsByCreditId(shopId, credit.id);
+    // A settled credit with no attached items is fully closed: there is no
+    // item-receipt handover to await.
+    if (items.isEmpty) {
+      return 'Closed / Completed';
+    }
+    if (items.every((i) => i.custodyStatus == CollateralCustodyStatus.returned)) {
       return 'Settled / Closed (All Collateral Returned)';
     }
 
     return 'Settled (Pending Collateral Return)';
   }
 }
+

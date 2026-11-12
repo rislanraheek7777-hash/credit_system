@@ -11,9 +11,9 @@ import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
 import 'package:credit_system/features/customers/data/services/document_generation_service_impl.dart';
 import 'package:credit_system/features/customers/domain/models/customer.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
-import 'package:credit_system/features/customers/domain/models/loan_document_content.dart';
-import 'package:credit_system/features/customers/domain/models/loan_term.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
+import 'package:credit_system/features/customers/domain/models/credit_document_content.dart';
+import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 
 /// The shop zone used throughout these tests; the approved default
 /// (`Asia/Colombo`) is the zone that exposed the UTC-date defect.
@@ -22,11 +22,11 @@ final ShopTimeZone shopZone = ShopTimeZone.defaultTimeZone();
 const String shopId = '11111111-1111-1111-1111-111111111101';
 const String otherShopId = '11111111-1111-1111-1111-111111111102';
 const int customerId = 1;
-const String loanId = '33333333-3333-3333-3333-333333333301';
-const String otherLoanId = '33333333-3333-3333-3333-333333333302';
+const String creditId = '33333333-3333-3333-3333-333333333301';
+const String otherCreditId = '33333333-3333-3333-3333-333333333302';
 const String snapshotId = '44444444-4444-4444-4444-444444444401';
 
-/// Test actor with createLoans permission (cashier role).
+/// Test actor with createCredits permission (cashier role).
 final AppUser managerActor = AppUser(
   id: 'user-1',
   shopId: shopId,
@@ -36,7 +36,7 @@ final AppUser managerActor = AppUser(
   isActive: true,
 );
 
-/// Test actor with viewAndReprintReceipts but NOT createLoans.
+/// Test actor with viewAndReprintReceipts but NOT createCredits.
 final AppUser cashierActor = AppUser(
   id: 'user-2',
   shopId: shopId,
@@ -86,8 +86,8 @@ Customer buildCustomer({
   );
 }
 
-Loan buildPendingLoan({
-  String id = loanId,
+Credit buildPendingCredit({
+  String id = creditId,
   String shop = shopId,
   int customer = customerId,
   int principalCents = 150050,
@@ -96,14 +96,14 @@ Loan buildPendingLoan({
   DateTime? dueDate,
   DateTime? createdAt,
 }) {
-  return Loan(
+  return Credit(
     id: id,
     shopId: shop,
     customerId: customer,
     principalCents: principalCents,
     balanceCents: principalCents,
-    status: LoanStatus.active,
-    workflowStatus: LoanWorkflowStatus.pendingDisbursement,
+    status: CreditStatus.active,
+    workflowStatus: CreditWorkflowStatus.pendingDisbursement,
     dueDate: dueDate ?? DateTime.utc(2026, 11, 15),
     createdAt: createdAt ?? DateTime.utc(2026, 10, 16, 9),
     termPresetDays: termPresetDays,
@@ -111,8 +111,8 @@ Loan buildPendingLoan({
   );
 }
 
-Loan buildDisbursedLoan({
-  String id = loanId,
+Credit buildDisbursedCredit({
+  String id = creditId,
   String shop = shopId,
   int customer = customerId,
   int principalCents = 150050,
@@ -121,14 +121,14 @@ Loan buildDisbursedLoan({
   DateTime? createdAt,
   bool includeDisbursementTimestamp = true,
 }) {
-  return Loan(
+  return Credit(
     id: id,
     shopId: shop,
     customerId: customer,
     principalCents: principalCents,
     balanceCents: principalCents,
-    status: LoanStatus.active,
-    workflowStatus: LoanWorkflowStatus.disbursed,
+    status: CreditStatus.active,
+    workflowStatus: CreditWorkflowStatus.disbursed,
     dueDate: dueDate ?? DateTime.utc(2026, 11, 19),
     createdAt: createdAt ?? DateTime.utc(2026, 10, 16, 9),
     termPresetDays: 30,
@@ -139,15 +139,15 @@ Loan buildDisbursedLoan({
   );
 }
 
-Loan buildCancelledLoan({String id = loanId}) {
-  return Loan(
+Credit buildCancelledCredit({String id = creditId}) {
+  return Credit(
     id: id,
     shopId: shopId,
     customerId: customerId,
     principalCents: 150050,
     balanceCents: 150050,
-    status: LoanStatus.cancelled,
-    workflowStatus: LoanWorkflowStatus.cancelled,
+    status: CreditStatus.cancelled,
+    workflowStatus: CreditWorkflowStatus.cancelled,
     dueDate: DateTime.utc(2026, 11, 15),
     createdAt: DateTime.utc(2026, 10, 16, 9),
     termPresetDays: 30,
@@ -161,7 +161,7 @@ CollateralItem buildCollateralItem() {
     id: '55555555-5555-5555-5555-555555555501',
     shopId: shopId,
     customerId: customerId,
-    loanId: loanId,
+    creditId: creditId,
     itemReferenceId: 'COLL-001',
     category: CollateralItemCategory.gold,
     description: 'Gold necklace',
@@ -230,27 +230,27 @@ Future<void> seedShopAndCustomer(AppDatabase db) async {
       );
 }
 
-Future<void> insertLoan(AppDatabase db, Loan loan) async {
+Future<void> insertCredit(AppDatabase db, Credit credit) async {
   await db
-      .into(db.loans)
+      .into(db.credits)
       .insert(
-        LoansCompanion(
-          id: Value(loan.id),
-          shopId: Value(loan.shopId),
-          customerId: Value(loan.customerId),
-          principalCents: Value(loan.principalCents),
-          balanceCents: Value(loan.balanceCents),
-          status: Value(loan.status.value),
-          workflowStatus: Value(loan.workflowStatus.value),
-          termPresetDays: Value(loan.termPresetDays),
-          customDueDate: Value(loan.customDueDate),
-          disbursedAt: Value(loan.disbursedAt),
-          disbursedByUserId: Value(loan.disbursedByUserId),
-          cancelledAt: Value(loan.cancelledAt),
-          cancellationReason: Value(loan.cancellationReason),
-          dueDate: Value(loan.dueDate),
-          createdAt: Value(loan.createdAt),
-          settledAt: Value(loan.settledAt),
+        CreditsCompanion(
+          id: Value(credit.id),
+          shopId: Value(credit.shopId),
+          customerId: Value(credit.customerId),
+          principalCents: Value(credit.principalCents),
+          balanceCents: Value(credit.balanceCents),
+          status: Value(credit.status.value),
+          workflowStatus: Value(credit.workflowStatus.value),
+          termPresetDays: Value(credit.termPresetDays),
+          customDueDate: Value(credit.customDueDate),
+          disbursedAt: Value(credit.disbursedAt),
+          disbursedByUserId: Value(credit.disbursedByUserId),
+          cancelledAt: Value(credit.cancelledAt),
+          cancellationReason: Value(credit.cancellationReason),
+          dueDate: Value(credit.dueDate),
+          createdAt: Value(credit.createdAt),
+          settledAt: Value(credit.settledAt),
         ),
       );
 }
@@ -295,7 +295,7 @@ void main() {
 
     test('draft content carries watermark twice and both disclosures', () {
       final content = buildDraftDocumentContent(
-        loan: buildPendingLoan(),
+        credit: buildPendingCredit(),
         shopTimeZone: shopZone,
         shopName: 'Alpha Jewellers',
         shopAddress: '10 Galle Rd',
@@ -333,6 +333,7 @@ void main() {
       );
       expect(content.allLines, contains('Principal Amount: Rs. 1,500.50'));
       final joined = content.allLines.join('\n');
+      expect(joined, contains('Item Receipt Summary:'));
       expect(joined, contains('COLL-001: Gold necklace'));
       expect(joined, contains('5.500 g'));
       expect(joined, isNot(contains('OFFICIAL')));
@@ -342,7 +343,7 @@ void main() {
 
     test('draft masks NIC and phone and never prints the address', () {
       final content = buildDraftDocumentContent(
-        loan: buildPendingLoan(),
+        credit: buildPendingCredit(),
         shopTimeZone: shopZone,
         shopName: 'Alpha Jewellers',
         shopAddress: '10 Galle Rd',
@@ -366,7 +367,7 @@ void main() {
       'privileged draft can show raw NIC and phone but still no address',
       () {
         final content = buildDraftDocumentContent(
-          loan: buildPendingLoan(),
+          credit: buildPendingCredit(),
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
           shopAddress: '10 Galle Rd',
@@ -392,7 +393,7 @@ void main() {
       expect(documentMaskPhone('123456', showRawPII: false), '****');
 
       final content = buildDraftDocumentContent(
-        loan: buildPendingLoan(),
+        credit: buildPendingCredit(),
         shopTimeZone: shopZone,
         shopName: 'Alpha Jewellers',
         shopAddress: '10 Galle Rd',
@@ -413,7 +414,7 @@ void main() {
       'official voucher contains every required field and collateral line',
       () {
         final content = buildOfficialVoucherContent(
-          loan: buildDisbursedLoan(),
+          credit: buildDisbursedCredit(),
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
           shopAddress: '10 Galle Rd',
@@ -430,12 +431,13 @@ void main() {
         );
 
         final joined = content.allLines.join('\n');
-        expect(content.title, 'LOAN AGREEMENT & CASH DISBURSEMENT VOUCHER');
+        expect(joined, contains('Item Receipt Details:'));
+        expect(content.title, 'CREDIT AGREEMENT & CASH DISBURSEMENT VOUCHER');
         expect(content.reference, startsWith('VCH-'));
         expect(joined, contains('OFFICIAL - CASH DISBURSED'));
         expect(joined, contains('Snapshot ID: $snapshotId'));
         expect(joined, contains('LN-'));
-        expect(joined, contains(loanId));
+        expect(joined, contains(creditId));
         expect(joined, contains('Nimal Perera'));
         expect(joined, contains('Customer NIC: 8512****567V'));
         expect(joined, contains('Origination Date: 2026-10-16'));
@@ -462,7 +464,7 @@ void main() {
 
     test('official voucher states when no collateral items were supplied', () {
       final content = buildOfficialVoucherContent(
-        loan: buildDisbursedLoan(),
+        credit: buildDisbursedCredit(),
         shopTimeZone: shopZone,
         shopName: 'Alpha Jewellers',
         shopAddress: '10 Galle Rd',
@@ -474,7 +476,7 @@ void main() {
         showRawPII: false,
       );
 
-      expect(content.allLines, contains('No collateral items recorded.'));
+      expect(content.allLines, contains('No item receipts recorded.'));
     });
   });
 
@@ -489,7 +491,7 @@ void main() {
       'draft PDF is a real PDF containing the mandatory watermark',
       () async {
         final bytes = await service.generateDraftPdf(
-          loan: buildPendingLoan(),
+          credit: buildPendingCredit(),
           actor: managerActor,
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
@@ -514,7 +516,7 @@ void main() {
       'official voucher PDF is a real PDF with the document number',
       () async {
         final bytes = await service.generateVoucherPdf(
-          loan: buildDisbursedLoan(),
+          credit: buildDisbursedCredit(),
           actor: managerActor,
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
@@ -539,11 +541,11 @@ void main() {
       },
     );
 
-    test('draft refuses disbursed and cancelled loans', () async {
-      for (final loan in [buildDisbursedLoan(), buildCancelledLoan()]) {
+    test('draft refuses disbursed and cancelled credits', () async {
+      for (final credit in [buildDisbursedCredit(), buildCancelledCredit()]) {
         await expectLater(
           service.generateDraftPdf(
-            loan: loan,
+            credit: credit,
             actor: managerActor,
             shopTimeZone: shopZone,
             shopName: 'Alpha Jewellers',
@@ -552,24 +554,24 @@ void main() {
             shopTaxId: 'TAX-1',
             disbursingStaffId: 'staff-7',
           ),
-          throwsA(isA<LoanDisbursementStateException>()),
+          throwsA(isA<CreditDisbursementStateException>()),
         );
       }
     });
 
     test(
-      'voucher refuses pending, cancelled and timestamp-less loans',
+      'voucher refuses pending, cancelled and timestamp-less credits',
       () async {
-        final loans = <Loan>[
-          buildPendingLoan(),
-          buildCancelledLoan(),
-          buildDisbursedLoan(includeDisbursementTimestamp: false),
+        final credits = <Credit>[
+          buildPendingCredit(),
+          buildCancelledCredit(),
+          buildDisbursedCredit(includeDisbursementTimestamp: false),
         ];
 
-        for (final loan in loans) {
+        for (final credit in credits) {
           await expectLater(
             service.generateVoucherPdf(
-              loan: loan,
+              credit: credit,
               actor: managerActor,
               shopTimeZone: shopZone,
               shopName: 'Alpha Jewellers',
@@ -580,7 +582,7 @@ void main() {
               confirmedDueDate: DateTime.utc(2026, 11, 19),
               documentSnapshotId: snapshotId,
             ),
-            throwsA(isA<LoanDisbursementStateException>()),
+            throwsA(isA<CreditDisbursementStateException>()),
           );
         }
       },
@@ -589,7 +591,7 @@ void main() {
     test('voucher refuses a blank snapshot identifier', () async {
       await expectLater(
         service.generateVoucherPdf(
-          loan: buildDisbursedLoan(),
+          credit: buildDisbursedCredit(),
           actor: managerActor,
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
@@ -604,10 +606,10 @@ void main() {
       );
     });
 
-    test('customer from another loan is rejected', () async {
+    test('customer from another credit is rejected', () async {
       await expectLater(
         service.generateDraftPdf(
-          loan: buildPendingLoan(),
+          credit: buildPendingCredit(),
           actor: managerActor,
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
@@ -639,14 +641,14 @@ void main() {
     });
 
     test(
-      'draft generation requires createLoans: actor without it is denied',
+      'draft generation requires createCredits: actor without it is denied',
       () async {
-        // Cashier has createLoans; use an actor with only viewCustomers.
-        final noCreateLoans = AppUser(
+        // Cashier has createCredits; use an actor with only viewCustomers.
+        final noCreateCredits = AppUser(
           id: 'user-nocl',
           shopId: shopId,
           username: 'nocl',
-          fullName: 'No Create Loans',
+          fullName: 'No Create Credits',
           role: AppRole.custom,
           isActive: true,
           customPermissions: {AppPermission.viewCustomers},
@@ -654,8 +656,8 @@ void main() {
 
         await expectLater(
           service.generateDraftPdf(
-            loan: buildPendingLoan(),
-            actor: noCreateLoans,
+            credit: buildPendingCredit(),
+            actor: noCreateCredits,
             shopTimeZone: shopZone,
             shopName: 'Alpha Jewellers',
             shopAddress: '10 Galle Rd',
@@ -669,11 +671,11 @@ void main() {
     );
 
     test(
-      'draft generation denies a deactivated actor even with createLoans',
+      'draft generation denies a deactivated actor even with createCredits',
       () async {
         await expectLater(
           service.generateDraftPdf(
-            loan: buildPendingLoan(),
+            credit: buildPendingCredit(),
             actor: deactivatedActor,
             shopTimeZone: shopZone,
             shopName: 'Alpha Jewellers',
@@ -692,7 +694,7 @@ void main() {
       () async {
         await expectLater(
           service.generateDraftPdf(
-            loan: buildPendingLoan(),
+            credit: buildPendingCredit(),
             actor: otherShopActor,
             shopTimeZone: shopZone,
             shopName: 'Alpha Jewellers',
@@ -707,17 +709,17 @@ void main() {
     );
 
     test(
-      'voucher generation allows createLoans holder (manager)',
+      'voucher generation allows createCredits holder (manager)',
       () async {
-        await insertLoan(db, buildDisbursedLoan());
+        await insertCredit(db, buildDisbursedCredit());
         await service.persistDocumentSnapshot(
           db: db,
-          loan: buildDisbursedLoan(),
+          credit: buildDisbursedCredit(),
           documentSnapshotId: snapshotId,
         );
 
         final bytes = await service.generateVoucherPdf(
-          loan: buildDisbursedLoan(),
+          credit: buildDisbursedCredit(),
           actor: managerActor,
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
@@ -736,15 +738,15 @@ void main() {
     test(
       'voucher generation allows viewAndReprintReceipts holder (cashier)',
       () async {
-        await insertLoan(db, buildDisbursedLoan());
+        await insertCredit(db, buildDisbursedCredit());
         await service.persistDocumentSnapshot(
           db: db,
-          loan: buildDisbursedLoan(),
+          credit: buildDisbursedCredit(),
           documentSnapshotId: snapshotId,
         );
 
         final bytes = await service.generateVoucherPdf(
-          loan: buildDisbursedLoan(),
+          credit: buildDisbursedCredit(),
           actor: cashierActor,
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
@@ -761,7 +763,7 @@ void main() {
     );
 
     test(
-      'voucher generation denies actor with neither createLoans nor viewAndReprintReceipts',
+      'voucher generation denies actor with neither createCredits nor viewAndReprintReceipts',
       () async {
         final noVoucherPerm = AppUser(
           id: 'user-novp',
@@ -775,7 +777,7 @@ void main() {
 
         await expectLater(
           service.generateVoucherPdf(
-            loan: buildDisbursedLoan(),
+            credit: buildDisbursedCredit(),
             actor: noVoucherPerm,
             shopTimeZone: shopZone,
             shopName: 'Alpha Jewellers',
@@ -792,11 +794,11 @@ void main() {
     );
 
     test(
-      'voucher generation denies deactivated actor even with createLoans',
+      'voucher generation denies deactivated actor even with createCredits',
       () async {
         await expectLater(
           service.generateVoucherPdf(
-            loan: buildDisbursedLoan(),
+            credit: buildDisbursedCredit(),
             actor: deactivatedActor,
             shopTimeZone: shopZone,
             shopName: 'Alpha Jewellers',
@@ -817,7 +819,7 @@ void main() {
       () async {
         // Manager has viewSensitiveCustomerData; cashier does not.
         final managerBytes = await service.generateDraftPdf(
-          loan: buildPendingLoan(),
+          credit: buildPendingCredit(),
           actor: managerActor,
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
@@ -832,7 +834,7 @@ void main() {
         expect(managerText, contains('851234567V')); // unmasked for manager
 
         final cashierBytes = await service.generateDraftPdf(
-          loan: buildPendingLoan(),
+          credit: buildPendingCredit(),
           actor: cashierActor,
           shopTimeZone: shopZone,
           shopName: 'Alpha Jewellers',
@@ -866,39 +868,39 @@ void main() {
       await db.close();
     });
 
-    test('persists the snapshot identifier on a disbursed loan', () async {
-      final loan = buildDisbursedLoan();
-      await insertLoan(db, loan);
+    test('persists the snapshot identifier on a disbursed credit', () async {
+      final credit = buildDisbursedCredit();
+      await insertCredit(db, credit);
 
       await service.persistDocumentSnapshot(
         db: db,
-        loan: loan,
+        credit: credit,
         documentSnapshotId: snapshotId,
       );
 
       final row = await (db.select(
-        db.loans,
-      )..where((t) => t.id.equals(loanId))).getSingle();
+        db.credits,
+      )..where((t) => t.id.equals(creditId))).getSingle();
       expect(row.documentSnapshotId, snapshotId);
     });
 
     test('persist updates only the snapshot identifier', () async {
-      final loan = buildDisbursedLoan(principalCents: 987654);
-      await insertLoan(db, loan);
+      final credit = buildDisbursedCredit(principalCents: 987654);
+      await insertCredit(db, credit);
 
       final before = await (db.select(
-        db.loans,
-      )..where((t) => t.id.equals(loanId))).getSingle();
+        db.credits,
+      )..where((t) => t.id.equals(creditId))).getSingle();
 
       await service.persistDocumentSnapshot(
         db: db,
-        loan: loan,
+        credit: credit,
         documentSnapshotId: snapshotId,
       );
 
       final after = await (db.select(
-        db.loans,
-      )..where((t) => t.id.equals(loanId))).getSingle();
+        db.credits,
+      )..where((t) => t.id.equals(creditId))).getSingle();
 
       expect(after.documentSnapshotId, snapshotId);
 
@@ -913,19 +915,19 @@ void main() {
 
       // Explicit representative assertions keep the intent readable when the
       // generated row changes shape in a future schema revision.
-      expect(after.id, loanId);
+      expect(after.id, creditId);
       expect(after.shopId, shopId);
       expect(after.customerId, customerId);
       expect(after.principalCents, 987654);
       expect(after.balanceCents, 987654);
-      expect(after.status, LoanStatus.active.value);
-      expect(after.workflowStatus, LoanWorkflowStatus.disbursed.value);
+      expect(after.status, CreditStatus.active.value);
+      expect(after.workflowStatus, CreditWorkflowStatus.disbursed.value);
       expect(after.termPresetDays, 30);
       expect(after.disbursedAt, isNotNull);
-      expect(after.disbursedAt!.isAtSameMomentAs(loan.disbursedAt!), isTrue);
-      expect(after.disbursedByUserId, loan.disbursedByUserId);
-      expect(after.dueDate.isAtSameMomentAs(loan.dueDate), isTrue);
-      expect(after.createdAt.isAtSameMomentAs(loan.createdAt), isTrue);
+      expect(after.disbursedAt!.isAtSameMomentAs(credit.disbursedAt!), isTrue);
+      expect(after.disbursedByUserId, credit.disbursedByUserId);
+      expect(after.dueDate.isAtSameMomentAs(credit.dueDate), isTrue);
+      expect(after.createdAt.isAtSameMomentAs(credit.createdAt), isTrue);
       expect(after.customDueDate, isNull);
       expect(after.cancelledAt, isNull);
       expect(after.cancellationReason, isNull);
@@ -935,72 +937,72 @@ void main() {
     test(
       'same snapshot identifier is idempotent; a different one is refused',
       () async {
-        final loan = buildDisbursedLoan();
-        await insertLoan(db, loan);
+        final credit = buildDisbursedCredit();
+        await insertCredit(db, credit);
 
         await service.persistDocumentSnapshot(
           db: db,
-          loan: loan,
+          credit: credit,
           documentSnapshotId: snapshotId,
         );
         await service.persistDocumentSnapshot(
           db: db,
-          loan: loan,
+          credit: credit,
           documentSnapshotId: snapshotId,
         );
 
         await expectLater(
           service.persistDocumentSnapshot(
             db: db,
-            loan: loan,
+            credit: credit,
             documentSnapshotId: 'different-snapshot',
           ),
           throwsA(isA<StateError>()),
         );
 
         final row = await (db.select(
-          db.loans,
-        )..where((t) => t.id.equals(loanId))).getSingle();
+          db.credits,
+        )..where((t) => t.id.equals(creditId))).getSingle();
         expect(row.documentSnapshotId, snapshotId);
       },
     );
 
-    test('pending loan cannot persist a snapshot', () async {
+    test('pending credit cannot persist a snapshot', () async {
       await expectLater(
         service.persistDocumentSnapshot(
           db: db,
-          loan: buildPendingLoan(),
+          credit: buildPendingCredit(),
           documentSnapshotId: snapshotId,
         ),
-        throwsA(isA<LoanDisbursementStateException>()),
+        throwsA(isA<CreditDisbursementStateException>()),
       );
 
-      expect(await db.select(db.loans).get(), isEmpty);
+      expect(await db.select(db.credits).get(), isEmpty);
     });
 
     test(
-      'missing loan row is reported and does not touch another loan',
+      'missing credit row is reported and does not touch another credit',
       () async {
-        await insertLoan(db, buildDisbursedLoan(id: otherLoanId));
+        await insertCredit(db, buildDisbursedCredit(id: otherCreditId));
 
         await expectLater(
           service.persistDocumentSnapshot(
             db: db,
-            loan: buildDisbursedLoan(),
+            credit: buildDisbursedCredit(),
             documentSnapshotId: snapshotId,
           ),
           throwsA(isA<StateError>()),
         );
 
         final untouched = await (db.select(
-          db.loans,
-        )..where((t) => t.id.equals(otherLoanId))).getSingle();
+          db.credits,
+        )..where((t) => t.id.equals(otherCreditId))).getSingle();
         expect(untouched.documentSnapshotId, isNull);
       },
     );
 
     test('audit event queues JSON with category 2 and no raw PII', () async {
-      await insertLoan(db, buildPendingLoan());
+      await insertCredit(db, buildPendingCredit());
 
       await service.recordDocumentAuditEvent(
         db: db,
@@ -1008,7 +1010,7 @@ void main() {
         actorId: 'user-1',
         actionType: DocumentGenerationServiceImpl.draftGeneratedActionType,
         customerId: '851234567V',
-        loanId: loanId,
+        creditId: creditId,
         isDraft: true,
       );
 
@@ -1016,12 +1018,12 @@ void main() {
       expect(rows, hasLength(1));
       final row = rows.single;
       expect(row.shopId, shopId);
-      expect(row.entityType, 'loan');
-      expect(row.entityId, loanId);
-      expect(row.actionType, 'generate_loan_draft');
+      expect(row.entityType, 'credit');
+      expect(row.entityId, creditId);
+      expect(row.actionType, 'generate_credit_draft');
       expect(row.status, 'pending_server_ack');
       expect(row.idempotencyKey, row.id);
-      expect(row.id, isNot(loanId));
+      expect(row.id, isNot(creditId));
 
       final payload = jsonDecode(row.payloadJson) as Map<String, dynamic>;
       expect(payload['eventCategory'], 2);
@@ -1034,7 +1036,7 @@ void main() {
     });
 
     test('short identifiers are fully redacted in the audit payload', () async {
-      await insertLoan(db, buildPendingLoan());
+      await insertCredit(db, buildPendingCredit());
 
       await service.recordDocumentAuditEvent(
         db: db,
@@ -1042,7 +1044,7 @@ void main() {
         actorId: 'user-1',
         actionType: DocumentGenerationServiceImpl.draftGeneratedActionType,
         customerId: '12345678',
-        loanId: loanId,
+        creditId: creditId,
         isDraft: true,
       );
 
@@ -1055,7 +1057,7 @@ void main() {
     test(
       'each audit call gets a distinct collision-safe idempotency key',
       () async {
-        await insertLoan(db, buildPendingLoan());
+        await insertCredit(db, buildPendingCredit());
 
         for (var i = 0; i < 2; i++) {
           await service.recordDocumentAuditEvent(
@@ -1064,7 +1066,7 @@ void main() {
             actorId: 'user-1',
             actionType: DocumentGenerationServiceImpl.draftGeneratedActionType,
           customerId: customerId.toString(),
-            loanId: loanId,
+            creditId: creditId,
             isDraft: true,
           );
         }
@@ -1075,8 +1077,8 @@ void main() {
       },
     );
 
-    test('audit event refuses a loan from another shop', () async {
-      await insertLoan(db, buildPendingLoan());
+    test('audit event refuses a credit from another shop', () async {
+      await insertCredit(db, buildPendingCredit());
 
       await expectLater(
         service.recordDocumentAuditEvent(
@@ -1085,7 +1087,7 @@ void main() {
           actorId: 'user-1',
           actionType: DocumentGenerationServiceImpl.draftGeneratedActionType,
           customerId: customerId.toString(),
-          loanId: loanId,
+          creditId: creditId,
           isDraft: true,
         ),
         throwsArgumentError,
@@ -1097,7 +1099,7 @@ void main() {
     test(
       'audit event defaults the action type from the document kind',
       () async {
-        await insertLoan(db, buildDisbursedLoan());
+        await insertCredit(db, buildDisbursedCredit());
 
         await service.recordDocumentAuditEvent(
           db: db,
@@ -1105,17 +1107,17 @@ void main() {
           actorId: 'user-1',
           actionType: '   ',
           customerId: customerId.toString(),
-          loanId: loanId,
+          creditId: creditId,
           isDraft: false,
         );
 
         final row = (await db.select(db.syncQueue).get()).single;
-        expect(row.actionType, 'generate_loan_official_ticket');
+        expect(row.actionType, 'generate_credit_official_ticket');
       },
     );
   });
 
-  // Regression coverage for the Final Acceptance Review defect: loan date
+  // Regression coverage for the Final Acceptance Review defect: credit date
   // columns persist an *instant* (local midnight in the shop zone), while the
   // document must print the shop-local *calendar* date. Formatting the UTC
   // components of `2026-11-13T18:30Z` wrongly printed `2026-11-13` in Colombo.
@@ -1131,9 +1133,9 @@ void main() {
       const LocalCalendarDate(2026, 10, 15),
     );
 
-    LoanDocumentContent draftFor(Loan loan, ShopTimeZone zone) {
+    CreditDocumentContent draftFor(Credit credit, ShopTimeZone zone) {
       return buildDraftDocumentContent(
-        loan: loan,
+        credit: credit,
         shopTimeZone: zone,
         shopName: 'Alpha Jewellers',
         shopAddress: '10 Galle Rd',
@@ -1160,7 +1162,7 @@ void main() {
 
     test('draft renders shop-local origination and preliminary due dates', () {
       final content = draftFor(
-        buildPendingLoan(
+        buildPendingCredit(
           dueDate: colomboDue,
           createdAt: colomboOrigination,
         ),
@@ -1187,7 +1189,7 @@ void main() {
 
     test('draft renders a custom agreed-term date in the shop zone', () {
       final content = draftFor(
-        buildPendingLoan(
+        buildPendingCredit(
           termPresetDays: null,
           customDueDate: colomboDue,
           dueDate: colomboDue,
@@ -1207,7 +1209,7 @@ void main() {
         // 00:15 on 14 Nov in Colombo; still 13 Nov in UTC.
         final DateTime disbursedAt = DateTime.utc(2026, 11, 13, 18, 45);
         final content = buildOfficialVoucherContent(
-          loan: buildDisbursedLoan(
+          credit: buildDisbursedCredit(
             dueDate: colomboDue,
             createdAt: colomboOrigination,
             disbursedAt: disbursedAt,
@@ -1248,7 +1250,7 @@ void main() {
     test('draft PDF prints the shop-local date, never the UTC date', () async {
       final service = DocumentGenerationServiceImpl();
       final bytes = await service.generateDraftPdf(
-        loan: buildPendingLoan(
+        credit: buildPendingCredit(
           dueDate: colomboDue,
           createdAt: colomboOrigination,
         ),
@@ -1271,7 +1273,7 @@ void main() {
       final service = DocumentGenerationServiceImpl();
       final DateTime disbursedAt = DateTime.utc(2026, 11, 13, 18, 45);
       final bytes = await service.generateVoucherPdf(
-        loan: buildDisbursedLoan(
+        credit: buildDisbursedCredit(
           dueDate: colomboDue,
           createdAt: colomboOrigination,
           disbursedAt: disbursedAt,
@@ -1297,7 +1299,7 @@ void main() {
       // 18:29Z is 23:59 on 13 Nov in Colombo; 18:30Z is 00:00 on 14 Nov.
       final DateTime beforeMidnight = DateTime.utc(2026, 11, 13, 18, 29);
       final content = draftFor(
-        buildPendingLoan(
+        buildPendingCredit(
           dueDate: beforeMidnight,
           createdAt: colomboOrigination,
         ),
@@ -1316,7 +1318,7 @@ void main() {
       // 2026-11-13T18:30Z is 14 Nov in Colombo (UTC+05:30) but still 13 Nov in
       // New York (UTC-05:00), proving the formatter follows the shop zone.
       final content = draftFor(
-        buildPendingLoan(
+        buildPendingCredit(
           dueDate: colomboDue,
           createdAt: colomboOrigination,
         ),
@@ -1336,7 +1338,7 @@ void main() {
         const LocalCalendarDate(2026, 3, 8),
       );
       final content = draftFor(
-        buildPendingLoan(dueDate: dstStart, createdAt: dstStart),
+        buildPendingCredit(dueDate: dstStart, createdAt: dstStart),
         newYork,
       );
 
@@ -1350,3 +1352,4 @@ void main() {
     });
   });
 }
+

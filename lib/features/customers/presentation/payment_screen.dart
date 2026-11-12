@@ -6,9 +6,9 @@ import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/money/money.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:credit_system/features/customers/data/daos/payment_dao.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/receipt.dart';
 import 'package:credit_system/features/customers/domain/services/receipt_service.dart';
 import 'package:credit_system/features/customers/data/services/receipt_pdf_service.dart';
@@ -19,10 +19,10 @@ import 'package:credit_system/features/customers/presentation/voucher_pdf_viewer
     if (dart.library.io) 'voucher_pdf_viewer_mobile.dart';
 import 'package:uuid/uuid.dart';
 
-/// Screen for recording a cash payment against a disbursed loan (Story 5-1,
+/// Screen for recording a cash payment against a disbursed credit (Story 5-1,
 /// PRD FR-21, FR-22, FR-23).
 ///
-/// Accessible from an eligible loan on the customer profile screen. Supports
+/// Accessible from an eligible credit on the customer profile screen. Supports
 /// partial payment and full settlement with validation, idempotency, and
 /// atomic persistence. Receipt generation failures do not roll back the
 /// committed payment — they are reported separately.
@@ -30,8 +30,8 @@ class PaymentScreen extends StatefulWidget {
   /// The active shop tenant UUID.
   final String shopId;
 
-  /// The loan agreement to record a payment against.
-  final String loanId;
+  /// The credit agreement to record a payment against.
+  final String creditId;
 
   /// The authenticated actor recording the payment.
   final AppUser currentUser;
@@ -42,7 +42,7 @@ class PaymentScreen extends StatefulWidget {
   const PaymentScreen({
     super.key,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.currentUser,
     this.database,
   });
@@ -52,12 +52,12 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  late final LoanDao _loanDao;
+  late final CreditDao _creditDao;
   late final PaymentDao _paymentDao;
   late final ReceiptService _receiptService = ReceiptService();
   late final ReceiptPdfService _pdfService;
 
-  Loan? _loan;
+  Credit? _credit;
   bool _isLoading = true;
   bool _isSubmitting = false;
   String? _error;
@@ -73,7 +73,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void initState() {
     super.initState();
     final db = widget.database ?? AppDatabase();
-    _loanDao = LoanDao(db);
+    _creditDao = CreditDao(db);
     _paymentDao = PaymentDao(db);
     _pdfService = ReceiptPdfService();
     _load();
@@ -91,18 +91,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _error = null;
     });
     try {
-      final loan = await _loanDao.getLoanById(widget.shopId, widget.loanId);
+      final credit = await _creditDao.getCreditById(widget.shopId, widget.creditId);
       if (!mounted) return;
       setState(() {
-        _loan = loan;
+        _credit = credit;
         _isLoading = false;
-        _error = loan == null ? 'Loan agreement not found' : null;
+        _error = credit == null ? 'Credit agreement not found' : null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load loan: $e';
+        _error = 'Failed to load credit: $e';
       });
     }
   }
@@ -126,19 +126,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
       widget.currentUser.effectivePermissions
           .contains(AppPermission.approveCorrections);
 
-  /// Whether the actor may adjust loan balances.
+  /// Whether the actor may adjust credit balances.
   bool get _canAdjustBalance =>
       widget.currentUser.isActive &&
       widget.currentUser.role == AppRole.shopOwner &&
       widget.currentUser.effectivePermissions
           .contains(AppPermission.approveCorrections);
 
-  /// Whether the loan is eligible for payment (disbursed, active/overdue,
+  /// Whether the credit is eligible for payment (disbursed, active/overdue,
   /// balance > 0).
-  bool get _loanEligibleForPayment {
-    final loan = _loan;
-    if (loan == null) return false;
-    return _receiptService.isEligibleForPayment(loan);
+  bool get _creditEligibleForPayment {
+    final credit = _credit;
+    if (credit == null) return false;
+    return _receiptService.isEligibleForPayment(credit);
   }
 
   /// Parses the amount input and returns [Money] or null if invalid.
@@ -162,16 +162,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return;
     }
 
-    final loan = _loan;
-    if (loan == null) return;
+    final credit = _credit;
+    if (credit == null) return;
 
     // Validate against balance before attempting persistence.
     try {
       _receiptService.validateAmount(
         amountCents: amount.minorUnits,
-        balanceCents: loan.balanceCents,
+        balanceCents: credit.balanceCents,
       );
-    } on LoanOverpaymentException catch (e) {
+    } on CreditOverpaymentException catch (e) {
       setState(() {
         _paymentError = e.message;
       });
@@ -198,7 +198,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final receipt = await _paymentDao.recordPayment(
         actor: widget.currentUser,
         idempotencyKey: idempotencyKey,
-        loanId: loan.id,
+        creditId: credit.id,
         amount: amount,
         recordedAt: DateTime.now().toUtc(),
       );
@@ -210,14 +210,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _successMessage =
             'Payment recorded. New balance: ${receipt.postBalanceFormatted}';
         if (receipt.isFullSettlement) {
-          _successMessage = '${_successMessage!} — Loan settled.';
+          _successMessage = '${_successMessage!} — Credit settled.';
         }
       });
 
       // Generate the receipt PDF. Failures are reported separately — the
       // payment itself is preserved.
       await _generateReceiptPdf(receipt);
-    } on LoanOverpaymentException catch (e) {
+    } on CreditOverpaymentException catch (e) {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
@@ -322,16 +322,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
     }
 
-    final loan = _loan;
-    if (loan == null) {
+    final credit = _credit;
+    if (credit == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Record Payment')),
-        body: Center(child: Text(_error ?? 'Loan not found')),
+        body: Center(child: Text(_error ?? 'Credit not found')),
       );
     }
 
-    final balance = Money.fromCents(loan.balanceCents);
-    final canPay = _loanEligibleForPayment && _canRecordPayment;
+    final balance = Money.fromCents(credit.balanceCents);
+    final canPay = _creditEligibleForPayment && _canRecordPayment;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Record Payment')),
@@ -364,7 +364,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               const SizedBox(height: 12),
             ],
-            // Loan summary
+            // Credit summary
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -372,14 +372,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Loan Reference: ${loan.id.substring(0, loan.id.length.clamp(0, 8))}...',
+                      'Credit Reference: ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text('Principal: ${Money.fromCents(loan.principalCents).format()}'),
+                    Text('Principal: ${Money.fromCents(credit.principalCents).format()}'),
                     Text('Outstanding Balance: ${balance.format()}'),
-                    Text('Status: ${loan.status.value.toUpperCase()}'),
-                    Text('Workflow: ${loan.workflowStatus.value.toUpperCase()}'),
+                    Text('Status: ${credit.status.value.toUpperCase()}'),
+                    Text('Workflow: ${credit.workflowStatus.value.toUpperCase()}'),
                   ],
                 ),
               ),
@@ -420,10 +420,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             ] else
               const Text(
-                'This loan is not eligible for payment recording.',
+                'This credit is not eligible for payment recording.',
                 style: TextStyle(color: Colors.grey),
               ),
-            if (!canPay && _loanEligibleForPayment && !_canRecordPayment) ...[
+            if (!canPay && _creditEligibleForPayment && !_canRecordPayment) ...[
               const SizedBox(height: 8),
               const Text(
                 'You do not have the Record Payments permission.',
@@ -462,7 +462,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                   builder: (context) =>
                                       CorrectionRequestScreen(
                                     shopId: widget.shopId,
-                                    loanId: _receipt!.loanId,
+                                    creditId: _receipt!.creditId,
                                     originalPaymentId: _receipt!.id,
                                     paymentAmount:
                                         Money.fromCents(
@@ -511,7 +511,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                   builder: (context) =>
                                       CorrectionAdjustmentScreen(
                                     shopId: widget.shopId,
-                                    loanId: _receipt!.loanId,
+                                    creditId: _receipt!.creditId,
                                     currentUser: widget.currentUser,
                                     database: widget.database,
                                   ),
@@ -552,3 +552,4 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 }
+

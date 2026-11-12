@@ -7,14 +7,14 @@ import 'package:credit_system/core/money/money.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/correction_dao.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:credit_system/features/customers/presentation/correction_request_screen.dart';
 
 const String shopId = 'corr-ui-shop-1111-1111-1111-111111111101';
 const customerId = 1;
 const String staffId = 'corr-ui-staff-1111-1111-1111-111111111101';
 const String cashierId = 'corr-ui-cash-1111-1111-1111-111111111102';
-const String loanId = 'corr-ui-loan-1111-1111-1111-111111111101';
+const String creditId = 'corr-ui-credit-1111-1111-1111-111111111101';
 const String paymentId = 'corr-ui-pay-1111-1111-1111-111111111101';
 
 /// Pumps until the screen shows either a success or an error outcome and
@@ -35,7 +35,7 @@ Future<String> pumpUntilOutcome(WidgetTester tester) async {
 }
 
 /// Seeds a shop, customer, an authorized staff user, a cashier, a disbursed
-/// loan and an original payment on that loan.
+/// credit and an original payment on that credit.
 Future<void> seedCorrectionData(AppDatabase db) async {
   final now = DateTime.now().toUtc();
 
@@ -93,10 +93,10 @@ Future<void> seedCorrectionData(AppDatabase db) async {
     ),
   );
 
-  // A disbursed loan with an outstanding balance.
-  await db.into(db.loans).insert(
-    LoansCompanion.insert(
-      id: loanId,
+  // A disbursed credit with an outstanding balance.
+  await db.into(db.credits).insert(
+    CreditsCompanion.insert(
+      id: creditId,
       shopId: shopId,
       customerId: customerId,
       principalCents: 500000,
@@ -112,12 +112,12 @@ Future<void> seedCorrectionData(AppDatabase db) async {
     ),
   );
 
-  // The original (erroneous) payment of 200000 on this loan.
+  // The original (erroneous) payment of 200000 on this credit.
   await db.into(db.payments).insert(
     PaymentsCompanion.insert(
       id: paymentId,
       shopId: shopId,
-      loanId: loanId,
+      creditId: creditId,
       receiptNumber: 'RCP-UI-001',
       amountCents: 200000,
       preBalanceCents: 500000,
@@ -164,7 +164,7 @@ Future<void> openScreen(
       home: CorrectionRequestScreen(
         key: UniqueKey(),
         shopId: shopId,
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: originalPaymentId ?? paymentId,
         paymentAmount: paymentAmount ?? Money.fromCents(200000),
         currentUser: actor,
@@ -172,7 +172,7 @@ Future<void> openScreen(
       ),
     ),
   );
-  // Pump until the loan has loaded and the submit button is rendered.
+  // Pump until the credit has loaded and the submit button is rendered.
   for (var i = 0; i < 100; i++) {
     await tester.pump(const Duration(milliseconds: 10));
     if (find.byKey(const Key('request_correction_button')).evaluate().isNotEmpty) {
@@ -196,7 +196,7 @@ void main() {
   });
 
   group('CorrectionRequestScreen', () {
-    testWidgets('authorized user can open the screen for a valid loan/payment',
+    testWidgets('authorized user can open the screen for a valid credit/payment',
         (WidgetTester tester) async {
       await openScreen(tester, db, actor: staff());
 
@@ -308,17 +308,17 @@ void main() {
 
       // The correction record was created with the correct linkage.
       final correctionDao = CorrectionDao(db);
-      final corrections = await correctionDao.getCorrectionsByLoan(shopId, loanId);
+      final corrections = await correctionDao.getCorrectionsByCredit(shopId, creditId);
       expect(corrections, hasLength(1));
       expect(corrections.first.originalPaymentId, equals(paymentId));
       expect(corrections.first.correctionAmountCents, equals(200000));
       expect(corrections.first.reason, contains('Typographical error'));
-      expect(corrections.first.status, equals(LoanCorrectionStatus.pendingApproval));
+      expect(corrections.first.status, equals(CreditCorrectionStatus.pendingApproval));
 
-      // The correction lock is active on the loan.
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan?.correctionPending, isTrue);
+      // The correction lock is active on the credit.
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit?.correctionPending, isTrue);
     });
 
     testWidgets('duplicate taps do not submit the same request multiple times',
@@ -340,12 +340,12 @@ void main() {
       // The submit button is disabled while processing, and a correction
       // lock is now active so a second request cannot be created.
       final corrections =
-          await CorrectionDao(db).getCorrectionsByLoan(shopId, loanId);
+          await CorrectionDao(db).getCorrectionsByCredit(shopId, creditId);
       expect(corrections, hasLength(1));
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan?.correctionPending, isTrue);
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit?.correctionPending, isTrue);
     });
 
     testWidgets('successful submission shows confirmation',
@@ -387,26 +387,26 @@ void main() {
 
       // No correction was created by the unauthorized actor.
       final corrections =
-          await CorrectionDao(db).getCorrectionsByLoan(shopId, loanId);
+          await CorrectionDao(db).getCorrectionsByCredit(shopId, creditId);
       expect(corrections, isEmpty);
 
-      // A pending correction locks the loan for staff too.
-      // A pending correction locks the loan for staff too. Set the lock
+      // A pending correction locks the credit for staff too.
+      // A pending correction locks the credit for staff too. Set the lock
       // directly to exercise the UI lock behavior (the DAO-side lock logic is
       // covered by the correction DAO unit tests).
       await db.customSelect(
-        'UPDATE loans SET correction_pending = 1 WHERE id = ?',
-        variables: [Variable<String>(loanId)],
+        'UPDATE credits SET correction_pending = 1 WHERE id = ?',
+        variables: [Variable<String>(creditId)],
       ).get();
-      final lockedLoan = await LoanDao(db).getLoanById(shopId, loanId);
-      expect(lockedLoan?.correctionPending, isTrue);
+      final lockedCredit = await CreditDao(db).getCreditById(shopId, creditId);
+      expect(lockedCredit?.correctionPending, isTrue);
 
       await openScreen(tester, db, actor: staff());
 
       // Confirm the database still holds the lock right after opening the
       // screen.
-      final afterOpenLoan = await LoanDao(db).getLoanById(shopId, loanId);
-      expect(afterOpenLoan?.correctionPending, isTrue);
+      final afterOpenCredit = await CreditDao(db).getCreditById(shopId, creditId);
+      expect(afterOpenCredit?.correctionPending, isTrue);
 
       // Attempt to submit a correction while the lock is active. The UI
       // disables the submit button when a correction is pending; even if the
@@ -419,7 +419,7 @@ void main() {
 
       // No new correction was created through the UI.
       final afterLockCorrections =
-          await CorrectionDao(db).getCorrectionsByLoan(shopId, loanId);
+          await CorrectionDao(db).getCorrectionsByCredit(shopId, creditId);
       expect(afterLockCorrections, isEmpty);
 
       // No success message should have appeared.
@@ -447,8 +447,9 @@ void main() {
 
       // No correction was created.
       final corrections =
-          await CorrectionDao(db).getCorrectionsByLoan(shopId, loanId);
+          await CorrectionDao(db).getCorrectionsByCredit(shopId, creditId);
       expect(corrections, isEmpty);
     });
   });
 }
+

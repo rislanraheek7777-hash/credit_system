@@ -29,30 +29,30 @@ This document provides the complete epic and story breakdown for **Credit Manage
 * **FR-3:** Configurable Currency Display (Presentation formatting decoupled from base ledger currency; default Sri Lankan Rupees `LKR`; base ledger currency locked post-transaction to prevent misrepresenting financial records).
 * **FR-4:** Strict Server-Side Tenant Isolation (RLS enforced across all queries, lookups, API routes, and database operations; zero cross-tenant leakage).
 * **FR-5:** Staff Account Administration & Immediate Session Revocation (Owner creates, activates, deactivates staff accounts; deactivation immediately increments `session_version` and revokes active terminal sessions).
-* **FR-6:** Granular 14-Permission RBAC Catalog (Explicit unmodifiable catalog: `registerCustomers`, `viewCustomers`, `viewSensitiveCustomerData`, `createLoans`, `confirmLoanDisbursement`, `recordPayments`, `viewAndReprintReceipts`, `viewOverdueLoans`, `recordCustomerNotes`, `requestCorrections`, `approveCorrections`, `confirmCollateralReturn`, `viewFinancialReports`, `viewAuditLogs`).
+* **FR-6:** Granular 14-Permission RBAC Catalog (Explicit unmodifiable catalog: `registerCustomers`, `viewCustomers`, `viewSensitiveCustomerData`, `createCredits`, `confirmCreditDisbursement`, `recordPayments`, `viewAndReprintReceipts`, `viewOverdueCredits`, `recordCustomerNotes`, `requestCorrections`, `approveCorrections`, `confirmCollateralReturn`, `viewFinancialReports`, `viewAuditLogs`).
 * **FR-7:** Restricted Platform Administrator Governance (Default-denied access to tenant customer PII and ledgers; emergency access requires explicit audited authorization).
-* **FR-8:** Reusable Customer Profile Onboarding (Mandatory KYC fields: Full Name, NIC Number, Contact Phone, Address, Customer Photo; reusable across multiple loans in current shop).
+* **FR-8:** Reusable Customer Profile Onboarding (Mandatory KYC fields: Full Name, NIC Number, Contact Phone, Address, Customer Photo; reusable across multiple credits in current shop).
 * **FR-9:** Mandatory Customer Photo Capture & Exception Workflow (Camera capture or file upload with pre-save preview; strictly mandatory by default; exception requires documented reason and Shop Owner approval).
 * **FR-10:** Shop-Scoped Duplicate Detection & Shared-Phone Resolution (Automated pre-creation match on NIC [blocked] and Phone [warning with verified confirmation log]).
-* **FR-11:** Customer Search & Multi-Loan Navigation (Search by NIC, phone, or name strictly within active shop; explicit target loan selection prompt when customer holds multiple loans).
+* **FR-11:** Customer Search & Multi-Credit Navigation (Search by NIC, phone, or name strictly within active shop; explicit target credit selection prompt when customer holds multiple credits).
 * **FR-12:** Server-Side Sensitive Customer Data Masking (NIC, address, and photo protected on server; masked for unauthorized roles unless possessing `viewSensitiveCustomerData`).
-* **FR-13:** Multi-Item Collateral Registration per Loan (Support for 1 or more distinct pledged items per loan agreement; unique item reference IDs generated).
+* **FR-13:** Item Receipt Registration per Credit (Support for zero or more item receipts per credit agreement — attachment is optional; unique item reference IDs generated for attached items).
 * **FR-14:** Collateral Attribute Capture & Decimal Weight Calibration (Item Category [Gold/Jewelry, Electronics, Valuables], Description, Condition Grading, Estimated Collateral Value; calibrated decimal gram weights mandatory for gold).
-* **FR-15:** Mandatory Collateral Photographs & Shop Owner Exception Workflow (Photo mandatory for every pledged item; exception requires documented reason and Shop Owner approval).
+* **FR-15:** Mandatory Item Receipt Photographs & Shop Owner Exception Workflow (Photo mandatory for every attached item receipt; exception requires documented reason and Shop Owner approval; does not require at least one item receipt).
 * **FR-16:** Independent Per-Item Custody Tracking & Administrative Closure (Physical custody states: `In Custody`, `Returned`, `Exception / Held`; financial settlement does not mark items returned; administrative closure with exception supported).
-* **FR-17:** Loan Term Selection & Preliminary Due Date Display (30/60/90-day duration presets or custom date picker; preliminary due date explicitly labeled prior to cash disbursement).
+* **FR-17:** Credit Term Selection & Preliminary Due Date Display (30/60/90-day duration presets or custom date picker; preliminary due date explicitly labeled prior to cash disbursement).
 * **FR-18:** Zero-Interest Principal Tracking & Creation Idempotency (Total repayment obligation equals principal; no automated interest or hidden fees; idempotency guard prevents double creation).
 * **FR-19:** Decoupled Cash Disbursement Confirmation & Official Due Date Calculation (Agreement creation decoupled from cash disbursement; official calendar due date calculated upon disbursement confirmation via Cases 1–5).
-* **FR-20:** Loan Agreement Documentation & Cash Disbursement Voucher (Executed loan voucher distinguished from draft agreement; thermal print and PDF export).
-* **FR-21:** Partial Payments & Full Settlement with Overpayment Protection (Cash payments against disbursed loans; `Payment <= Valid Outstanding Balance`; balance reaches zero transitions to `Settled`).
+* **FR-20:** Credit Agreement Documentation & Cash Disbursement Voucher (Executed credit voucher distinguished from draft agreement; thermal print and PDF export).
+* **FR-21:** Partial Payments & Full Settlement with Overpayment Protection (Cash payments against disbursed credits; `Payment <= Valid Outstanding Balance`; balance reaches zero transitions to `Settled`).
 * **FR-22:** Exact Monetary Decimal Precision & Double-Entry Ledger Formula (All math in integer minor units [cents]; 100 minor units per LKR; formula: $\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$; 7 verification scenarios).
-* **FR-23:** Payment Concurrency, Idempotency & Correction-Pending Lock (Client idempotency keys; optimistic concurrency prevents double-spend; payment locked on loan while correction is pending owner approval).
+* **FR-23:** Payment Concurrency, Idempotency & Correction-Pending Lock (Client idempotency keys; optimistic concurrency prevents double-spend; payment locked on credit while correction is pending owner approval).
 * **FR-24:** Immutable Receipt Snapshot Model & Reprint Watermarking (Historical branding and financial snapshot captured at payment; reprints render original snapshot with `*** REPRINT ***` watermark and audit log).
-* **FR-25:** Automated Overdue State Evaluation (Evaluated against local midnight boundary [Due Date + 1] in `Asia/Colombo` if balance > 0; settled loans never overdue).
+* **FR-25:** Automated Overdue State Evaluation (Evaluated against local midnight boundary [Due Date + 1] in `Asia/Colombo` if balance > 0; settled credits never overdue).
 * **FR-26:** Shop Owner Due Date Extension Workflow (Owner-only; mandatory reason; resets overdue status until new date passes; full extension history preserved).
 * **FR-27:** Overdue Customer Follow-Up & Promise to Pay Logging (Communication channel, notes, and promised payment dates logged and surfaced on review queues).
 * **FR-28:** Structured Owner Resolution & Collateral Disposition Recording (Owner case review states: `Under Review`, `Owner Settled / Written Off`, `Collateral Retained`; strictly no automated liquidation or auction).
-* **FR-29:** Shop Owner Operational & Cash Reconciliation Dashboards (Real-time daily cash in vs. confirmed cash out; active/overdue/settled loan counts; vault collateral item count; pending corrections queue).
+* **FR-29:** Shop Owner Operational & Cash Reconciliation Dashboards (Real-time daily cash in vs. confirmed cash out; active/overdue/settled credit counts; vault collateral item count; pending corrections queue).
 * **FR-30:** Audited Tabular Data Export in PDF & CSV (Daily cash collection ledger, customer portfolio, delinquency report, vault inventory; customer PII masked unless authorized; export events audited).
 
 ---
@@ -69,8 +69,8 @@ This document provides the complete epic and story breakdown for **Credit Manage
 
 * **AD-1 (Storage Architecture):** Dual-tier relational storage using Drift (SQLite) locally for responsive counter operations + PostgreSQL 16+ cloud source of truth with Row-Level Security (RLS). Offline sync queue with `PendingServerAck` vs. `ConfirmedByServer` states and UUID idempotency keys.
 * **AD-2 (Monetary Math):** All financial calculations represented in integer minor units (100 cents per LKR). Dedicated immutable `Money` Value Object. Dart `double` strictly prohibited for money. Stored as SQLite `INTEGER` and PostgreSQL `BIGINT`.
-* **AD-3 (State Management):** Pure Dart Finite State Machines for decoupled Loan Lifecycle (`pendingDisbursement` $\rightarrow$ `active` $\rightarrow$ `overdue` $\rightarrow$ `settled`) and Collateral Custody (`inCustody` $\rightarrow$ `returned` $\rightarrow$ `exceptionHeld`). Overall workflow status derived dynamically. Riverpod `AsyncNotifier` application controllers with typed permission selectors and payment locks.
-* **AD-4 (Clean Architecture):** Feature-first modular organization across 9 business domains (`auth`, `shop`, `customers`, `collateral`, `loans`, `payments`, `overdue`, `reports`, `audit`) + `core/`. Inward dependency rule: `domain` (pure Dart, zero dependencies) $\leftarrow$ `data` & `presentation`.
+* **AD-3 (State Management):** Pure Dart Finite State Machines for decoupled Credit Lifecycle (`pendingDisbursement` $\rightarrow$ `active` $\rightarrow$ `overdue` $\rightarrow$ `settled`) and Collateral Custody (`inCustody` $\rightarrow$ `returned` $\rightarrow$ `exceptionHeld`). Overall workflow status derived dynamically. Riverpod `AsyncNotifier` application controllers with typed permission selectors and payment locks.
+* **AD-4 (Clean Architecture):** Feature-first modular organization across 9 business domains (`auth`, `shop`, `customers`, `collateral`, `credits`, `payments`, `overdue`, `reports`, `audit`) + `core/`. Inward dependency rule: `domain` (pure Dart, zero dependencies) $\leftarrow$ `data` & `presentation`.
 * **AD-5 (Image Storage Pipeline):** Client-side image compression (max 1600px, 150–300 KB target WebP/JPEG preserving gold hallmarks and serial numbers). Relational database stores metadata only. Sandboxed local storage (app documents on mobile/desktop, OPFS/IndexedDB on web) + private cloud object storage with short-lived ($\le 15$m) signed URLs.
 * **AD-6 (RBAC & Audit Immutability):** 14-permission catalog enforced on client and server. Immediate session revocation via server-validated `session_version`. PostgreSQL database trigger unconditionally blocks `UPDATE` and `DELETE` on `audit_events`.
 * **AD-7 (Test Pyramid & CI):** Risk-prioritized test suite (~70% pure Dart unit, ~20% integration with real PostgreSQL RLS, ~10% counter widget flows) automated via GitHub Actions as a mandatory merge gate.
@@ -82,11 +82,11 @@ This document provides the complete epic and story breakdown for **Credit Manage
 
 * **UX-DR-1:** High-contrast, responsive counter interface optimized for physical retail environments (desktop browsers and tablets).
 * **UX-DR-2:** Camera capture widget with live device camera/webcam viewfinder, pre-save review, image retake, and local crop/preview.
-* **UX-DR-3:** Dynamic multi-loan customer view with distinct visual status badges (`Active`, `Overdue`, `Settled`) and mandatory target loan selection prompt prior to payment processing.
-* **UX-DR-4:** Live loan origination summary widget displaying real-time preliminary due date calculations and collateral valuation totals as items are added.
+* **UX-DR-3:** Dynamic multi-credit customer view with distinct visual status badges (`Active`, `Overdue`, `Settled`) and mandatory target credit selection prompt prior to payment processing.
+* **UX-DR-4:** Live credit origination summary widget displaying real-time preliminary due date calculations and collateral valuation totals as items are added.
 * **UX-DR-5:** Payment recording interface with dynamic outstanding balance preview, instant overpayment blocking validation, and confirmation modal.
-* **UX-DR-6:** Prominent visual watermark and visual banner for draft loan slips (`*** DRAFT / PENDING DISBURSEMENT ***`) and reprinted receipts (`*** REPRINT ***`).
-* **UX-DR-7:** Prominent loan-scoped `Locked` banner on payment screens when a financial correction is pending Shop Owner review.
+* **UX-DR-6:** Prominent visual watermark and visual banner for draft credit slips (`*** DRAFT / PENDING DISBURSEMENT ***`) and reprinted receipts (`*** REPRINT ***`).
+* **UX-DR-7:** Prominent credit-scoped `Locked` banner on payment screens when a financial correction is pending Shop Owner review.
 * **UX-DR-8:** Offline synchronization indicator on app bar displaying sync status (`Synced`, `Pending Server Confirmation [N items]`, or `Offline`).
 
 ---
@@ -103,16 +103,16 @@ This document provides the complete epic and story breakdown for **Credit Manage
 * **FR-8:** Epic 2 — Reusable Customer Profile Onboarding
 * **FR-9:** Epic 2 — Mandatory Customer Photo Capture & Exception Workflow
 * **FR-10:** Epic 2 — Shop-Scoped Duplicate Detection & Shared-Phone Resolution
-* **FR-11:** Epic 2 — Customer Search & Multi-Loan Navigation
+* **FR-11:** Epic 2 — Customer Search & Multi-Credit Navigation
 * **FR-12:** Epic 1 (Masking permissions) & Epic 2 (Customer PII display) & Epic 7 (Tabular export masking)
-* **FR-13:** Epic 3 — Multi-Item Collateral Registration per Loan
+* **FR-13:** Epic 3 — Multi-Item Collateral Registration per Credit
 * **FR-14:** Epic 3 — Collateral Attribute Capture & Decimal Weight Calibration
 * **FR-15:** Epic 3 — Mandatory Collateral Photographs & Exception Workflow
 * **FR-16:** Epic 3 — Independent Per-Item Custody Tracking & Administrative Closure
-* **FR-17:** Epic 4 — Loan Term Selection & Preliminary Due Date Display
+* **FR-17:** Epic 4 — Credit Term Selection & Preliminary Due Date Display
 * **FR-18:** Epic 4 — Zero-Interest Principal Tracking & Creation Idempotency
 * **FR-19:** Epic 4 — Decoupled Cash Disbursement Confirmation & Official Due Date Calculation (Cases 1–5)
-* **FR-20:** Epic 4 — Loan Agreement Documentation & Cash Disbursement Voucher
+* **FR-20:** Epic 4 — Credit Agreement Documentation & Cash Disbursement Voucher
 * **FR-21:** Epic 5 — Partial Payments & Full Settlement with Overpayment Protection
 * **FR-22:** Epic 5 — Exact Monetary Decimal Precision & Double-Entry Ledger Formula (7 test scenarios)
 * **FR-23:** Epic 5 — Payment Concurrency, Idempotency & Correction-Pending Lock
@@ -147,12 +147,12 @@ flowchart TD
     end
 
     subgraph CoreTransactionLoop ["Core Retail Transaction Loop (Release Phase 1 MVP)"]
-        E4["Epic 4: Zero-Interest Loan Origination & Cash Disbursement"]
+        E4["Epic 4: Zero-Interest Credit Origination & Cash Disbursement"]
         E5["Epic 5: Payment Processing, Fixed-Point Ledgers & Receipts"]
     end
 
     subgraph GovernanceAnalytics ["Governance, Analytics & Durability (Release Phases 2 & 3)"]
-        E6["Epic 6: Overdue Loan Governance, Extensions & Owner Decisions"]
+        E6["Epic 6: Overdue Credit Governance, Extensions & Owner Decisions"]
         E7["Epic 7: Operational Cash Dashboards, Data Export & Disaster Recovery"]
     end
 
@@ -170,7 +170,7 @@ flowchart TD
 ```
 
 * **Parallel Execution Opportunities**: Epics 2 and 3 are completely decoupled clean architecture modules (`features/customers` and `features/collateral`) and can be developed concurrently once Epic 1 establishes the workspace.
-* **MVP Release Phase 1**: Epics 1 + 2 + 3 + 4 + 5 complete 100% of the counter transaction lifecycle (shop setup, KYC, collateral intake, loan issuance, cash disbursement, partial payments, full settlement, and printed receipts).
+* **MVP Release Phase 1**: Epics 1 + 2 + 3 + 4 + 5 complete 100% of the counter transaction lifecycle (shop setup, KYC, collateral intake, credit issuance, cash disbursement, partial payments, full settlement, and printed receipts).
 * **Release Phase 2**: Epic 6 activates delinquency governance, customer promise-to-pay tracking, owner extensions, and manual collateral dispositions.
 * **Release Phase 3**: Epic 7 delivers executive cash reconciliation, audited tabular reporting, and verified disaster recovery drill reports.
 
@@ -186,27 +186,27 @@ Shop Owners can configure their shop profile, local timezone (`Asia/Colombo`), b
 * **Architecture:** AD-1 (PostgreSQL RLS, Drift SQLite), AD-2 (Integer minor units / Money Value Object), AD-4 (`features/shop`, `features/auth`, `core/`), AD-6 (RBAC & session revocation, audit trigger), AD-7 (CI pipeline setup), AD-8 (Base WAL archiving setup)
 
 **Epic 2: Customer Identity, KYC Onboarding & Profile Management**  
-Counter staff can quickly register new and returning customers with complete KYC details (Name, NIC, Phone, Address, Customer Photo); capture device/webcam photos or submit owner-approved photo exceptions; resolve shared-phone duplicate warnings while blocking duplicate NICs; securely access masked identity data based on `viewSensitiveCustomerData` permission; navigate multi-loan customer profiles; log audit events for onboarding and overrides; and verify zero cross-tenant customer data leakage in automated CI tests.  
+Counter staff can quickly register new and returning customers with complete KYC details (Name, NIC, Phone, Address, Customer Photo); capture device/webcam photos or submit owner-approved photo exceptions; resolve shared-phone duplicate warnings while blocking duplicate NICs; securely access masked identity data based on `viewSensitiveCustomerData` permission; navigate multi-credit customer profiles; log audit events for onboarding and overrides; and verify zero cross-tenant customer data leakage in automated CI tests.  
 * **FRs covered:** FR-8, FR-9, FR-10, FR-11, FR-12, FR-31, FR-33  
 * **Architecture:** AD-4 (`features/customers`), AD-5 (Customer photo optimization & sandboxing), AD-6 (Data masking & audit logging), UX-DR-2, UX-DR-3
 
 **Epic 3: Multi-Item Collateral Intake, Appraisal & Custody Tracking**  
-Counter staff can document and photograph multiple pledged valuables (gold jewelry with calibrated decimal gram weights, consumer electronics, general valuables) under a loan; preview captured photos or submit owner exception requests; independently track the physical custody lifecycle of each item (`In Custody`, `Returned`, `Exception / Held`) decoupled from financial settlement; record administrative closures with mandatory reasons; log audit events for custody transitions; and verify cross-tenant collateral isolation in CI.  
+Counter staff can document and photograph multiple pledged valuables (gold jewelry with calibrated decimal gram weights, consumer electronics, general valuables) under a credit; preview captured photos or submit owner exception requests; independently track the physical custody lifecycle of each item (`In Custody`, `Returned`, `Exception / Held`) decoupled from financial settlement; record administrative closures with mandatory reasons; log audit events for custody transitions; and verify cross-tenant collateral isolation in CI.  
 * **FRs covered:** FR-13, FR-14, FR-15, FR-16, FR-31, FR-33  
 * **Architecture:** AD-3 (Collateral custody state machine), AD-4 (`features/collateral`), AD-5 (Collateral photo pipeline), AD-6 (Custody audit logging)
 
-**Epic 4: Zero-Interest Loan Origination & Cash Disbursement**  
-Counter staff and Shop Owners can configure zero-interest loan agreements with preset or custom terms; preview preliminary due dates; generate draft agreement slips; guard against duplicate creation via idempotency keys; explicitly confirm cash disbursement; calculate official due dates from confirmed disbursement dates (Cases 1–5); issue executed disbursement vouchers; log agreement and disbursement audit events; and enforce `createLoans` and `confirmLoanDisbursement` RBAC permissions.  
+**Epic 4: Zero-Interest Credit Origination & Cash Disbursement**  
+Counter staff and Shop Owners can configure zero-interest credit agreements with preset or custom terms; preview preliminary due dates; generate draft agreement slips; guard against duplicate creation via idempotency keys; explicitly confirm cash disbursement; calculate official due dates from confirmed disbursement dates (Cases 1–5); issue executed disbursement vouchers; log agreement and disbursement audit events; and enforce `createCredits` and `confirmCreditDisbursement` RBAC permissions.  
 * **FRs covered:** FR-17, FR-18, FR-19, FR-20, FR-31, FR-33  
-* **Architecture:** AD-2 (Integer minor units principal), AD-3 (Loan lifecycle state machine), AD-4 (`features/loans`), UX-DR-4, UX-DR-6, AD-6 (Disbursement permissions & audit)
+* **Architecture:** AD-2 (Integer minor units principal), AD-3 (Credit lifecycle state machine), AD-4 (`features/credits`), UX-DR-4, UX-DR-6, AD-6 (Disbursement permissions & audit)
 
 **Epic 5: Payment Processing, Fixed-Point Ledgers & Receipt Snapshots**  
-Counter staff can record partial payments and full settlements with anti-overpayment validation ($Payment \le OutstandingBalance$); calculate exact balances using integer minor units and double-entry ledger formulas ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$); execute atomic transactions with UUID idempotency keys and optimistic concurrency locks; generate immutable receipt snapshots with reprint watermarking (`*** REPRINT ***`); request payment corrections with automatic loan-scoped payment locks (`LockedForCorrection`); process Shop Owner approval/rejection with compensating reversal entries; log all financial and reprint audit events; and satisfy all 7 financial verification scenarios.  
+Counter staff can record partial payments and full settlements with anti-overpayment validation ($Payment \le OutstandingBalance$); calculate exact balances using integer minor units and double-entry ledger formulas ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$); execute atomic transactions with UUID idempotency keys and optimistic concurrency locks; generate immutable receipt snapshots with reprint watermarking (`*** REPRINT ***`); request payment corrections with automatic credit-scoped payment locks (`LockedForCorrection`); process Shop Owner approval/rejection with compensating reversal entries; log all financial and reprint audit events; and satisfy all 7 financial verification scenarios.  
 * **FRs covered:** FR-21, FR-22, FR-23, FR-24, FR-31, FR-33  
 * **Architecture:** AD-1 (ACID transactions, offline sync queue), AD-2 (Money Value Object & cents ledger math), AD-3 (Payment lock), AD-4 (`features/payments`), UX-DR-5, UX-DR-6, UX-DR-7, AD-6 (Correction permissions & audit logging)
 
-**Epic 6: Overdue Loan Governance, Extensions & Owner Decisions**  
-Shop Owners and authorized staff can identify delinquent loans automatically at the local midnight boundary (`Asia/Colombo`) strictly when outstanding balance > 0 (excluding fully settled loans); review overdue queues; record customer communication notes and promises to pay; grant Shop-Owner-only due date extensions with mandatory reasons, updating due dates and resetting dynamic status to `Active` while preserving complete immutable extension history; record structured administrative resolutions (`Under Review`, `Owner Settled / Written Off`, `Collateral Retained`) with zero automated collateral liquidation; log all overdue actions in the audit trail; and enforce `viewOverdueLoans` permission.  
+**Epic 6: Overdue Credit Governance, Extensions & Owner Decisions**  
+Shop Owners and authorized staff can identify delinquent credits automatically at the local midnight boundary (`Asia/Colombo`) strictly when outstanding balance > 0 (excluding fully settled credits); review overdue queues; record customer communication notes and promises to pay; grant Shop-Owner-only due date extensions with mandatory reasons, updating due dates and resetting dynamic status to `Active` while preserving complete immutable extension history; record structured administrative resolutions (`Under Review`, `Owner Settled / Written Off`, `Collateral Retained`) with zero automated collateral liquidation; log all overdue actions in the audit trail; and enforce `viewOverdueCredits` permission.  
 * **FRs covered:** FR-25, FR-26, FR-27, FR-28, FR-31, FR-33  
 * **Architecture:** AD-2 (Balance validation), AD-3 (Overdue state evaluation & status reset), AD-4 (`features/overdue`), AD-6 (Owner-only extension governance & audit logging)
 
@@ -430,7 +430,7 @@ So that my shop operates in its local time zone and all customer documentation a
 **When** configured by the Shop Owner  
 **Then** currency display defaults to `LKR` (formatted as "Rs. ###,###.00")  
 **And** presentation formatting is strictly decoupled from the internal integer minor units ledger  
-**And** once any financial transaction (loan agreement, disbursement, payment, or reversal) exists within the shop tenant, the underlying base ledger currency code is strictly locked and cannot be altered.
+**And** once any financial transaction (credit agreement, disbursement, payment, or reversal) exists within the shop tenant, the underlying base ledger currency code is strictly locked and cannot be altered.
 
 **Given** an existing shop with historical payment receipts  
 **When** the Shop Owner updates the shop logo, address, or receipt footer notes  
@@ -466,11 +466,11 @@ So that counter employees only access authorized workflows and customer data whi
   1. `registerCustomers`
   2. `viewCustomers`
   3. `viewSensitiveCustomerData`
-  4. `createLoans`
-  5. `confirmLoanDisbursement`
+  4. `createCredits`
+  5. `confirmCreditDisbursement`
   6. `recordPayments`
   7. `viewAndReprintReceipts`
-  8. `viewOverdueLoans`
+  8. `viewOverdueCredits`
   9. `recordCustomerNotes`
   10. `requestCorrections`
   11. `approveCorrections`
@@ -528,7 +528,7 @@ So that terminated or compromised counter staff cannot perform unauthorized coun
 
 **Given** a counter terminal operating while disconnected from the network  
 **When** the terminal operates offline  
-**Then** the terminal permits only predefined safe counter operations (e.g. read-only cached customer search, queuing loan creation or payments as `PendingServerAck`)  
+**Then** the terminal permits only predefined safe counter operations (e.g. read-only cached customer search, queuing credit creation or payments as `PendingServerAck`)  
 **And** sensitive operations (staff administration, permission changes, financial reversals/corrections) strictly require online server authorization and are blocked while offline  
 **And** the system explicitly acknowledges that remote session revocation cannot be pushed to a disconnected terminal until it re-establishes network connectivity.
 
@@ -541,7 +541,7 @@ So that terminated or compromised counter staff cannot perform unauthorized coun
 ### Story 1.9: Platform Administrator Governance & Cross-Tenant Access Restrictions
 
 As a Platform Security Officer and Shop Owner,  
-I want platform administrator accounts to be default-denied read access to shop customer personal data, loan agreements, and financial ledgers,  
+I want platform administrator accounts to be default-denied read access to shop customer personal data, credit agreements, and financial ledgers,  
 So that independent retail shops have guaranteed data privacy, strict tenant isolation, and regulatory compliance without unauthorized operator access.
 
 **Acceptance Criteria:**
@@ -549,10 +549,10 @@ So that independent retail shops have guaranteed data privacy, strict tenant iso
 **Given** an authenticated Platform Administrator in the platform management console  
 **When** they view system telemetry and shop accounts  
 **Then** they can view tenant account status, subscription tier, storage quota, and system health metrics  
-**But** customer names, NIC numbers, photos, collateral descriptions, loan balances, and payment records are completely hidden and unreadable.
+**But** customer names, NIC numbers, photos, collateral descriptions, credit balances, and payment records are completely hidden and unreadable.
 
 **Given** any direct database query or API request authenticated with a Platform Administrator token  
-**When** the query attempts to read or export records from `customers`, `collateral_items`, `loans`, `payments`, or `receipt_snapshots`  
+**When** the query attempts to read or export records from `customers`, `collateral_items`, `credits`, `payments`, or `receipt_snapshots`  
 **Then** the server returns `403 Forbidden` and PostgreSQL Row-Level Security blocks data retrieval (zero rows returned).
 
 **Given** platform administration APIs and database access policies  
@@ -576,13 +576,13 @@ So that independent retail shops have guaranteed data privacy, strict tenant iso
 
 ## Epic 2: Customer Identity, KYC Onboarding & Profile Management
 
-Counter staff can quickly register new and returning customers with complete KYC details (Name, NIC, Phone, Address, Customer Photo); capture device/webcam photos or submit owner-approved photo exceptions; resolve shared-phone duplicate warnings while blocking duplicate NICs; securely access masked identity data based on `viewSensitiveCustomerData` permission; navigate multi-loan customer profiles; log audit events for onboarding and overrides; and verify zero cross-tenant customer data leakage in automated CI tests.
+Counter staff can quickly register new and returning customers with complete KYC details (Name, NIC, Phone, Address, Customer Photo); capture device/webcam photos or submit owner-approved photo exceptions; resolve shared-phone duplicate warnings while blocking duplicate NICs; securely access masked identity data based on `viewSensitiveCustomerData` permission; navigate multi-credit customer profiles; log audit events for onboarding and overrides; and verify zero cross-tenant customer data leakage in automated CI tests.
 
 ### Story 2.1: Reusable Customer Profile Data Schema & Persistence
 
 As a Counter Staff member,  
 I want to register and persist reusable customer profiles with full name, NIC number, phone number, residential address, and customer photograph metadata within my shop tenant,  
-So that customer details are captured accurately once and can be securely reused across multiple loan agreements without duplicate manual entry.
+So that customer details are captured accurately once and can be securely reused across multiple credit agreements without duplicate manual entry.
 
 **Acceptance Criteria:**
 
@@ -594,9 +594,9 @@ So that customer details are captured accurately once and can be securely reused
 **And** an audit event (Category 1: `Customer creation and profile edits`) is appended to `audit_events`.
 
 **Given** an existing customer profile in the shop  
-**When** the customer returns for a second or subsequent loan  
-**Then** counter staff can attach the new loan to the existing profile without re-entering personal data  
-**And** the profile maintains a relational list of all attached loans (active, overdue, and settled).
+**When** the customer returns for a second or subsequent credit  
+**Then** counter staff can attach the new credit to the existing profile without re-entering personal data  
+**And** the profile maintains a relational list of all attached credits (active, overdue, and settled).
 
 **Given** any database query or API search for customers  
 **When** executed by staff in Shop A  
@@ -708,11 +708,11 @@ So that we avoid creating duplicate customer accounts while accommodating legiti
 
 ---
 
-### Story 2.5: Customer Search, Loan Navigation & Multi-Loan Target Selection
+### Story 2.5: Customer Search, Credit Navigation & Multi-Credit Target Selection
 
 As a Counter Staff member,  
-I want to search customer profiles by NIC, phone, or name and view all associated loans categorized by status, requiring explicit loan selection when performing actions,  
-So that I can quickly serve returning counter customers without misapplying repayments to the wrong loan agreement.
+I want to search customer profiles by NIC, phone, or name and view all associated credits categorized by status, requiring explicit credit selection when performing actions,  
+So that I can quickly serve returning counter customers without misapplying repayments to the wrong credit agreement.
 
 **Acceptance Criteria:**
 
@@ -722,17 +722,17 @@ So that I can quickly serve returning counter customers without misapplying repa
 
 **Given** a selected customer profile  
 **When** the customer record is opened  
-**Then** the interface displays the customer's photo thumbnail, verified name, contact summary, and an organized list of all associated loans  
-**And** loans are visually categorized by badges: `Active`, `Overdue`, and `Settled`.
+**Then** the interface displays the customer's photo thumbnail, verified name, contact summary, and an organized list of all associated credits  
+**And** credits are visually categorized by badges: `Active`, `Overdue`, and `Settled`.
 
-**Given** a customer who holds multiple loans (e.g. one active loan and one overdue loan)  
-**When** Counter Staff initiates a payment, loan detail view, or collateral return  
-**Then** the system displays a modal prompt requiring staff to explicitly select the specific target loan before opening the transaction screen  
-**And** prevents defaulting or auto-selecting a loan to avoid misapplied payments.
+**Given** a customer who holds multiple credits (e.g. one active credit and one overdue credit)  
+**When** Counter Staff initiates a payment, credit detail view, or collateral return  
+**Then** the system displays a modal prompt requiring staff to explicitly select the specific target credit before opening the transaction screen  
+**And** prevents defaulting or auto-selecting a credit to avoid misapplied payments.
 
 * **Traceability:** FR-4, FR-11, UX-DR-3
 * **Dependencies:** Story 2.1 (Customer profile)
-* **Testing Guidance:** Widget test for customer search and debounced query execution; UI test verifying multi-loan selection prompt forces explicit user choice; negative test ensuring searches do not return foreign-tenant customers.
+* **Testing Guidance:** Widget test for customer search and debounced query execution; UI test verifying multi-credit selection prompt forces explicit user choice; negative test ensuring searches do not return foreign-tenant customers.
 
 ---
 
@@ -765,25 +765,29 @@ So that frontline employees have operational visibility without exposing sensiti
 
 ## Epic 3: Multi-Item Collateral Intake, Appraisal & Custody Tracking
 
-Counter staff can document and photograph multiple pledged valuables (gold jewelry with calibrated decimal gram weights, consumer electronics, general valuables) under a loan; preview captured photos or submit owner exception requests; independently track the physical custody lifecycle of each item (`In Custody`, `Returned`, `Exception / Held`) decoupled from financial settlement; record administrative closures with mandatory reasons; log audit events for custody transitions; and verify cross-tenant collateral isolation in CI.
+Counter staff can document and photograph multiple pledged valuables (gold jewelry with calibrated decimal gram weights, consumer electronics, general valuables) under a credit; preview captured photos or submit owner exception requests; independently track the physical custody lifecycle of each item (`In Custody`, `Returned`, `Exception / Held`) decoupled from financial settlement; record administrative closures with mandatory reasons; log audit events for custody transitions; and verify cross-tenant collateral isolation in CI.
 
 ### Story 3.1: Multi-Item Collateral Relational Schema & Decimal Weight Calibration
 
 As a Counter Staff member,  
-I want to register one or more distinct pledged collateral items under a loan agreement, capturing category, description, condition grading, estimated value, and mandatory calibrated decimal gram weights for gold,  
-So that every physical asset held by the shop is comprehensively recorded and accurately appraised at intake.
+I want to register zero or more item receipts under a credit agreement, capturing category, description, condition grading, estimated value, and mandatory calibrated decimal gram weights for gold,  
+So that every physical asset held by the shop is comprehensively recorded and accurately appraised at intake, while unsecured credits can still be originated.
 
 **Acceptance Criteria:**
 
-**Given** a loan origination workflow  
-**When** Counter Staff adds collateral items  
-**Then** the system supports attaching 1 or more distinct pledged items under a single parent loan agreement  
-**And** generates a unique Item Reference Number (e.g. `ITM-1042-01`, `ITM-1042-02`) for each item.
+**Given** a credit origination workflow  
+**When** Counter Staff adds item receipts  
+**Then** the system supports attaching zero or more item receipts under a single parent credit agreement  
+**And** generates a unique Item Reference Number (e.g. `ITM-1042-01`, `ITM-1042-02`) for each attached item.
 
-**Given** any pledged item being registered  
+**Given** a credit origination workflow  
+**When** Counter Staff submits without attaching any item receipt  
+**Then** the agreement is created successfully and no custody record is created.
+
+**Given** any item receipt being registered  
 **When** attributes are entered  
 **Then** staff must record: Category (`Gold/Jewelry`, `Electronics`, `General Valuables`), Description, Condition Grading, and Estimated Collateral Value  
-**And** Estimated Collateral Value is stored as an independent appraisal field in minor units and is never conflated with the loan principal.
+**And** Estimated Collateral Value is stored as an independent appraisal field in minor units and is never conflated with the credit principal.
 
 **Given** an item with Category `Gold/Jewelry`  
 **When** details are submitted  
@@ -792,14 +796,14 @@ So that every physical asset held by the shop is comprehensively recorded and ac
 
 * **Traceability:** FR-13, FR-14, AD-1, AD-4 (`features/collateral`)
 * **Dependencies:** Story 1.2 (Database foundations)
-* **Testing Guidance:** Drift SQLite schema tests verifying parent-child relationship between loan and collateral items; unit tests for decimal weight validation; validation tests ensuring gold category enforces mandatory weight.
+* **Testing Guidance:** Drift SQLite schema tests verifying parent-child relationship between credit and collateral items; unit tests for decimal weight validation; validation tests ensuring gold category enforces mandatory weight.
 
 ---
 
-### Story 3.2: Mandatory Collateral Photographic Capture & Forensic Inspection Optimization
+### Story 3.2: Mandatory Item Receipt Photographic Capture & Forensic Inspection Optimization
 
 As a Counter Staff member and Shop Owner,  
-I want to capture at least one clear photograph for every pledged collateral item with pre-save preview and client-side compression that preserves gold hallmarks and serial numbers,  
+I want to capture at least one clear photograph for every attached item receipt with pre-save preview and client-side compression that preserves gold hallmarks and serial numbers,  
 So that we have objective forensic evidence of item condition at intake to resolve any customer return disputes.
 
 **Acceptance Criteria:**
@@ -816,13 +820,17 @@ So that we have objective forensic evidence of item condition at intake to resol
 **When** stored on the device  
 **Then** files are placed in sandboxed app storage (`photos / {tenant_id} / collateral /`), metadata (path, hash, size) is recorded in SQLite, and raw binary bytes are strictly excluded from SQL tables.
 
-**Given** an attempt to submit a loan agreement where any attached collateral item lacks a photograph  
+**Given** an attempt to submit a credit agreement where any attached item receipt lacks a photograph  
 **When** no approved photo exception exists  
-**Then** submission is programmatically blocked with a validation error: `"Every pledged collateral item must have at least one photograph."`
+**Then** submission is programmatically blocked with a validation error: `"Every item receipt must have at least one photograph."`
+
+**Given** a credit agreement with zero item receipts  
+**When** submitted  
+**Then** the mandatory-photo rule does not apply because there is no attached item to photograph.
 
 * **Traceability:** FR-14, FR-15, AD-5
 * **Dependencies:** Story 3.1 (Collateral schema)
-* **Testing Guidance:** Unit tests checking that image compression preserves hallmark sharpness within target file size bounds; widget test for collateral photo gallery and preview; validation test ensuring loan creation fails if an item lacks photos.
+* **Testing Guidance:** Unit tests checking that image compression preserves hallmark sharpness within target file size bounds; widget test for collateral photo gallery and preview; validation test ensuring credit creation fails if an item lacks photos.
 
 ---
 
@@ -851,27 +859,27 @@ So that legitimate intake can proceed during emergencies while preventing staff 
 
 **Given** a Shop Owner rejecting the exception  
 **When** rejected with a mandatory reason note  
-**Then** the item remains blocked from loan creation, and an audit entry is logged.
+**Then** the item remains blocked from credit creation, and an audit entry is logged.
 
 * **Traceability:** FR-6, FR-15, FR-31 (Event #3), AD-6
 * **Dependencies:** Story 3.1, Story 3.2, Story 1.7 (RBAC)
-* **Testing Guidance:** Integration test asserting staff cannot self-approve collateral photo exceptions; verification that loan creation is locked until owner approval; audit logging verification of requester, approver, and reason.
+* **Testing Guidance:** Integration test asserting staff cannot self-approve collateral photo exceptions; verification that credit creation is locked until owner approval; audit logging verification of requester, approver, and reason.
 
 ---
 
 ### Story 3.4: Decoupled Per-Item Custody State Machine & Physical Handover Verification
 
 As a Counter Staff member,  
-I want each pledged item to maintain an independent physical custody status (`In Custody`, `Returned`, `Exception / Held`) decoupled from the loan's financial balance, requiring explicit return confirmation for each item,  
-So that vault inventory is accurate and loans cannot be marked as fully completed while physical items remain in the shop.
+I want each pledged item to maintain an independent physical custody status (`In Custody`, `Returned`, `Exception / Held`) decoupled from the credit's financial balance, requiring explicit return confirmation for each item,  
+So that vault inventory is accurate and credits cannot be marked as fully completed while physical items remain in the shop.
 
 **Acceptance Criteria:**
 
-**Given** an active loan with multiple pledged items  
+**Given** an active credit with multiple pledged items  
 **When** the customer makes a payment that reduces the financial balance to zero (`Settled`)  
 **Then** the financial status transitions to `Settled`  
 **But** each pledged item strictly remains in its physical custody state (`In Custody`)  
-**And** the overall loan workflow status transitions to `Settled (Items Pending Handover)`.
+**And** the overall credit workflow status transitions to `Settled (Items Pending Handover)`.
 
 **Given** a customer picking up their valuables at the counter  
 **When** Counter Staff with `confirmCollateralReturn` permission hands back an item  
@@ -879,18 +887,18 @@ So that vault inventory is accurate and loans cannot be marked as fully complete
 **And** the item transitions from `In Custody` to `Returned`, recording the return timestamp, handing staff ID, and customer handover confirmation  
 **And** an audit event (Category 11: `Collateral physical return confirmations and exception closures`) is appended to `audit_events`.
 
-**Given** a loan with two items where the customer retrieves only one item today  
+**Given** a credit with two items where the customer retrieves only one item today  
 **When** staff confirms return of Item 1  
 **Then** Item 1 updates to `Returned` while Item 2 strictly remains `In Custody`  
-**And** the overall loan workflow status remains `Settled (Items Pending Handover)`.
+**And** the overall credit workflow status remains `Settled (Items Pending Handover)`.
 
-**Given** a settled loan where all associated pledged items have been confirmed as `Returned`  
+**Given** a settled credit where all associated pledged items have been confirmed as `Returned`  
 **When** the last item is returned  
 **Then** the overall workflow status transitions to `Closed / Completed`.
 
 * **Traceability:** FR-6, FR-16, FR-31 (Event #10), AD-3, AD-6
 * **Dependencies:** Story 3.1 (Collateral schema)
-* **Testing Guidance:** Unit tests for independent CustodyStatus state machine; state transition test verifying financial settlement does not mutate custody states; partial pickup test asserting loan remains pending handover until all items are returned.
+* **Testing Guidance:** Unit tests for independent CustodyStatus state machine; state transition test verifying financial settlement does not mutate custody states; partial pickup test asserting credit remains pending handover until all items are returned.
 
 ---
 
@@ -898,7 +906,7 @@ So that vault inventory is accurate and loans cannot be marked as fully complete
 
 As a Shop Owner,  
 I want to transition an unreturned collateral item into an `Exception / Held` state and execute an Administrative Closure with Collateral Exception when items cannot be physically returned,  
-So that loans with lost, stolen, or legally seized collateral can be closed administratively without falsifying records as returned.
+So that credits with lost, stolen, or legally seized collateral can be closed administratively without falsifying records as returned.
 
 **Acceptance Criteria:**
 
@@ -908,75 +916,75 @@ So that loans with lost, stolen, or legally seized collateral can be closed admi
 **And** logs an audit event (Category 3) recording the transition, owner ID, item reference, and reason  
 **And** unauthorized counter staff are strictly blocked from setting an item to `Exception / Held`.
 
-**Given** a loan that is financially settled (or resolved by owner decision) where one or more pledged items remain in `Exception / Held`  
+**Given** a credit that is financially settled (or resolved by owner decision) where one or more pledged items remain in `Exception / Held`  
 **When** the Shop Owner executes *Administrative Closure with Collateral Exception*  
-**Then** the loan's overall workflow status transitions to `Closed (Collateral Exception)`  
+**Then** the credit's overall workflow status transitions to `Closed (Collateral Exception)`  
 **And** the system permanently retains the affected items in `Exception / Held` without falsely marking them as `Returned`  
 **And** appends an immutable audit entry (Category 11: `Collateral physical return confirmations and exception closures`) with owner sign-off.
 
 * **Traceability:** FR-6, FR-16, FR-31 (Events #3, #11), AD-3, AD-6
 * **Dependencies:** Story 3.4 (Custody state machine), Story 1.7 (Shop Owner role)
-* **Testing Guidance:** Integration test asserting counter staff cannot execute administrative closures or set items to Exception/Held; test verifying loan transitions to `Closed (Collateral Exception)` while preserving `exceptionHeld` item states; audit verification.
+* **Testing Guidance:** Integration test asserting counter staff cannot execute administrative closures or set items to Exception/Held; test verifying credit transitions to `Closed (Collateral Exception)` while preserving `exceptionHeld` item states; audit verification.
 
 ---
 
-## Epic 4: Zero-Interest Loan Origination & Cash Disbursement
+## Epic 4: Zero-Interest Credit Origination & Cash Disbursement
 
-Counter staff and Shop Owners can configure zero-interest loan agreements with preset or custom terms; preview preliminary due dates; generate draft agreement slips; guard against duplicate creation via idempotency keys; explicitly confirm cash disbursement; calculate official due dates from confirmed disbursement dates (Cases 1–5); issue executed disbursement vouchers; log agreement and disbursement audit events; and enforce `createLoans` and `confirmLoanDisbursement` RBAC permissions.
+Counter staff and Shop Owners can configure zero-interest credit agreements with preset or custom terms; preview preliminary due dates; generate draft agreement slips; guard against duplicate creation via idempotency keys; explicitly confirm cash disbursement; calculate official due dates from confirmed disbursement dates (Cases 1–5); issue executed disbursement vouchers; log agreement and disbursement audit events; and enforce `createCredits` and `confirmCreditDisbursement` RBAC permissions.
 
-### Story 4.1: Loan Agreement Data Model & Zero-Interest Principal Tracking
+### Story 4.1: Credit Agreement Data Model & Zero-Interest Principal Tracking
 
 As a Counter Staff member,  
-I want to create a loan agreement linking a customer, pledged collateral items, and principal amount in integer minor units under a zero-interest model with creation idempotency,  
-So that loan debt obligations are accurately recorded without automated interest or hidden fees.
+I want to create a credit agreement linking a customer, zero or more item receipts, and principal amount in integer minor units under a zero-interest model with creation idempotency,  
+So that credit debt obligations are accurately recorded without automated interest or hidden fees.
 
 **Acceptance Criteria:**
 
-**Given** an authenticated user with `createLoans` permission  
-**When** they create a loan agreement with an attached customer, at least one collateral item, and a Principal Amount (using the immutable `Money` Value Object)  
-**Then** the loan is persisted with `Financial Status: Active / Pending Disbursement`, `Overall Workflow Status: Active (Pending Disbursement)`  
+**Given** an authenticated user with `createCredits` permission  
+**When** they create a credit agreement with an attached customer, zero or more item receipts, and a Principal Amount (using the immutable `Money` Value Object)  
+**Then** the credit is persisted with `Financial Status: Active / Pending Disbursement`, `Overall Workflow Status: Active (Pending Disbursement)`  
 **And** the Initial Outstanding Balance is set exactly equal to the Principal Amount in integer cents  
-**And** an audit event (Category 2: `Loan agreement origination and cancellation`) is appended to `audit_events`.
+**And** an audit event (Category 2: `Credit agreement origination and cancellation`) is appended to `audit_events`.
 
-**Given** a loan agreement submission  
+**Given** a credit agreement submission  
 **When** submitted by the client application  
 **Then** the request includes a client-generated `idempotency_key` (UUIDv4)  
-**And** rapid double-clicks or network retry transmissions commit exactly one loan record without duplicates.
+**And** rapid double-clicks or network retry transmissions commit exactly one credit record without duplicates.
 
 **Given** a newly created agreement in `Active / Pending Disbursement`  
-**When** any user attempts to record a payment against the loan  
-**Then** the system strictly blocks payment submission: `"Payments cannot be accepted on undisbursed loans."`
+**When** any user attempts to record a payment against the credit  
+**Then** the system strictly blocks payment submission: `"Payments cannot be accepted on undisbursed credits."`
 
 * **Traceability:** FR-6, FR-18, FR-19, FR-31 (Event #2), AD-1, AD-2, AD-3
 * **Dependencies:** Story 1.1 (Money VO), Story 2.1 (Customer), Story 3.1 (Collateral)
-* **Testing Guidance:** Unit tests asserting initial balance equals principal in cents; idempotency tests simulating duplicate loan creation requests with identical tokens; validation test asserting payment processing is blocked while pending disbursement.
+* **Testing Guidance:** Unit tests asserting initial balance equals principal in cents; idempotency tests simulating duplicate credit creation requests with identical tokens; validation test asserting payment processing is blocked while pending disbursement.
 
 ---
 
-### Story 4.2: Loan Term Selection & Preliminary Due Date Display
+### Story 4.2: Credit Term Selection & Preliminary Due Date Display
 
 As a Counter Staff member,  
-I want to select standard loan duration presets (30, 60, 90 calendar days) or specify a custom calendar due date with live preliminary due date calculation,  
+I want to select standard credit duration presets (30, 60, 90 calendar days) or specify a custom calendar due date with live preliminary due date calculation,  
 So that the customer and cashier can review the tentative repayment deadline prior to agreement submission.
 
 **Acceptance Criteria:**
 
-**Given** the loan origination form  
+**Given** the credit origination form  
 **When** staff selects a preset duration (30, 60, or 90 days)  
 **Then** the system tentatively calculates a preliminary due date by adding preset calendar days to the agreement creation date in the shop's local time zone (`Asia/Colombo`)  
 **And** displays this date clearly labeled as `Preliminary Due Date (Pending Disbursement)`.
 
-**Given** the loan origination form  
+**Given** the credit origination form  
 **When** staff selects a custom date using the calendar date picker  
 **Then** the system validates that the selected date is strictly greater than the agreement creation date (`Custom Due Date > Agreement Creation Date`)  
 **And** blocks submission if a past or same-day date is selected.
 
-**Given** the interactive loan origination screen  
-**When** staff adjusts duration terms or adds collateral items  
-**Then** the live loan summary widget dynamically updates the displayed preliminary due date and total estimated collateral value.
+**Given** the interactive credit origination screen  
+**When** staff adjusts duration terms or adds item receipts  
+**Then** the live credit summary widget dynamically updates the displayed preliminary due date and total estimated item receipt value.
 
 * **Traceability:** FR-17, UX-DR-4
-* **Dependencies:** Story 4.1 (Loan model)
+* **Dependencies:** Story 4.1 (Credit model)
 * **Testing Guidance:** Unit tests for preset date additions (30, 60, 90 days across month ends and leap years); validation tests for custom date picker rejecting past dates; widget test verifying live summary updates.
 
 ---
@@ -989,20 +997,20 @@ So that cash reports reflect only genuinely disbursed funds and the official rep
 
 **Acceptance Criteria:**
 
-**Given** a loan agreement in `Active / Pending Disbursement`  
-**When** authorized staff with `confirmLoanDisbursement` permission confirms physical cash handover  
-**Then** the loan transitions to `Financial Status: Active / Disbursed`, `Overall Workflow Status: Active`  
+**Given** a credit agreement in `Active / Pending Disbursement`  
+**When** authorized staff with `confirmCreditDisbursement` permission confirms physical cash handover  
+**Then** the credit transitions to `Financial Status: Active / Disbursed`, `Overall Workflow Status: Active`  
 **And** records the confirmed cash disbursement timestamp and disbursing staff ID  
 **And** an audit event (Category 4: `Confirmed cash disbursement`) is **queued for append** to `audit_events` as an append-only local record carrying the category, the action type, the disbursing staff ID, the confirmed timestamp and the calculated official due date  
 **And** the authoritative append to the server-side `audit_events` table is performed by the server-side audit writer upon synchronization and is owned by the audit-writer work, not by this story.
 
-**Given** cash disbursement confirmation for a loan with a preset duration (30, 60, or 90 days)  
+**Given** cash disbursement confirmation for a credit with a preset duration (30, 60, or 90 days)  
 **When** disbursement is confirmed  
 **Then** the system calculates the Official Calendar Due Date by adding the agreed preset calendar days to the confirmed disbursement date in `Asia/Colombo`:
   $$\text{Official Calendar Due Date} = \text{Disbursement Date (in Shop Local Time)} + N\text{ calendar days}$$
   *(Test Case 1: 30-day preset disbursed Oct 15 -> Due Date Nov 14; Test Case 2: 60-day preset disbursed Oct 15 -> Due Date Dec 14; Test Case 3: 90-day preset disbursed Oct 15 -> Due Date Jan 13).*
 
-**Given** cash disbursement confirmation for a loan with a custom calendar due date  
+**Given** cash disbursement confirmation for a credit with a custom calendar due date  
 **When** disbursement is confirmed  
 **Then** the system validates that `Custom Due Date > Disbursement Date (in Shop Local Time)`:
   - If valid (Test Case 4): the custom date is confirmed and saved.
@@ -1011,32 +1019,32 @@ So that cash reports reflect only genuinely disbursed funds and the official rep
 **Given** an agreement in `Pending Disbursement` that is abandoned or cancelled  
 **When** the Shop Owner cancels the agreement with a mandatory reason  
 **Then** the agreement transitions to `Cancelled / Undisbursed`, leaving an audit trail without impacting daily cash-out reports  
-**And** the cancellation is recorded as an audit event in FR-31 **Category 2** (`Loan agreement origination and cancellation`) with action type `cancel_loan_agreement` — it is **not** recorded under Category 4 (`Confirmed cash disbursement`), because no cash was disbursed  
+**And** the cancellation is recorded as an audit event in FR-31 **Category 2** (`Credit agreement origination and cancellation`) with action type `cancel_credit_agreement` — it is **not** recorded under Category 4 (`Confirmed cash disbursement`), because no cash was disbursed  
 **And** the pledged collateral items of the cancelled agreement **remain in the shop's custody**; the cancellation performs no collateral return and no item custody transition  
 **And** the system never cancels an undisbursed agreement automatically: there is no timeout and no auto-expiry, and an abandoned agreement is surfaced on a non-destructive worklist that reports it without changing its state.
 
 * **Traceability:** FR-6, FR-19, FR-31 (Event #4 for the disbursement; Event #2 for the cancellation), AD-3, AD-6
 * **Dependencies:** Story 4.1, Story 4.2
-* **Testing Guidance:** Unit tests verifying Cases 1–5 calendar calculation semantics; integration test verifying cash disbursement updates loan state to Active; test verifying cash reports exclude undisbursed loans; cancellation audit test asserting the event carries Category 2 with action type `cancel_loan_agreement`; test asserting a cancelled agreement cannot be disbursed and cannot be cancelled twice; test asserting the pledged items remain in custody after cancellation.
+* **Testing Guidance:** Unit tests verifying Cases 1–5 calendar calculation semantics; integration test verifying cash disbursement updates credit state to Active; test verifying cash reports exclude undisbursed credits; cancellation audit test asserting the event carries Category 2 with action type `cancel_credit_agreement`; test asserting a cancelled agreement cannot be disbursed and cannot be cancelled twice; test asserting the pledged items remain in custody after cancellation.
 
 ---
 
-### Story 4.4: Loan Agreement Documentation, Draft Agreements & Cash Disbursement Vouchers
+### Story 4.4: Credit Agreement Documentation, Draft Agreements & Cash Disbursement Vouchers
 
 As a Counter Staff member,  
-I want to generate printable and PDF loan documents, clearly distinguishing pre-disbursement review drafts from executed cash disbursement vouchers,  
+I want to generate printable and PDF credit documents, clearly distinguishing pre-disbursement review drafts from executed cash disbursement vouchers,  
 So that customers receive unambiguous, official physical agreements only after cash is confirmed disbursed.
 
 **Acceptance Criteria:**
 
-**Given** a loan agreement prior to cash disbursement (`Active / Pending Disbursement`)  
+**Given** a credit agreement prior to cash disbursement (`Active / Pending Disbursement`)  
 **When** staff prints a draft agreement slip  
 **Then** the document is visually watermarked and titled: `*** DRAFT / PENDING DISBURSEMENT - NOT A CASH RECEIPT ***`  
 **And** explicitly states: `"Preliminary Due Date (Subject to Confirmation on Cash Handover) - Non-binding until disbursement confirmation."`
 
 **Given** a confirmed cash disbursement  
-**When** the official executed loan ticket is generated  
-**Then** the document contains: Shop Branding Snapshot (Name, Address, Phone, Tax/Reg No), Customer Identifier, Loan Reference Number, Origination Date, Confirmed Disbursement Timestamp, Disbursing Staff ID, Official Confirmed Calendar Due Date, Disbursed Principal Amount (`Rs. XX,XXX.XX`), Itemized Collateral Details (descriptions and gold weights), zero-interest disclosure, and shop footer notes  
+**When** the official executed credit ticket is generated  
+**Then** the document contains: Shop Branding Snapshot (Name, Address, Phone, Tax/Reg No), Customer Identifier, Credit Reference Number, Origination Date, Confirmed Disbursement Timestamp, Disbursing Staff ID, Official Confirmed Calendar Due Date, Disbursed Principal Amount (`Rs. XX,XXX.XX`), Itemized Collateral Details (descriptions and gold weights), zero-interest disclosure, and shop footer notes  
 **And** supports thermal slip printing and PDF export.
 
 **Given** document generation actions  
@@ -1051,17 +1059,17 @@ So that customers receive unambiguous, official physical agreements only after c
 
 ## Epic 5: Payment Processing, Fixed-Point Ledgers & Receipt Snapshots
 
-Counter staff can record partial payments and full settlements with anti-overpayment validation ($Payment \le OutstandingBalance$); calculate exact balances using integer minor units and double-entry ledger formulas ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$); execute atomic transactions with UUID idempotency keys and optimistic concurrency locks; generate immutable receipt snapshots with reprint watermarking (`*** REPRINT ***`); request payment corrections with automatic loan-scoped payment locks (`LockedForCorrection`); process Shop Owner approval/rejection with compensating reversal entries; log all financial and reprint audit events; and satisfy all 7 financial verification scenarios.
+Counter staff can record partial payments and full settlements with anti-overpayment validation ($Payment \le OutstandingBalance$); calculate exact balances using integer minor units and double-entry ledger formulas ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$); execute atomic transactions with UUID idempotency keys and optimistic concurrency locks; generate immutable receipt snapshots with reprint watermarking (`*** REPRINT ***`); request payment corrections with automatic credit-scoped payment locks (`LockedForCorrection`); process Shop Owner approval/rejection with compensating reversal entries; log all financial and reprint audit events; and satisfy all 7 financial verification scenarios.
 
 ### Story 5.1: Payment Submission, Anti-Overpayment Validation & Settlement Transition
 
 As a Counter Staff member,  
-I want to record cash repayments against a disbursed loan with instant balance validation and automatic transition to Settled when the balance reaches zero,  
+I want to record cash repayments against a disbursed credit with instant balance validation and automatic transition to Settled when the balance reaches zero,  
 So that payments are posted accurately and overpayments are programmatically prevented.
 
 **Acceptance Criteria:**
 
-**Given** an authenticated user with `recordPayments` permission on the payment screen for a disbursed loan  
+**Given** an authenticated user with `recordPayments` permission on the payment screen for a disbursed credit  
 **When** staff enters a payment amount  
 **Then** the system validates that `Payment > 0.00` in integer minor units (Money VO).
 
@@ -1079,7 +1087,7 @@ So that payments are posted accurately and overpayments are programmatically pre
 **Then** the transaction is recorded as a `Full Settlement`, the valid outstanding balance reaches exactly `0.00 LKR` (`isZero == true`), and the financial status immediately transitions to `Settled`.
 
 * **Traceability:** FR-6, FR-21, FR-31 (Event #5), AD-2, AD-3, UX-DR-5
-* **Dependencies:** Story 4.3 (Disbursed loan), Story 1.1 (Money VO)
+* **Dependencies:** Story 4.3 (Disbursed credit), Story 1.1 (Money VO)
 * **Testing Guidance:** Unit tests for anti-overpayment validation; test asserting partial payment deduction in minor units; test asserting zero-balance transition to Settled; audit log verification.
 
 ---
@@ -1123,7 +1131,7 @@ So that financial balances are mathematically exact, immune to floating-point ro
 ### Story 5.3: Payment Idempotency, Concurrency Control & Correction-Pending Lock
 
 As a Counter Staff member and System Administrator,  
-I want client-side idempotency keys, optimistic concurrency locks, and a correction-pending payment lock on the affected loan,  
+I want client-side idempotency keys, optimistic concurrency locks, and a correction-pending payment lock on the affected credit,  
 So that network retries never post duplicate payments, simultaneous transactions cannot double-spend, and payments are blocked while a balance correction is pending review.
 
 **Acceptance Criteria:**
@@ -1133,15 +1141,15 @@ So that network retries never post duplicate payments, simultaneous transactions
 **Then** the request carries a unique `idempotency_key` (UUIDv4)  
 **And** if re-transmitted due to network timeout, the server returns the existing confirmed transaction and receipt without deducting funds twice.
 
-**Given** two counter terminals attempting simultaneous payments on the same loan  
+**Given** two counter terminals attempting simultaneous payments on the same credit  
 **When** both requests arrive concurrently  
 **Then** database concurrency controls (row-level locking / optimistic lock) process the first request, update the balance, and evaluate the second request against the updated balance, blocking it if an overpayment would occur.
 
-**Given** a loan where a financial correction request is pending Shop Owner review  
-**When** any staff member opens the loan on the payment screen  
-**Then** the loan displays a prominent banner: `Locked for Correction Review`  
-**And** payment inputs are programmatically blocked specifically for that affected loan  
-**While** all other loans in the shop remain fully operational.
+**Given** a credit where a financial correction request is pending Shop Owner review  
+**When** any staff member opens the credit on the payment screen  
+**Then** the credit displays a prominent banner: `Locked for Correction Review`  
+**And** payment inputs are programmatically blocked specifically for that affected credit  
+**While** all other credits in the shop remain fully operational.
 
 * **Traceability:** FR-23, AD-1, AD-3, UX-DR-7
 * **Dependencies:** Story 5.2 (Ledger transactions)
@@ -1161,7 +1169,7 @@ So that customers receive immediate transaction proof and historical receipts ca
 **When** the receipt is generated  
 **Then** the system captures an immutable snapshot of:
   - Shop branding: Shop Name, Address, Phone, Email, Tax/Reg No, Logo, and Header/Footer notes at payment time.
-  - Transaction details: Unique Receipt Number (e.g. `RCP-8801`), Payment Timestamp, Payment Type (`Partial Payment` or `Full Settlement`), Amount Paid, Pre-Payment Balance, Resulting Balance, Customer Identifier, Loan Reference, and Cashier ID.
+  - Transaction details: Unique Receipt Number (e.g. `RCP-8801`), Payment Timestamp, Payment Type (`Partial Payment` or `Full Settlement`), Amount Paid, Pre-Payment Balance, Resulting Balance, Customer Identifier, Credit Reference, and Cashier ID.
 
 **Given** subsequent updates to the shop profile, logo, or receipt notes  
 **When** previously issued historical receipts are viewed or reprinted  
@@ -1192,7 +1200,7 @@ So that typographical counter errors are corrected transparently without silent 
 **When** Counter Staff with `requestCorrections` permission selects *Request Correction*  
 **Then** the system requires a mandatory, non-empty business explanation  
 **And** flags the transaction as `Correction Pending Approval`  
-**And** activates the correction lock on the loan (Story 5.3).
+**And** activates the correction lock on the credit (Story 5.3).
 
 **Given** a pending correction request  
 **When** evaluated by a user with only Counter Staff role  
@@ -1202,7 +1210,7 @@ So that typographical counter errors are corrected transparently without silent 
 **When** the Shop Owner approves the correction request  
 **Then** the system creates an immutable compensating debit transaction referencing the original payment  
 **And** recalculates the valid outstanding balance ($\text{Balance}_{\text{new}} = \text{Balance}_{\text{current}} + \text{Reversed Payment Amount}$)  
-**And** lifts the correction lock on the loan  
+**And** lifts the correction lock on the credit  
 **And** permanently preserves the original erroneous transaction in history  
 **And** logs an audit event (Category 7: `Financial correction approvals or rejections by Shop Owner`).
 
@@ -1220,38 +1228,38 @@ So that typographical counter errors are corrected transparently without silent 
 
 ---
 
-## Epic 6: Overdue Loan Governance, Extensions & Owner Decisions
+## Epic 6: Overdue Credit Governance, Extensions & Owner Decisions
 
-Shop Owners and authorized staff can identify delinquent loans automatically at the local midnight boundary (`Asia/Colombo`) strictly when outstanding balance > 0 (excluding fully settled loans); review overdue queues; record customer communication notes and promises to pay; grant Shop-Owner-only due date extensions with mandatory reasons, updating due dates and resetting dynamic status to `Active` while preserving complete immutable extension history; record structured administrative resolutions (`Under Review`, `Owner Settled / Written Off`, `Collateral Retained`) with zero automated collateral liquidation; log all overdue actions in the audit trail; and enforce `viewOverdueLoans` permission.
+Shop Owners and authorized staff can identify delinquent credits automatically at the local midnight boundary (`Asia/Colombo`) strictly when outstanding balance > 0 (excluding fully settled credits); review overdue queues; record customer communication notes and promises to pay; grant Shop-Owner-only due date extensions with mandatory reasons, updating due dates and resetting dynamic status to `Active` while preserving complete immutable extension history; record structured administrative resolutions (`Under Review`, `Owner Settled / Written Off`, `Collateral Retained`) with zero automated collateral liquidation; log all overdue actions in the audit trail; and enforce `viewOverdueCredits` permission.
 
 ### Story 6.1: Automated Local-Midnight Overdue Evaluation & Badging Engine
 
 As a Counter Staff member and Shop Owner,  
-I want the system to automatically transition loans with positive balances to Overdue at the local midnight boundary following their due date, displaying visual badges and queues,  
+I want the system to automatically transition credits with positive balances to Overdue at the local midnight boundary following their due date, displaying visual badges and queues,  
 So that delinquent accounts are identified systematically without manual date-by-date record checks.
 
 **Acceptance Criteria:**
 
-**Given** a disbursed loan with a valid outstanding balance greater than zero (`Valid Outstanding Balance > 0.00`)  
-**When** the system evaluates loan status at 00:00:00 on the calendar day after the official due date (`Official Due Date + 1 calendar day`) in the shop's configured local time zone (`Asia/Colombo`)  
-**Then** the loan automatically transitions its financial status to `Overdue` and its overall workflow status to `Overdue`  
+**Given** a disbursed credit with a valid outstanding balance greater than zero (`Valid Outstanding Balance > 0.00`)  
+**When** the system evaluates credit status at 00:00:00 on the calendar day after the official due date (`Official Due Date + 1 calendar day`) in the shop's configured local time zone (`Asia/Colombo`)  
+**Then** the credit automatically transitions its financial status to `Overdue` and its overall workflow status to `Overdue`  
 **And** an audit event is appended to `audit_events`.
 
-**Given** a loan that has reached a valid outstanding balance of zero (`Settled`) prior to or after the due date  
+**Given** a credit that has reached a valid outstanding balance of zero (`Settled`) prior to or after the due date  
 **When** the local calendar date passes the due date  
-**Then** the loan is strictly excluded from overdue evaluation and must never transition to `Overdue`.
+**Then** the credit is strictly excluded from overdue evaluation and must never transition to `Overdue`.
 
-**Given** an overdue loan displayed on counter search lists, customer profiles, or owner dashboards  
+**Given** an overdue credit displayed on counter search lists, customer profiles, or owner dashboards  
 **When** rendered in the interface  
 **Then** it displays a prominent visual `Overdue` badge and a days-overdue counter.
 
 **Given** two shop tenants configured in different time zones  
 **When** evaluating overdue boundaries  
-**Then** each tenant transitions loans according to its own configured local time zone calendar boundary.
+**Then** each tenant transitions credits according to its own configured local time zone calendar boundary.
 
 * **Traceability:** FR-2, FR-6, FR-25, AD-3
-* **Dependencies:** Story 4.3 (Disbursed loan), Story 1.6 (Shop timezone)
-* **Testing Guidance:** Unit tests verifying midnight boundary calculation in `Asia/Colombo`; test asserting settled loans with zero balance are never marked overdue; multi-timezone boundary integration test.
+* **Dependencies:** Story 4.3 (Disbursed credit), Story 1.6 (Shop timezone)
+* **Testing Guidance:** Unit tests verifying midnight boundary calculation in `Asia/Colombo`; test asserting settled credits with zero balance are never marked overdue; multi-timezone boundary integration test.
 
 ---
 
@@ -1263,14 +1271,14 @@ So that I can accommodate customer repayment emergencies under owner governance 
 
 **Acceptance Criteria:**
 
-**Given** an active or overdue loan  
+**Given** an active or overdue credit  
 **When** a user with the Shop Owner role grants a due date extension  
 **Then** the system requires a mandatory, non-empty business justification (e.g. `"Customer requested 2-week extension due to family emergency; full settlement promised Nov 5"`)  
 **And** validates that the new due date is strictly greater than the current calendar date in the shop's local time zone (`New Due Date > Current Date`).
 
-**Given** an extension granted on an `Overdue` loan  
+**Given** an extension granted on an `Overdue` credit  
 **When** confirmed by the Shop Owner  
-**Then** the loan's financial and overall workflow status immediately resets to `Active`  
+**Then** the credit's financial and overall workflow status immediately resets to `Active`  
 **And** overdue evaluation is scheduled against the newly granted due date.
 
 **Given** any due date extension  
@@ -1296,21 +1304,21 @@ So that customer interaction history is documented and upcoming promised payment
 
 **Acceptance Criteria:**
 
-**Given** an authenticated user with `recordCustomerNotes` permission on an overdue or active loan  
+**Given** an authenticated user with `recordCustomerNotes` permission on an overdue or active credit  
 **When** they record a customer follow-up  
 **Then** the interface captures: Contact Timestamp, Communication Channel (`Phone Call`, `In-Person Counter Visit`, `Physical Notice`), Staff Identifier, Detailed Interaction Notes, and optional Promised Payment Date  
 **And** logs an audit event (Category 9: `Customer follow-up notes and promises to pay`).
 
-**Given** recorded follow-up entries on a loan  
-**When** viewed on the loan detail screen  
+**Given** recorded follow-up entries on a credit  
+**When** viewed on the credit detail screen  
 **Then** notes are displayed in reverse chronological order with timestamps and staff IDs.
 
 **Given** a follow-up entry with a Promised Payment Date  
-**When** the Overdue Loan Review queue is rendered  
+**When** the Overdue Credit Review queue is rendered  
 **Then** the system displays the promised payment date as a priority follow-up reminder for staff.
 
 * **Traceability:** FR-6, FR-27, FR-31 (Event #9)
-* **Dependencies:** Story 6.1 (Overdue loans)
+* **Dependencies:** Story 6.1 (Overdue credits)
 * **Testing Guidance:** Widget test for customer follow-up logging form; sorting verification of interaction history; test ensuring promise-to-pay dates surface on delinquency review queues.
 
 ---
@@ -1323,14 +1331,14 @@ So that delinquent collateral cases are formally resolved according to shop poli
 
 **Acceptance Criteria:**
 
-**Given** an overdue loan that cannot be resolved through standard repayment  
+**Given** an overdue credit that cannot be resolved through standard repayment  
 **When** the Shop Owner reviews the delinquent case  
-**Then** the Shop Owner can transition the loan into a structured resolution state:
+**Then** the Shop Owner can transition the credit into a structured resolution state:
   - `Under Review`: Flags the account for ongoing investigation or formal notice.
   - `Owner Settled / Written Off`: Documents an authorized commercial write-off or negotiated closure, requiring a mandatory justification and ledger adjustment.
   - `Collateral Retained / Legal Dispute`: Documents cases where pledged collateral is retained or referred to legal/police processes.
 
-**Given** any overdue loan resolution in the platform  
+**Given** any overdue credit resolution in the platform  
 **When** evaluated  
 **Then** the system strictly avoids automated collateral seizure, automated forfeiture, automated inventory transfers, or public auctions  
 **And** all disposition actions require manual Shop Owner review and explicit confirmation.
@@ -1338,10 +1346,10 @@ So that delinquent collateral cases are formally resolved according to shop poli
 **Given** a confirmed owner resolution decision  
 **When** recorded  
 **Then** the system requires a mandatory business rationale  
-**And** logs an audit event (Category 10: `Owner decisions on overdue loans and collateral disposition`) recording owner ID, decision type, affected item references, and timestamp.
+**And** logs an audit event (Category 10: `Owner decisions on overdue credits and collateral disposition`) recording owner ID, decision type, affected item references, and timestamp.
 
 * **Traceability:** FR-6, FR-28, FR-31 (Event #10), AD-6
-* **Dependencies:** Story 6.1 (Overdue loans), Story 1.7 (Shop Owner role)
+* **Dependencies:** Story 6.1 (Overdue credits), Story 1.7 (Shop Owner role)
 * **Testing Guidance:** Integration test verifying owner resolution transitions; test asserting automated forfeiture is strictly prohibited; audit verification of resolution decisions and mandatory notes.
 
 ---
@@ -1353,7 +1361,7 @@ Shop Owners can view real-time daily cash movements (cash in vs. confirmed cash 
 ### Story 7.1: Shop Owner Real-Time Cash Reconciliation & Portfolio Dashboards
 
 As a Shop Owner,  
-I want a real-time operational dashboard summarizing daily counter cash flows (cash in vs. confirmed cash out), portfolio loan counts, vault collateral counts, and pending correction queues,  
+I want a real-time operational dashboard summarizing daily counter cash flows (cash in vs. confirmed cash out), portfolio credit counts, vault collateral counts, and pending correction queues,  
 So that I have instant financial oversight over shop operations and can reconcile the physical till at the end of each day.
 
 **Acceptance Criteria:**
@@ -1364,14 +1372,14 @@ So that I have instant financial oversight over shop operations and can reconcil
   - Total Confirmed Repayments Collected (`Cash In`).
   - Total Confirmed Principal Disbursed (`Cash Out`).
   - Net Counter Cash Movement (`Cash In - Cash Out`).
-**And** loans in `Active / Pending Disbursement` are strictly excluded from cash disbursement totals.
+**And** credits in `Active / Pending Disbursement` are strictly excluded from cash disbursement totals.
 
 **Given** the Portfolio Overview widget on the dashboard  
 **When** rendered  
 **Then** the system displays real-time metrics strictly within the active tenant boundary:
-  - Total Active Loans Count and Aggregate Outstanding Principal.
-  - Total Overdue Loans Count and Aggregate Overdue Principal.
-  - Total Settled Loans Count.
+  - Total Active Credits Count and Aggregate Outstanding Principal.
+  - Total Overdue Credits Count and Aggregate Overdue Principal.
+  - Total Settled Credits Count.
   - Total Collateral Items currently `In Custody` in the vault.
 
 **Given** one or more pending payment correction requests in the shop  
@@ -1396,7 +1404,7 @@ So that I can print executive reports, analyze raw transaction data in spreadshe
 **When** generating an export  
 **Then** the system supports four standardized operational reports:
   1. Daily Cash Collection Ledger
-  2. Customer Loan Portfolio Summary
+  2. Customer Credit Portfolio Summary
   3. Overdue Delinquency Report
   4. Collateral Vault Inventory Report.
 
@@ -1434,7 +1442,7 @@ So that shop operations are completely transparent, tamper-resistant, and verifi
 **When** they browse the shop's audit trail  
 **Then** the interface displays chronological records across all 14 mandatory critical event categories:
   1. Customer creation and profile edits.
-  2. Loan agreement origination and cancellation.
+  2. Credit agreement origination and cancellation.
   3. Collateral registration and item detail edits.
   4. Confirmed cash disbursement.
   5. Payment recording (partial and full settlement).
@@ -1442,12 +1450,12 @@ So that shop operations are completely transparent, tamper-resistant, and verifi
   7. Financial correction approvals or rejections by Shop Owner.
   8. Due date extensions (with original/revised dates and reason).
   9. Customer follow-up notes and promises to pay.
-  10. Owner decisions on overdue loans and collateral disposition.
+  10. Owner decisions on overdue credits and collateral disposition.
   11. Collateral physical return confirmations and exception closures.
   12. Staff account creation, deactivation, and permission modifications.
   13. Receipt reprints.
   14. Security events (unauthorized access attempts, cross-tenant violations).
-**And** Category 2 carries multiple action types — `loan_agreement_origination`, `cancel_loan_agreement`, and `loan_term_reagreed` — under the canonical catalogue authority (R1/R4); the `action_type` is the distinguishing field within a category.
+**And** Category 2 carries multiple action types — `credit_agreement_origination`, `cancel_credit_agreement`, and `credit_term_reagreed` — under the canonical catalogue authority (R1/R4); the `action_type` is the distinguishing field within a category.
 
 **Given** any audit record  
 **When** inspected  
@@ -1513,7 +1521,7 @@ So that financial ledgers and collateral photographs are durable, protected agai
 **Then** the database is restored from PITR backups  
 **And** automated consistency test suites verify:
   - Exact ledger balance equality ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$).
-  - Intact parent-child relational integrity (Tenants $\rightarrow$ Customers $\rightarrow$ Loans $\rightarrow$ Collateral $\rightarrow$ Payments).
+  - Intact parent-child relational integrity (Tenants $\rightarrow$ Customers $\rightarrow$ Credits $\rightarrow$ Collateral $\rightarrow$ Payments).
   - Complete preservation of append-only `audit_events` with zero gaps.
 **And** the measured Recovery Point Objective (RPO) is proven to be $\le 15$ minutes and the Recovery Time Objective (RTO) is proven to be $\le 4$ hours.
 
@@ -1525,3 +1533,52 @@ So that financial ledgers and collateral photographs are durable, protected agai
 * **Traceability:** FR-32 (NFR-2), AD-1, AD-8, UX-DR-8
 * **Dependencies:** Story 1.4 (Backup harness)
 * **Testing Guidance:** Documented execution of disaster recovery restoration drill runbook; post-restore automated ledger integrity test; S3 object versioning delete-marker test; UI test for offline sync indicator.
+
+---
+
+## Epic 8: Item Receipt Terminology & Optional Intake (Change Request)
+
+Counter staff can originate a credit with zero item receipts, and every user-facing origination-flow surface and generated document uses the term **Item Receipt** consistently.
+
+* **FRs covered:** FR-13, FR-14, FR-15, FR-20
+* **Architecture:** AD-3 (workflow status derivation for zero-item credits), AD-4 (`features/customers`, `features/collateral`)
+* **Change record:** `_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-09.md`
+
+### Story 8.1: Optional Item Receipts at Origination & Terminology Rename
+
+As a Counter Staff member,  
+I want item attachment to be optional and labelled "Item Receipt",  
+So that the shop can record unsecured credits and the counter language matches how staff describe items held.
+
+**Acceptance Criteria:**
+
+**Given** the credit origination screen  
+**When** Counter Staff submits without selecting any item receipt  
+**Then** the agreement is created successfully  
+**And** no custody record or collateral audit event is generated for that agreement.
+
+**Given** a credit agreement request with an empty item receipt list  
+**When** persisted through the credit DAO  
+**Then** the agreement is stored with `Financial Status: Active / Pending Disbursement`  
+**And** no `ArgumentError` is thrown for the empty list.
+
+**Given** the credit origination screen, disbursement screen, and generated draft/voucher PDFs  
+**When** rendered  
+**Then** the label reads `Item Receipts` (or `Item Receipt` in the singular)  
+**And** the summary reads `Total Estimated Item Receipt Value`  
+**And** an empty document renders `No item receipts recorded.`  
+**And** no user-facing string in this flow reads `Pledged Collateral`.
+
+**Given** a credit with item receipts attached  
+**When** any attached item lacks a photograph and no approved exception exists  
+**Then** submission remains blocked with `"Every item receipt must have at least one photograph."`
+
+**Given** a financially settled credit with zero attached item receipts  
+**When** the overall workflow status is derived  
+**Then** it returns `Closed / Completed` rather than `Settled (Pending Collateral Return)`.
+
+* **Traceability:** FR-13, FR-14, FR-15, FR-20, AD-3
+* **Dependencies:** Story 3.1, Story 4.1 (completed)
+* **Testing Guidance:** Widget test for zero-item origination submit; DAO unit test for empty item list; deterministic empty-list idempotency fingerprint test; derive-status unit test for zero-item settlement; string assertions for origination, disbursement, and PDF content; retain per-item mandatory-photo tests.
+
+

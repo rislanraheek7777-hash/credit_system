@@ -2,25 +2,32 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
+import 'package:credit_system/core/money/money.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:credit_system/features/customers/data/daos/overdue_dao.dart';
+import 'package:credit_system/features/customers/data/daos/payment_dao.dart';
 import 'package:credit_system/features/customers/domain/models/customer_masking.dart';
 import 'package:credit_system/features/customers/domain/models/customer.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
-import 'package:credit_system/features/customers/domain/models/loan_term.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
+import 'package:credit_system/features/customers/domain/models/credit_term.dart';
+import 'package:credit_system/features/customers/domain/models/receipt.dart';
+import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
+import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
+import 'package:credit_system/features/customers/presentation/customer_edit_screen.dart';
+import 'package:credit_system/features/customers/presentation/credit_origination_screen.dart';
 import 'package:credit_system/features/customers/presentation/payment_screen.dart';
 
 /// Customer profile screen implementing Story 2.5 AC-2 and AC-3.
 ///
 /// Displays photo thumbnail, verified name, contact summary (masked per RBAC),
-/// and all associated loans categorized by status badges (Active, Overdue,
+/// and all associated credits categorized by status badges (Active, Overdue,
 /// Settled).
 ///
-/// When a customer has multiple actionable loans, tapping an action button
-/// opens a multi-loan selection dialog requiring explicit target loan selection.
+/// When a customer has multiple actionable credits, tapping an action button
+/// opens a multi-credit selection dialog requiring explicit target credit selection.
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({
     super.key,
@@ -50,10 +57,14 @@ class CustomerProfileScreen extends StatefulWidget {
 
 class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   late CustomerDao _customerDao;
-  late LoanDao _loanDao;
+  late CreditDao _creditDao;
+  late PaymentDao _paymentDao;
+  late CollateralDao _collateralDao;
 
   Customer? _customer;
-  List<Loan> _loans = [];
+  List<Credit> _credits = [];
+  final Map<String, List<Receipt>> _paymentsByCreditId = {};
+  final Map<String, List<CollateralItem>> _collateralByCreditId = {};
   bool _isLoading = true;
   String? _error;
 
@@ -79,27 +90,42 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     try {
       final db = widget.database ?? AppDatabase();
       _customerDao = CustomerDao(db);
-      _loanDao = LoanDao(db);
+      _creditDao = CreditDao(db);
+      _paymentDao = PaymentDao(db);
+      _collateralDao = CollateralDao(db);
 
       final customer = await _customerDao.getCustomerById(
         widget.shopId,
         widget.customerId,
       );
-      final loans = await _loanDao.getLoansByCustomerId(
+      final credits = await _creditDao.getCreditsByCustomerId(
         widget.shopId,
         widget.customerId,
       );
       final shopTimeZone = await OverdueDao(db).resolveShopTimeZone(widget.shopId);
 
-      if (widget.database == null) {
-        await db.close();
+      final paymentsByCreditId = <String, List<Receipt>>{};
+      final collateralByCreditId = <String, List<CollateralItem>>{};
+      for (final credit in credits) {
+        final payments = await _paymentDao.getPaymentsByCredit(
+          widget.shopId,
+          credit.id,
+        );
+        final collateral = await _collateralDao.getCollateralItemsByCreditId(
+          widget.shopId,
+          credit.id,
+        );
+        paymentsByCreditId[credit.id] = payments;
+        collateralByCreditId[credit.id] = collateral;
       }
 
       if (!mounted) return;
 
       setState(() {
         _customer = customer;
-        _loans = loans;
+        _credits = credits;
+        _paymentsByCreditId.addAll(paymentsByCreditId);
+        _collateralByCreditId.addAll(collateralByCreditId);
         _shopTimeZone = shopTimeZone;
         _isLoading = false;
       });
@@ -112,49 +138,49 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
   }
 
-  void _onLoanAction(BuildContext context, Loan loan) {
-    final actionableLoans = _loans.where((l) => l.isActionable).toList();
+  void _onCreditAction(BuildContext context, Credit credit) {
+    final actionableCredits = _credits.where((l) => l.isActionable).toList();
 
-    if (actionableLoans.length > 1) {
-      // Multiple eligible loans — require explicit selection
-      _showMultiLoanSelectionDialog(context, actionableLoans);
-    } else if (actionableLoans.length == 1) {
-      // Single eligible loan — proceed directly
-      _proceedToLoanAction(context, actionableLoans.first);
+    if (actionableCredits.length > 1) {
+      // Multiple eligible credits — require explicit selection
+      _showMultiCreditSelectionDialog(context, actionableCredits);
+    } else if (actionableCredits.length == 1) {
+      // Single eligible credit — proceed directly
+      _proceedToCreditAction(context, actionableCredits.first);
     }
-    // Zero actionable loans — no action available
+    // Zero actionable credits — no action available
   }
 
-  void _showMultiLoanSelectionDialog(
+  void _showMultiCreditSelectionDialog(
     BuildContext context,
-    List<Loan> loans,
+    List<Credit> credits,
   ) {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Select Loan'),
+          title: const Text('Select Credit'),
           content: SizedBox(
             width: double.maxFinite,
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: loans.length,
+              itemCount: credits.length,
               itemBuilder: (context, index) {
-                final loan = loans[index];
+                final credit = credits[index];
                 return ListTile(
-                  title: Text('Loan ${loan.id.substring(0, loan.id.length.clamp(0, 8))}...'),
+                  title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
                   subtitle: Text(
-                    'Status: ${loan.status.value.toUpperCase()}  |  '
-                    'Balance: ${loan.balanceCents / 100}',
+                    'Status: ${credit.status.value.toUpperCase()}  |  '
+                    'Balance: ${credit.balanceCents / 100}',
                   ),
                   trailing: Chip(
-                    label: Text(loan.status.value.toUpperCase()),
-                    backgroundColor: _statusChipColor(loan.status),
+                    label: Text(credit.status.value.toUpperCase()),
+                    backgroundColor: _statusChipColor(credit.status),
                   ),
                   onTap: () {
-                    Navigator.of(dialogContext).pop(loan.id);
-                    _proceedToLoanAction(context, loan);
+                    Navigator.of(dialogContext).pop(credit.id);
+                    _proceedToCreditAction(context, credit);
                   },
                 );
               },
@@ -171,30 +197,30 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     );
   }
 
-  Color _statusChipColor(LoanStatus status) {
+  Color _statusChipColor(CreditStatus status) {
     switch (status) {
-      case LoanStatus.active:
+      case CreditStatus.active:
         return Colors.green.withValues(alpha: 0.15);
-      case LoanStatus.overdue:
+      case CreditStatus.overdue:
         return Colors.orange.withValues(alpha: 0.15);
-      case LoanStatus.settled:
+      case CreditStatus.settled:
         return Colors.grey.withValues(alpha: 0.15);
-      case LoanStatus.cancelled:
+      case CreditStatus.cancelled:
         return Colors.red.withValues(alpha: 0.15);
     }
   }
 
-  void _proceedToLoanAction(BuildContext context, Loan loan) {
-    // Navigate to payment screen for eligible loans (disbursed, active/overdue,
-    // balance > 0). For other loan states, show a snackbar.
-    if (loan.isDisbursed &&
-        (loan.status == LoanStatus.active || loan.status == LoanStatus.overdue) &&
-        loan.balanceCents > 0) {
+  void _proceedToCreditAction(BuildContext context, Credit credit) {
+    // Navigate to payment screen for eligible credits (disbursed, active/overdue,
+    // balance > 0). For other credit states, show a snackbar.
+    if (credit.isDisbursed &&
+        (credit.status == CreditStatus.active || credit.status == CreditStatus.overdue) &&
+        credit.balanceCents > 0) {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => PaymentScreen(
             shopId: widget.shopId,
-            loanId: loan.id,
+            creditId: credit.id,
             currentUser: widget.currentUser,
             database: widget.database,
           ),
@@ -204,11 +230,55 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Loan ${loan.id.substring(0, loan.id.length.clamp(0, 8))} is not eligible for payment.',
+            'Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))} is not eligible for payment.',
           ),
           duration: const Duration(seconds: 2),
         ),
       );
+    }
+  }
+
+  /// Opens the customer edit form and refreshes the profile when it is saved.
+  Future<void> _openEditCustomer() async {
+    final customer = _customer;
+    if (customer == null) return;
+
+    final updated = await Navigator.of(context).push<Customer>(
+      MaterialPageRoute(
+        builder: (context) => CustomerEditScreen(
+          shopId: widget.shopId,
+          customer: customer,
+          currentUser: widget.currentUser,
+          database: widget.database,
+        ),
+      ),
+    );
+
+    if (updated != null && mounted) {
+      await _loadProfile();
+    }
+  }
+
+  /// Opens the credit origination flow for this customer and refreshes the
+  /// profile when the screen is dismissed.
+  ///
+  /// The origination screen keeps the user on itself after a successful
+  /// submission, so the profile is always reloaded on return to pick up any
+  /// newly created agreement.
+  Future<void> _openAddCredit() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => CreditOriginationScreen(
+          shopId: widget.shopId,
+          customerId: widget.customerId,
+          currentUser: widget.currentUser,
+          database: widget.database,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      await _loadProfile();
     }
   }
 
@@ -247,13 +317,21 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
 
     final customer = _customer!;
-    final activeLoans = _loans.where((l) => l.status == LoanStatus.active).toList();
-    final overdueLoans = _loans.where((l) => l.status == LoanStatus.overdue).toList();
-    final settledLoans = _loans.where((l) => l.status == LoanStatus.settled).toList();
+    final activeCredits = _credits.where((l) => l.status == CreditStatus.active).toList();
+    final overdueCredits = _credits.where((l) => l.status == CreditStatus.overdue).toList();
+    final settledCredits = _credits.where((l) => l.status == CreditStatus.settled).toList();
 
     final effectiveCanViewSensitive = widget.canViewSensitive ??
         (widget.currentUser.hasPermission(AppPermission.viewSensitiveCustomerData) ||
             widget.currentUser.role.isOwner);
+
+    final canEditCustomer =
+        widget.currentUser.hasPermission(AppPermission.registerCustomers) ||
+            widget.currentUser.role.isOwner;
+
+    final canCreateCredits =
+        widget.currentUser.hasPermission(AppPermission.createCredits) ||
+            widget.currentUser.role.isOwner;
 
     return Scaffold(
       appBar: AppBar(
@@ -262,7 +340,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Photo thumbnail (Story 2.6: masked/placeholder when lacking permission)
             Center(
@@ -298,38 +376,68 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
             Text(
               'Address: ${effectiveCanViewSensitive ? customer.address : kAddressWithheld}',
             ),
+            const SizedBox(height: 16),
+
+            // Profile actions (RBAC-gated)
+            if (canEditCustomer || canCreateCredits)
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  if (canEditCustomer)
+                    OutlinedButton.icon(
+                      key: const Key('edit_customer_button'),
+                      onPressed: _openEditCustomer,
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Edit'),
+                    ),
+                  if (canCreateCredits)
+                    ElevatedButton.icon(
+                      key: const Key('add_credit_button'),
+                      onPressed: _openAddCredit,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Credit'),
+                    ),
+                ],
+              ),
             const SizedBox(height: 24),
 
-            // Loans section
+            // Credits section
             const Text(
-              'Loans',
+              'Credit details',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
 
-            if (_loans.isEmpty)
-              const Text('No loans found'),
-            if (_loans.isNotEmpty) ...[
-              _LoanStatusSection(
+            if (_credits.isEmpty)
+              const Text('No credit details found'),
+            if (_credits.isNotEmpty) ...[
+              _CreditStatusSection(
                 title: 'Active',
-                loans: activeLoans,
+                credits: activeCredits,
                 color: Colors.green,
                 shopTimeZone: _shopTimeZone,
-                onTap: (loan) => _onLoanAction(context, loan),
+                onTap: (credit) => _onCreditAction(context, credit),
+                paymentsByCreditId: _paymentsByCreditId,
+                collateralByCreditId: _collateralByCreditId,
               ),
-              _LoanStatusSection(
+              _CreditStatusSection(
                 title: 'Overdue',
-                loans: overdueLoans,
+                credits: overdueCredits,
                 color: Colors.orange,
                 shopTimeZone: _shopTimeZone,
-                onTap: (loan) => _onLoanAction(context, loan),
+                onTap: (credit) => _onCreditAction(context, credit),
+                paymentsByCreditId: _paymentsByCreditId,
+                collateralByCreditId: _collateralByCreditId,
               ),
-              _LoanStatusSection(
+              _CreditStatusSection(
                 title: 'Settled',
-                loans: settledLoans,
+                credits: settledCredits,
                 color: Colors.grey,
                 shopTimeZone: _shopTimeZone,
-                onTap: (loan) => _onLoanAction(context, loan),
+                onTap: (credit) => _onCreditAction(context, credit),
+                paymentsByCreditId: _paymentsByCreditId,
+                collateralByCreditId: _collateralByCreditId,
               ),
             ],
           ],
@@ -339,28 +447,33 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   }
 }
 
-/// A section displaying loans of a single status.
-class _LoanStatusSection extends StatelessWidget {
+/// A section displaying credits of a single status.
+class _CreditStatusSection extends StatelessWidget {
   final String title;
-  final List<Loan> loans;
+  final List<Credit> credits;
   final Color color;
 
   /// The shop's operational time zone, used to render each due date as the
   /// calendar date that was agreed.
   final ShopTimeZone shopTimeZone;
-  final ValueChanged<Loan> onTap;
+  final ValueChanged<Credit> onTap;
 
-  const _LoanStatusSection({
+  final Map<String, List<Receipt>> paymentsByCreditId;
+  final Map<String, List<CollateralItem>> collateralByCreditId;
+
+  const _CreditStatusSection({
     required this.title,
-    required this.loans,
+    required this.credits,
     required this.color,
     required this.shopTimeZone,
     required this.onTap,
+    required this.paymentsByCreditId,
+    required this.collateralByCreditId,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (loans.isEmpty) return const SizedBox.shrink();
+    if (credits.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,7 +481,7 @@ class _LoanStatusSection extends StatelessWidget {
         Row(
           children: [
             Text(
-              '$title (${loans.length})',
+              '$title (${credits.length})',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -378,27 +491,54 @@ class _LoanStatusSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        ...loans.map((loan) => Card(
-          child: ListTile(
-            title: Text('Loan ${loan.id.substring(0, loan.id.length.clamp(0, 8))}...'),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Principal: ${loan.principalCents / 100}'),
-                Text('Balance: ${loan.balanceCents / 100}'),
-                Text('Due: ${loan.dueDateAsCalendarDate(shopTimeZone)}'),
-              ],
+        ...credits.map((credit) {
+          final payments = paymentsByCreditId[credit.id] ?? const <Receipt>[];
+          final collateral = collateralByCreditId[credit.id] ?? const <CollateralItem>[];
+          return Card(
+            child: ListTile(
+              title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Principal: ${credit.principalCents / 100}'),
+                  Text('Balance: ${credit.balanceCents / 100}'),
+                  Text('Due: ${credit.dueDateAsCalendarDate(shopTimeZone)}'),
+                  if (payments.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Payment history',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    ...payments.map(
+                      (p) => Text(
+                        'Receipt ${p.receiptNumber}: ${Money.fromCents(p.amountCents).format()}',
+                      ),
+                    ),
+                  ],
+                  if (collateral.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Collateral',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    ...collateral.map(
+                      (c) => Text('Item ${c.id}: ${c.category.value}'),
+                    ),
+                  ],
+                ],
+              ),
+              trailing: Chip(
+                label: Text(credit.status.value.toUpperCase()),
+                backgroundColor: color.withValues(alpha: 0.15),
+              ),
+              onTap: () => onTap(credit),
             ),
-            trailing: Chip(
-              label: Text(loan.status.value.toUpperCase()),
-              backgroundColor: color.withValues(alpha: 0.15),
-            ),
-            onTap: () => onTap(loan),
-          ),
-        )),
+          );
+        }),
         const SizedBox(height: 16),
       ],
     );
   }
 }
+
 

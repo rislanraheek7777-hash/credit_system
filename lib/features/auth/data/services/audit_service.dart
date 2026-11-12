@@ -39,9 +39,9 @@ class AuditService {
   ///  4. Collateral intake and appraisal
   ///  5. Collateral custody transitions
   ///  6. Collateral photo exception events
-  ///  7. Loan agreement creation and disbursement
-  ///  8. Loan payment and settlement
-  ///  9. Loan correction requests and approvals
+  ///  7. Credit agreement creation and disbursement
+  ///  8. Credit payment and settlement
+  ///  9. Credit correction requests and approvals
   /// 10. Overdue evaluation and due-date extensions
   /// 11. Customer follow-up and promise-to-pay
   /// 12. Staff account creation, deactivation, and permission modifications
@@ -107,3 +107,4 @@ class AuditService {
     }
   }
 }
+

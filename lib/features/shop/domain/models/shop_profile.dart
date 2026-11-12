@@ -18,6 +18,9 @@ class ShopProfile {
   /// Business trading name.
   final String name;
 
+  /// Type of shop (e.g. Retail, Wholesale, Service).
+  final String? shopType;
+
   /// Primary operating currency code (ISO 4217, 3 uppercase characters, default 'LKR').
   final String currencyCode;
 
@@ -54,6 +57,7 @@ class ShopProfile {
   ShopProfile({
     required this.id,
     required this.name,
+    this.shopType,
     this.currencyCode = 'LKR',
     this.timezone = 'Asia/Colombo',
     this.businessAddress,
@@ -127,6 +131,7 @@ class ShopProfile {
   ShopProfile copyWith({
     String? id,
     String? name,
+    String? shopType,
     String? currencyCode,
     String? timezone,
     String? businessAddress,
@@ -142,6 +147,7 @@ class ShopProfile {
     return ShopProfile(
       id: id ?? this.id,
       name: name ?? this.name,
+      shopType: shopType ?? this.shopType,
       currencyCode: currencyCode ?? this.currencyCode,
       timezone: timezone ?? this.timezone,
       businessAddress: businessAddress ?? this.businessAddress,
@@ -162,6 +168,7 @@ class ShopProfile {
     return other is ShopProfile &&
         other.id == id &&
         other.name == name &&
+        other.shopType == shopType &&
         other.currencyCode == currencyCode &&
         other.timezone == timezone &&
         other.businessAddress == businessAddress &&
@@ -177,6 +184,7 @@ class ShopProfile {
   int get hashCode => Object.hash(
         id,
         name,
+        shopType,
         currencyCode,
         timezone,
         businessAddress,
@@ -188,3 +196,4 @@ class ShopProfile {
         receiptFooterNotes,
       );
 }
+

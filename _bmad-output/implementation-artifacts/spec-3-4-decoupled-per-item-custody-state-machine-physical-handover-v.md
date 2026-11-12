@@ -31,7 +31,7 @@
 **Then** the transition is rejected (terminal state)
 
 ### AC-2: Per-Item Custody Independence
-**Given** multiple collateral items belonging to the same loan  
+**Given** multiple collateral items belonging to the same credit  
 **When** one item's custody state changes  
 **Then** other items' custody states remain unchanged  
 **And** each item's custody state can be queried independently
@@ -117,8 +117,8 @@
 Schema version 10 → 11
 
 ### Permission Requirements
-- Staff requesting handover: `createLoans` permission
-- Staff reporting handover: `createLoans` permission
+- Staff requesting handover: `createCredits` permission
+- Staff reporting handover: `createCredits` permission
 - Shop Owner confirming return: `confirmCollateralReturn` permission
 - Shop Owner resolving discrepancy: `approveCorrections` permission
 
@@ -140,3 +140,4 @@ Schema version 10 → 11
 - **AD-3:** Finite State Machines
 - **AD-4:** Clean Architecture Layering
 - **AD-6:** Granular RBAC & Audit
+

@@ -25,3 +25,4 @@ So that cross-tenant data leakage is physically prevented at the database engine
 ## Dev Notes
 
 Migration 002_rls_roles_audit.sql already defines roles, functions, and trigger.
+

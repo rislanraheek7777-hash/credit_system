@@ -4,10 +4,8 @@ import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/auth/presentation/staff_management_screen.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
-import 'package:credit_system/features/customers/presentation/overdue_screen.dart';
 import 'package:credit_system/features/customers/presentation/shop_profile_screen.dart';
-import 'package:credit_system/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:credit_system/core/theme/theme_controller.dart';
 
 /// Central settings hub for the credit system application.
 ///
@@ -19,11 +17,15 @@ class SettingsScreen extends StatelessWidget {
     required this.shopId,
     required this.currentUser,
     this.database,
+    this.onLogout,
   });
 
   final String shopId;
   final AppUser currentUser;
   final AppDatabase? database;
+
+  /// Invoked after the user confirms logging out.
+  final VoidCallback? onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -51,29 +53,7 @@ class SettingsScreen extends StatelessWidget {
             StaffManagementScreen(shopId: shopId, currentUser: currentUser),
           ),
         ),
-      _SettingOption(
-        icon: Icons.dashboard_outlined,
-        title: 'Portfolio Dashboard',
-        subtitle: 'Loan portfolio and collection overview',
-        onTap: () {
-          final db = database ?? AppDatabase();
-          final loanDao = LoanDao(db);
-          _open(
-            context,
-            DashboardScreen(loanDao: loanDao, shopId: shopId),
-          );
-        },
-      ),
-      if (currentUser.hasPermission(AppPermission.viewOverdueLoans))
-        _SettingOption(
-          icon: Icons.warning_amber_outlined,
-          title: 'Overdue Loans',
-          subtitle: 'Review delinquent accounts',
-          onTap: () => _open(
-            context,
-            OverdueScreen(shopId: shopId, currentUser: currentUser),
-          ),
-        ),
+
       _SettingOption(
         icon: Icons.info_outline,
         title: 'About',
@@ -84,6 +64,14 @@ class SettingsScreen extends StatelessWidget {
           applicationVersion: '1.0.0',
         ),
       ),
+      if (onLogout != null)
+        _SettingOption(
+          icon: Icons.logout,
+          title: 'Logout',
+          subtitle: 'Sign out of this shop account',
+          isDestructive: true,
+          onTap: () => _confirmLogout(context),
+        ),
     ];
 
     return Scaffold(
@@ -99,34 +87,96 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: options.length,
-separatorBuilder: (_, _) => const SizedBox(height: 8),
-        itemBuilder: (context, index) {
-          final option = options[index];
-          return Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ValueListenableBuilder<ThemeMode>(
+                valueListenable: appThemeMode,
+                builder: (context, mode, _) {
+                  return SwitchListTile(
+                    title: const Text('Dark mode'),
+                    subtitle: const Text('Toggle dark theme'),
+                    value: mode == ThemeMode.dark,
+                    onChanged: (value) {
+                      appThemeMode.value = value
+                          ? ThemeMode.dark
+                          : ThemeMode.light;
+                    },
+                  );
+                },
+              ),
             ),
-            child: ListTile(
-              leading: Icon(option.icon),
-              title: Text(option.title),
-              subtitle: Text(option.subtitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: option.onTap,
+          ),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: options.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final option = options[index];
+                return Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ListTile(
+                    leading: Icon(
+                      option.icon,
+                      color: option.isDestructive
+                          ? Theme.of(context).colorScheme.error
+                          : null,
+                    ),
+                    title: Text(option.title),
+                    subtitle: Text(option.subtitle),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: option.onTap,
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 
   void _open(BuildContext context, Widget screen) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => screen),
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
     );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // Leave settings before the session is cleared so the login screen is
+    // not covered by this route.
+    Navigator.of(context).pop();
+    onLogout?.call();
   }
 }
 
@@ -136,10 +186,13 @@ class _SettingOption {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.isDestructive = false,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final bool isDestructive;
 }
+

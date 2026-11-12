@@ -60,3 +60,4 @@ class NullableMoneyConverter extends NullAwareTypeConverter<Money, int> {
     return value.minorUnits;
   }
 }
+

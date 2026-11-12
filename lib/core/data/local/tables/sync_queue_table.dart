@@ -25,13 +25,13 @@ class SyncQueue extends Table {
   /// Client-generated UUIDv4 idempotency key to prevent duplicate processing.
   TextColumn get idempotencyKey => text()();
 
-  /// Logical type of the entity being synchronized (e.g. 'loan', 'payment', 'customer').
+  /// Logical type of the entity being synchronized (e.g. 'credit', 'payment', 'customer').
   TextColumn get entityType => text().withLength(min: 1, max: 100)();
 
   /// Canonical UUIDv4 identifier of the target domain entity.
   TextColumn get entityId => text()();
 
-  /// Verb / operation type (e.g. 'create_loan', 'disburse_loan', 'record_payment').
+  /// Verb / operation type (e.g. 'create_credit', 'disburse_credit', 'record_payment').
   TextColumn get actionType => text().withLength(min: 1, max: 100)();
 
   /// Serialized JSON payload containing the operational mutation parameters.
@@ -71,3 +71,4 @@ class SyncQueue extends Table {
     'CHECK (retry_count >= 0)',
   ];
 }
+

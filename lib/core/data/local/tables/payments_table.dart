@@ -1,13 +1,13 @@
 import 'package:drift/drift.dart';
 
 import 'app_users_table.dart';
-import 'loans_table.dart';
+import 'credits_table.dart';
 import 'shops_table.dart';
 
 /// Local SQLite schema for payment receipts (Story 5-1, PRD FR-21).
 ///
 /// Stores immutable payment transaction records scoped to a shop tenant,
-/// linked to a disbursed loan agreement. Each row is a receipt snapshot
+/// linked to a disbursed credit agreement. Each row is a receipt snapshot
 /// capturing branding and transaction details at the moment of payment
 /// confirmation (PRD FR-24).
 ///
@@ -15,7 +15,7 @@ import 'shops_table.dart';
 /// AD-2 (integer minor units).
 @DataClassName('PaymentEntry')
 @TableIndex(name: 'idx_payments_shop_id', columns: {#shopId})
-@TableIndex(name: 'idx_payments_shop_loan', columns: {#shopId, #loanId})
+@TableIndex(name: 'idx_payments_shop_credit', columns: {#shopId, #creditId})
 @TableIndex(name: 'idx_payments_receipt_number', columns: {#shopId, #receiptNumber})
 class Payments extends Table {
   /// Canonical UUIDv4 primary key.
@@ -25,9 +25,9 @@ class Payments extends Table {
   TextColumn get shopId =>
       text().references(Shops, #id, onDelete: KeyAction.restrict)();
 
-  /// Associated loan agreement (immutable foreign key boundary).
-  TextColumn get loanId =>
-      text().references(Loans, #id, onDelete: KeyAction.restrict)();
+  /// Associated credit agreement (immutable foreign key boundary).
+  TextColumn get creditId =>
+      text().references(Credits, #id, onDelete: KeyAction.restrict)();
 
   /// Unique human-readable receipt number (e.g. `RCP-<shop>-<YYYYMMDD>-<short>`).
   TextColumn get receiptNumber => text().withLength(min: 1, max: 100)();
@@ -96,3 +96,4 @@ class Payments extends Table {
     'CHECK (post_balance_cents <= pre_balance_cents)',
   ];
 }
+

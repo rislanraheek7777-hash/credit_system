@@ -60,3 +60,4 @@ String _normalizePhoneDigits(String raw) {
   }
   return trimmed.replaceAll(RegExp(r'[^\d]'), '');
 }
+

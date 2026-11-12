@@ -6,10 +6,10 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
-import 'package:credit_system/features/customers/domain/models/loan_term.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
+import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
-import 'package:credit_system/features/customers/presentation/loan_disbursement_screen.dart';
+import 'package:credit_system/features/customers/presentation/credit_disbursement_screen.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -92,14 +92,14 @@ void main() {
     await db.close();
   });
 
-  Future<void> seedLoan({
-    required String loanId,
+  Future<void> seedCredit({
+    required String creditId,
     required String workflowStatus,
     required DateTime dueDate,
   }) async {
     final now = DateTime.now().toUtc();
-    await db.into(db.loans).insert(LoansCompanion.insert(
-      id: loanId,
+    await db.into(db.credits).insert(CreditsCompanion.insert(
+      id: creditId,
       shopId: shopId,
       customerId: customerId,
       principalCents: 500000,
@@ -117,7 +117,7 @@ void main() {
     ));
   }
 
-  Future<void> pumpScreen(WidgetTester tester, String loanId) async {
+  Future<void> pumpScreen(WidgetTester tester, String creditId) async {
     tester.view.physicalSize = const Size(1200, 2000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -126,10 +126,10 @@ void main() {
     });
 
     await tester.pumpWidget(MaterialApp(
-      home: LoanDisbursementScreen(
-        key: ValueKey(loanId),
+      home: CreditDisbursementScreen(
+        key: ValueKey(creditId),
         shopId: shopId,
-        loanId: loanId,
+        creditId: creditId,
         currentUser: manager(),
         database: db,
       ),
@@ -150,13 +150,13 @@ void main() {
   testWidgets(
       'the official due date of a disbursed agreement is rendered as the '
       'shop-local calendar date', (tester) async {
-    await seedLoan(
-      loanId: 'loan-official',
+    await seedCredit(
+      creditId: 'credit-official',
       workflowStatus: 'disbursed',
       dueDate: officialDueDateInstant(),
     );
 
-    await pumpScreen(tester, 'loan-official');
+    await pumpScreen(tester, 'credit-official');
 
     final displayed = tester
         .widget<Text>(find.byKey(const Key('disbursement_due_date_display')))
@@ -180,13 +180,13 @@ void main() {
   testWidgets(
       'the preliminary due date of a pending agreement is rendered as the '
       'shop-local calendar date', (tester) async {
-    await seedLoan(
-      loanId: 'loan-pending',
+    await seedCredit(
+      creditId: 'credit-pending',
       workflowStatus: 'pending_disbursement',
       dueDate: officialDueDateInstant(),
     );
 
-    await pumpScreen(tester, 'loan-pending');
+    await pumpScreen(tester, 'credit-pending');
 
     final displayed = tester
         .widget<Text>(find.byKey(const Key('disbursement_due_date_display')))
@@ -200,13 +200,13 @@ void main() {
   testWidgets(
       'the success banner renders the official due date as the shop-local '
       'calendar date', (tester) async {
-    await seedLoan(
-      loanId: 'loan-banner',
+    await seedCredit(
+      creditId: 'credit-banner',
       workflowStatus: 'pending_disbursement',
       dueDate: officialDueDateInstant(),
     );
 
-    await pumpScreen(tester, 'loan-banner');
+    await pumpScreen(tester, 'credit-banner');
 
     await tester.tap(find.byKey(const Key('confirm_disbursement_button')));
     for (var i = 0; i < 100; i++) {
@@ -225,8 +225,8 @@ void main() {
 
     // The banner must show the same calendar date as the due-date row, and
     // that date must be the shop-local one.
-    final persisted = await (db.select(db.loans)
-          ..where((l) => l.id.equals('loan-banner')))
+    final persisted = await (db.select(db.credits)
+          ..where((l) => l.id.equals('credit-banner')))
         .getSingle();
     final expected = zone.localDateOf(persisted.dueDate).isoDate;
 
@@ -242,8 +242,8 @@ void main() {
   testWidgets(
       'the customer profile screen renders the due date as the shop-local '
       'calendar date', (tester) async {
-    await seedLoan(
-      loanId: 'loan-profile',
+    await seedCredit(
+      creditId: 'credit-profile',
       workflowStatus: 'pending_disbursement',
       dueDate: officialDueDateInstant(),
     );
@@ -281,13 +281,13 @@ void main() {
       updatedAt: DateTime.now().toUtc(),
     ));
 
-    await seedLoan(
-      loanId: 'loan-new-york',
+    await seedCredit(
+      creditId: 'credit-new-york',
       workflowStatus: 'pending_disbursement',
       dueDate: DateTime.utc(2026, 11, 14, 2),
     );
 
-    await pumpScreen(tester, 'loan-new-york');
+    await pumpScreen(tester, 'credit-new-york');
 
     final displayed = tester
         .widget<Text>(find.byKey(const Key('disbursement_due_date_display')))
@@ -303,7 +303,7 @@ void main() {
   testWidgets(
       'the calculated, the persisted and the rendered official due date agree',
       (tester) async {
-    // A pledged collateral item is required to originate an agreement.
+    // An item receipt is attached to exercise the item-binding path.
     await CollateralDao(db).createCollateralItem(CollateralItem(
       id: 'coll-chain-1',
       shopId: shopId,
@@ -316,8 +316,8 @@ void main() {
       estimatedValueCents: 1500000,
     ));
 
-    final loanDao = LoanDao(db);
-    final created = await loanDao.createLoanAgreement(
+    final creditDao = CreditDao(db);
+    final created = await creditDao.createCreditAgreement(
       actor: manager(),
       idempotencyKey: 'chain-origin',
       customerId: customerId,
@@ -329,10 +329,10 @@ void main() {
     );
 
     // A 30-day preset disbursed on 2026-10-15 must produce 2026-11-14.
-    final disbursed = await loanDao.confirmLoanDisbursement(
+    final disbursed = await creditDao.confirmCreditDisbursement(
       actor: manager(),
       idempotencyKey: 'chain-disbursement',
-      loanId: created.id,
+      creditId: created.id,
       disbursedAt: DateTime.utc(2026, 10, 15, 6),
     );
 
@@ -341,7 +341,7 @@ void main() {
     expect(calculated, equals('2026-11-14'));
 
     // 2. The persisted value.
-    final persisted = await (db.select(db.loans)
+    final persisted = await (db.select(db.credits)
           ..where((l) => l.id.equals(created.id)))
         .getSingle();
     expect(zone.localDateOf(persisted.dueDate).isoDate, equals('2026-11-14'));
@@ -413,8 +413,8 @@ void main() {
       estimatedValueCents: 1500000,
     ));
 
-    final loanDao = LoanDao(first);
-    final created = await loanDao.createLoanAgreement(
+    final creditDao = CreditDao(first);
+    final created = await creditDao.createCreditAgreement(
       actor: manager(),
       idempotencyKey: 'reopen-origin',
       customerId: customerId,
@@ -424,10 +424,10 @@ void main() {
       collateralItemIds: const ['coll-reopen-1'],
       termPresetDays: 30,
     );
-    await loanDao.confirmLoanDisbursement(
+    await creditDao.confirmCreditDisbursement(
       actor: manager(),
       idempotencyKey: 'reopen-disbursement',
-      loanId: created.id,
+      creditId: created.id,
       disbursedAt: DateTime.utc(2026, 10, 15, 6),
     );
 
@@ -442,7 +442,7 @@ void main() {
 
     // The reloaded agreement still carries the agreed calendar date ...
     final reloaded =
-        await LoanDao(reopened).getLoanById(shopId, created.id);
+        await CreditDao(reopened).getCreditById(shopId, created.id);
     expect(reloaded, isNotNull);
     expect(
       reloaded!.dueDateAsCalendarDate(ShopTimeZone.defaultTimeZone()),
@@ -451,10 +451,10 @@ void main() {
 
     // ... and the reopened database renders that same date.
     await tester.pumpWidget(MaterialApp(
-      home: LoanDisbursementScreen(
+      home: CreditDisbursementScreen(
         key: ValueKey(created.id),
         shopId: shopId,
-        loanId: created.id,
+        creditId: created.id,
         currentUser: manager(),
         database: reopened,
       ),
@@ -476,6 +476,7 @@ void main() {
     expect(displayed, contains(officialDueDateLabel));
   });
 }
+
 
 
 

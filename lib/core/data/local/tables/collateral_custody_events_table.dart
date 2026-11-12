@@ -116,3 +116,4 @@ class CollateralDiscrepancies extends Table {
     "CHECK (status IN ('pending', 'resolved'))",
   ];
 }
+

@@ -108,7 +108,7 @@ void main() {
 
       // Cashier is default - should have 6 permissions checked
       expect(find.text('registerCustomers'), findsOneWidget);
-      expect(find.text('createLoans'), findsOneWidget);
+      expect(find.text('createCredits'), findsOneWidget);
       expect(find.text('recordPayments'), findsOneWidget);
       // Cashier should NOT have approveCorrections
     });
@@ -135,7 +135,7 @@ void main() {
 
       // Manager should have manager permissions
       expect(find.text('viewSensitiveCustomerData'), findsOneWidget);
-      expect(find.text('confirmLoanDisbursement'), findsOneWidget);
+      expect(find.text('confirmCreditDisbursement'), findsOneWidget);
     });
 
     testWidgets('edits existing staff - form loads with existing data', (
@@ -166,3 +166,4 @@ void main() {
     });
   });
 }
+

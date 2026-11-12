@@ -3,9 +3,9 @@
 **Epic:** Epic 3 — Multi-Item Collateral Intake, Appraisal & Custody Tracking  
 **Story ID:** 3-1  
 **Status:** Implementation in progress (local-first, Drift/SQLite only)  
-**Dependencies:** Story 1.2 (Dual-Tier Relational Database Foundations), Story 2.1 (Customer Profile Schema & Persistence), Story 2.5 (Loans table exists)  
+**Dependencies:** Story 1.2 (Dual-Tier Relational Database Foundations), Story 2.1 (Customer Profile Schema & Persistence), Story 2.5 (Credits table exists)  
 **Backlog:** Story 3.2 (Collateral Photo Capture & Exception Workflow) — pending for camera/photo integration  
-**Backlog:** Epic 4 (Zero-Interest Loan Origination) — pending for loan-collateral binding enforcement
+**Backlog:** Epic 4 (Zero-Interest Credit Origination) — pending for credit-collateral binding enforcement
 
 ---
 
@@ -18,7 +18,7 @@
 - A canonical UUIDv4 primary key
 - Shop tenant boundary (`shop_id`) for multi-tenant isolation
 - Customer reference (`customer_id`) linking to an existing customer profile
-- Optional loan reference (`loan_id`) linking to an existing loan (nullable until Epic 4 enforces binding)
+- Optional credit reference (`credit_id`) linking to an existing credit (nullable until Epic 4 enforces binding)
 - Item reference ID unique within the shop
 - Category (gold, electronics, valuables) with CHECK constraint
 - Description and condition grade
@@ -61,8 +61,8 @@
 **When** the application is upgraded  
 **Then** schema version advances to 9
 **And** the `collateral_items` table is created with all columns, indexes, and CHECK constraints
-**And** all existing data (shops, customers, loans, etc.) is preserved without loss
-**And** foreign key constraints reference existing `shops`, `customers`, and `loans` tables
+**And** all existing data (shops, customers, credits, etc.) is preserved without loss
+**And** foreign key constraints reference existing `shops`, `customers`, and `credits` tables
 
 ---
 
@@ -84,7 +84,7 @@
 ### Local-First Scope
 - All collateral data persists in local Drift SQLite (`CollateralItems` table, schema v9)
 - No PostgreSQL dependency for Story 3.1 UI or tests
-- Loan reference (`loan_id`) is nullable — Epic 4 will enforce loan-collateral binding when loans are activated
+- Credit reference (`credit_id`) is nullable — Epic 4 will enforce credit-collateral binding when credits are activated
 - Customer reference (`customer_id`) is required — collateral must belong to an existing customer
 
 ### Weight Storage
@@ -101,7 +101,7 @@
 ### Foreign Key Relationships
 - `shop_id` → `shops.id` (KeyAction.restrict on delete)
 - `customer_id` → `customers.id` (KeyAction.restrict on delete)
-- `loan_id` → `loans.id` (KeyAction.restrict on delete, nullable)
+- `credit_id` → `credits.id` (KeyAction.restrict on delete, nullable)
 - All queries are strictly scoped to `shopId` for tenant isolation
 
 ### Photo Integration
@@ -114,7 +114,7 @@
 ## Testing Guidance
 
 - Unit tests for `CollateralItem` domain model: validation, weight precision, category/custody enums, state transitions
-- Unit tests for `CollateralDao`: CRUD operations, customer/shop scoping, loan relationships, invalid references
+- Unit tests for `CollateralDao`: CRUD operations, customer/shop scoping, credit relationships, invalid references
 - Migration tests: v8→v9 preserves existing data, creates collateral table with indexes
 - Widget tests for `CollateralRegistrationScreen`: form validation, multi-item entry, category selection
 - No PostgreSQL integration tests (deferred per offline-first rules)
@@ -129,3 +129,4 @@
 - **AD-3:** Finite State Machines
 - **AD-4:** Clean Architecture Layering
 - **AD-5:** Image Storage Pipeline
+

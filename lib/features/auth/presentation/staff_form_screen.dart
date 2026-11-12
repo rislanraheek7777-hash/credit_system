@@ -80,7 +80,6 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
 
   @override
   void dispose() {
-    _db.close();
     _fullNameController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
@@ -241,16 +240,16 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
         return 'Search and view customer contact details';
       case AppPermission.viewSensitiveCustomerData:
         return 'View unmasked sensitive identity data';
-      case AppPermission.createLoans:
-        return 'Create new loan agreements';
-      case AppPermission.confirmLoanDisbursement:
+      case AppPermission.createCredits:
+        return 'Create new credit agreements';
+      case AppPermission.confirmCreditDisbursement:
         return 'Confirm physical cash disbursement';
       case AppPermission.recordPayments:
-        return 'Record payments against loans';
+        return 'Record payments against credits';
       case AppPermission.viewAndReprintReceipts:
         return 'View payment histories and reprint receipts';
-      case AppPermission.viewOverdueLoans:
-        return 'View overdue loan queues';
+      case AppPermission.viewOverdueCredits:
+        return 'View overdue credit queues';
       case AppPermission.recordCustomerNotes:
         return 'Record customer interaction notes';
       case AppPermission.requestCorrections:
@@ -467,3 +466,4 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
       );
   }
 }
+

@@ -31,7 +31,7 @@ context:
 - Never use Dart `double` for monetary representation, calculations, or schema types.
 - Never mark a sync queue transaction as cloud-confirmed without explicit server acknowledgment.
 - Never store plaintext sensitive customer PII or auth secrets in unencrypted log files or queue metadata.
-- Never implement full synchronization sync engines, auth logic, customer onboarding, or loan origination features inside Story 1.2 (these belong to Stories 1.3+, 1.8, Epic 2, and Epic 4).
+- Never implement full synchronization sync engines, auth logic, customer onboarding, or credit origination features inside Story 1.2 (these belong to Stories 1.3+, 1.8, Epic 2, and Epic 4).
 
 ## I/O & Edge-Case Matrix
 
@@ -116,3 +116,4 @@ context:
 - **Asymmetric Authority:** Drift is an edge operational store. PostgreSQL is the single source of truth.
 - **Decoupled Transactions:** A local counter action commits locally in SQLite first. A background or online sync worker synchronizes rows downstream to PostgreSQL.
 - **No Floating-Point Money:** Verified in both SQLite table definitions and PostgreSQL DDL migrations.
+

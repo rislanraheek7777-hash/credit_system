@@ -236,6 +236,14 @@ class AuthService {
       role: role,
     );
 
+    // Issue a long-lived refresh token for silent session renewal.
+    final refreshToken = _jwt.signRefreshToken(
+      userId: userId,
+      shopId: dbShopId,
+      sessionVersion: sessionVersion,
+      role: role,
+    );
+
     // Persist the JWT to secure storage for session restoration.
     await _secureStorage.write(
       key: 'jwt_token',
@@ -248,6 +256,10 @@ class AuthService {
     await _secureStorage.write(
       key: 'jwt_user_id',
       value: userId,
+    );
+    await _secureStorage.write(
+      key: 'refresh_token',
+      value: refreshToken,
     );
 
     // Persist offline session expiry (24 hours from now). Offline logins must
@@ -583,6 +595,7 @@ class AuthService {
     await _secureStorage.delete(key: 'jwt_shop_id');
     await _secureStorage.delete(key: 'jwt_user_id');
     await _secureStorage.delete(key: 'offline_session_expiry');
+    await _secureStorage.delete(key: 'refresh_token');
   }
 
   /// Revokes a staff session by deactivating the account and incrementing
@@ -649,6 +662,7 @@ class AuthService {
     await _secureStorage.delete(key: 'jwt_token');
     await _secureStorage.delete(key: 'jwt_shop_id');
     await _secureStorage.delete(key: 'jwt_user_id');
+    await _secureStorage.delete(key: 'refresh_token');
   }
 
   /// Clears all cached authentication state from secure storage.
@@ -660,6 +674,7 @@ class AuthService {
     await _secureStorage.delete(key: 'jwt_shop_id');
     await _secureStorage.delete(key: 'jwt_user_id');
     await _secureStorage.delete(key: 'offline_session_expiry');
+    await _secureStorage.delete(key: 'refresh_token');
   }
 
   /// Returns `true` if a cached JWT exists in secure storage.
@@ -672,6 +687,161 @@ class AuthService {
   Future<String?> readCachedToken() async {
     return await _secureStorage.read(key: 'jwt_token');
   }
+
+  /// Reads the cached refresh token from secure storage, or `null` if none.
+  Future<String?> readRefreshToken() async {
+    return await _secureStorage.read(key: 'refresh_token');
+  }
+
+  /// Returns `true` if a cached refresh token exists in secure storage.
+  Future<bool> hasRefreshToken() async {
+    final token = await _secureStorage.read(key: 'refresh_token');
+    return token != null && token.isNotEmpty;
+  }
+
+  /// Renews the access token using the cached refresh token.
+  ///
+  /// Validates the refresh token (signature, expiration, type), checks the
+  /// user against PostgreSQL when available (active + session version), then
+  /// issues and stores a new access token. The refresh token is rotated.
+  ///
+  /// Returns an [AuthResult] carrying the new access token on success.
+  /// Throws [SessionValidationException] if the refresh token is missing,
+  /// invalid, or revoked.
+  Future<AuthResult> refreshToken() async {
+    final refreshToken = await _secureStorage.read(key: 'refresh_token');
+    if (refreshToken == null || refreshToken.isEmpty) {
+      throw const SessionValidationException('No refresh token found');
+    }
+
+    Map<String, dynamic> claims;
+    try {
+      claims = _jwt.verifyRefreshToken(refreshToken);
+    } on JwtException {
+      await clearCachedSession();
+      throw const SessionValidationException('Invalid or expired refresh token');
+    } on FormatException {
+      await clearCachedSession();
+      throw const SessionValidationException('Invalid refresh token format');
+    }
+
+    final userId = claims['sub'] as String?;
+    final shopId = claims['shop_id'] as String?;
+    final tokenSessionVersion = claims['session_version'] as int?;
+    final role = claims['role'] as String?;
+
+    if (userId == null ||
+        userId.trim().isEmpty ||
+        shopId == null ||
+        shopId.trim().isEmpty ||
+        tokenSessionVersion == null ||
+        tokenSessionVersion < 1 ||
+        role == null ||
+        role.trim().isEmpty) {
+      await clearCachedSession();
+      throw const SessionValidationException('Invalid refresh token claims');
+    }
+
+    // Validate against PostgreSQL when available and reachable.
+    String dbUsername = userId;
+    String dbFullName = '';
+    int sessionVersion = tokenSessionVersion;
+    if (_pg != null) {
+      try {
+        final user = await _pg.transactionWithTenant(shopId, (tx) async {
+          final rows = await tx.query(
+            '''
+              SELECT id, shop_id, username, full_name, role, is_active, session_version
+              FROM app_users
+              WHERE id = @p0
+            ''',
+            [userId],
+          );
+          if (rows.isEmpty) {
+            return null;
+          }
+          return rows.first;
+        });
+
+        if (user == null) {
+          await clearCachedSession();
+          throw const SessionValidationException('User not found');
+        }
+
+        final isActive = user['is_active'] as bool;
+        if (!isActive) {
+          await clearCachedSession();
+          throw const SessionValidationException('Account is deactivated');
+        }
+
+        final dbSessionVersion = user['session_version'] as int;
+        if (tokenSessionVersion != dbSessionVersion) {
+          await clearCachedSession();
+          throw const SessionValidationException('Session revoked: please log in again');
+        }
+
+        dbUsername = user['username'] as String;
+        dbFullName = user['full_name'] as String;
+        sessionVersion = dbSessionVersion;
+      } catch (e) {
+        if (e is SessionValidationException) rethrow;
+        // Offline/unreachable PostgreSQL: fall back to claims-based refresh.
+      }
+    }
+
+    // Issue new access token.
+    final newAccessToken = _jwt.signToken(
+      userId: userId,
+      shopId: shopId,
+      sessionVersion: sessionVersion,
+      role: role,
+    );
+
+    // Rotate refresh token.
+    final newRefreshToken = _jwt.signRefreshToken(
+      userId: userId,
+      shopId: shopId,
+      sessionVersion: sessionVersion,
+      role: role,
+    );
+
+    await _secureStorage.write(key: 'jwt_token', value: newAccessToken);
+    await _secureStorage.write(key: 'jwt_shop_id', value: shopId);
+    await _secureStorage.write(key: 'jwt_user_id', value: userId);
+    await _secureStorage.write(key: 'refresh_token', value: newRefreshToken);
+
+    return AuthResult(
+      token: newAccessToken,
+      userId: userId,
+      shopId: shopId,
+      username: dbUsername,
+      fullName: dbFullName,
+      role: role,
+      sessionVersion: sessionVersion,
+      isOfflineOnly: false,
+    );
+  }
+
+  /// Alias for [refreshToken].
+  Future<AuthResult> refreshSession() => refreshToken();
+
+  /// Alias for [refreshToken].
+  Future<AuthResult> refreshAccessToken() => refreshToken();
+
+  /// Alias for [refreshToken].
+  Future<AuthResult> refreshAuthToken() => refreshToken();
+
+  /// Alias for [refreshToken].
+  Future<AuthResult> renewToken() => refreshToken();
+
+  /// Alias for [refreshToken].
+  Future<AuthResult> renewSession() => refreshToken();
+
+  /// Alias for [refreshToken].
+  Future<AuthResult> refresh() => refreshToken();
+
+  /// Signs out the current user, clearing all cached authentication state.
+  Future<void> signOut() => logout();
 
   /// Verifies a JWT signature and claims locally without server contact.
   ///
@@ -694,3 +864,4 @@ class AuthService {
     }
   }
 }
+

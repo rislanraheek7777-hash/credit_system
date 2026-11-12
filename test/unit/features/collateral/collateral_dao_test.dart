@@ -9,7 +9,7 @@ import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart'
 import 'package:credit_system/features/collateral/data/daos/collateral_discrepancy_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_custody_event.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 
 void main() {
   late AppDatabase db;
@@ -19,7 +19,7 @@ void main() {
 
   const shopId = 'shop-uuid-collateral';
   const customerId = 1;
-  const loanId = 'loan-uuid-collateral';
+  const creditId = 'credit-uuid-collateral';
 
   setUp(() async {
     final inMemoryExecutor = AppDatabaseConnection.openInMemoryConnection();
@@ -28,7 +28,7 @@ void main() {
     discrepancyDao = CollateralDiscrepancyDao(db);
 
     final now = DateTime.now().toUtc();
-    // Seed shop, customer, and loan for FK constraints
+    // Seed shop, customer, and credit for FK constraints
     await db.into(db.shops).insert(
       ShopEntry(
         id: shopId,
@@ -51,15 +51,15 @@ void main() {
         updatedAt: now,
       ),
     );
-    await db.into(db.loans).insert(
-      LoanEntry(
-        id: loanId,
+    await db.into(db.credits).insert(
+      CreditEntry(
+        id: creditId,
         shopId: shopId,
         customerId: customerId,
         principalCents: 100000,
         balanceCents: 100000,
         status: 'active',
-        workflowStatus: LoanWorkflowStatus.pendingDisbursement.value,
+        workflowStatus: CreditWorkflowStatus.pendingDisbursement.value,
         dueDate: now.add(const Duration(days: 30)),
         createdAt: now,
         correctionPending: false,
@@ -113,7 +113,7 @@ void main() {
         id: 'coll-dao-001',
         shopId: shopId,
         customerId: customerId,
-        loanId: loanId,
+        creditId: creditId,
         itemReferenceId: 'COLL-DAO-001',
         category: CollateralItemCategory.gold,
         description: '22K gold necklace with pendant',
@@ -133,7 +133,7 @@ void main() {
       expect(inDb!.id, equals('coll-dao-001'));
       expect(inDb.shopId, equals(shopId));
       expect(inDb.customerId, equals(customerId));
-      expect(inDb.loanId, equals(loanId));
+      expect(inDb.creditId, equals(creditId));
       expect(inDb.itemReferenceId, equals('COLL-DAO-001'));
       expect(inDb.category, equals(CollateralItemCategory.gold));
       expect(inDb.description, equals('22K gold necklace with pendant'));
@@ -146,12 +146,12 @@ void main() {
       expect(inDb.custodyStatus, equals(CollateralCustodyStatus.inCustody));
     });
 
-    test('createCollateralItem without loanId stores nullable loan reference', () async {
+    test('createCollateralItem without creditId stores nullable credit reference', () async {
       final item = CollateralItem(
         id: 'coll-dao-002',
         shopId: shopId,
         customerId: customerId,
-        loanId: null,
+        creditId: null,
         itemReferenceId: 'COLL-DAO-002',
         category: CollateralItemCategory.electronics,
         description: 'Samsung Galaxy S21',
@@ -164,7 +164,7 @@ void main() {
 
       final inDb = await collateralDao.getCollateralItemById(shopId, item.id);
       expect(inDb, isNotNull);
-      expect(inDb!.loanId, isNull);
+      expect(inDb!.creditId, isNull);
     });
 
     test('getCollateralItemByReference finds item by reference ID', () async {
@@ -320,15 +320,15 @@ void main() {
       expect(returned.first.itemReferenceId, equals('COLL-DAO-009'));
     });
 
-    test('getCollateralItemsByLoanId returns items bound to a loan', () async {
+    test('getCollateralItemsByCreditId returns items bound to a credit', () async {
       await collateralDao.createCollateralItem(CollateralItem(
         id: 'coll-dao-010',
         shopId: shopId,
         customerId: customerId,
-        loanId: loanId,
+        creditId: creditId,
         itemReferenceId: 'COLL-DAO-010',
         category: CollateralItemCategory.gold,
-        description: 'Loan collateral',
+        description: 'Credit collateral',
         conditionGrade: 'Good',
         weightMilligrams: 1000,
         estimatedValueCents: 100000,
@@ -337,7 +337,7 @@ void main() {
         id: 'coll-dao-011',
         shopId: shopId,
         customerId: customerId,
-        loanId: null,
+        creditId: null,
         itemReferenceId: 'COLL-DAO-011',
         category: CollateralItemCategory.electronics,
         description: 'Unbound item',
@@ -346,9 +346,9 @@ void main() {
         estimatedValueCents: 100000,
       ));
 
-      final loanItems = await collateralDao.getCollateralItemsByLoanId(shopId, loanId);
-      expect(loanItems.length, equals(1));
-      expect(loanItems.first.itemReferenceId, equals('COLL-DAO-010'));
+      final creditItems = await collateralDao.getCollateralItemsByCreditId(shopId, creditId);
+      expect(creditItems.length, equals(1));
+      expect(creditItems.first.itemReferenceId, equals('COLL-DAO-010'));
 
       final unbound = await collateralDao.getUnboundCollateralItems(shopId);
       expect(unbound.length, equals(1));
@@ -427,7 +427,7 @@ void main() {
         () => collateralDao.transitionCustody(
           shopId, item.id, CollateralCustodyStatus.returned,
           actor: cashier,
-          requiredPermission: AppPermission.createLoans),
+          requiredPermission: AppPermission.createCredits),
         throwsA(isA<CollateralCustodyTransitionException>()),
       );
       final inDb = await collateralDao.getCollateralItemById(shopId, item.id);
@@ -454,7 +454,7 @@ void main() {
       await collateralDao.transitionCustody(
         shopId, item.id, CollateralCustodyStatus.exceptionHeld,
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       final inDb = await collateralDao.getCollateralItemById(shopId, item.id);
       expect(inDb!.custodyStatus, equals(CollateralCustodyStatus.exceptionHeld));
@@ -479,7 +479,7 @@ void main() {
         () => collateralDao.transitionCustody(
           shopId, item.id, CollateralCustodyStatus.inCustody,
           actor: cashier,
-          requiredPermission: AppPermission.createLoans),
+          requiredPermission: AppPermission.createCredits),
         throwsA(isA<CollateralCustodyTransitionException>()),
       );
     });
@@ -489,22 +489,22 @@ void main() {
         () => collateralDao.transitionCustody(
           shopId, 'coll-dao-nonexistent', CollateralCustodyStatus.returned,
           actor: cashier,
-          requiredPermission: AppPermission.createLoans),
+          requiredPermission: AppPermission.createCredits),
         throwsA(isA<StateError>()),
       );
     });
 
-    test('associateWithLoan binds item to a loan', () async {
-      const unboundLoanId = 'loan-uuid-unbound';
-      await db.into(db.loans).insert(
-        LoanEntry(
-          id: unboundLoanId,
+    test('associateWithCredit binds item to a credit', () async {
+      const unboundCreditId = 'credit-uuid-unbound';
+      await db.into(db.credits).insert(
+        CreditEntry(
+          id: unboundCreditId,
           shopId: shopId,
           customerId: customerId,
           principalCents: 50000,
           balanceCents: 50000,
           status: 'active',
-          workflowStatus: LoanWorkflowStatus.pendingDisbursement.value,
+          workflowStatus: CreditWorkflowStatus.pendingDisbursement.value,
           dueDate: DateTime.now().toUtc().add(const Duration(days: 60)),
           createdAt: DateTime.now().toUtc(),
           correctionPending: false,
@@ -515,7 +515,7 @@ void main() {
         id: 'coll-dao-016',
         shopId: shopId,
         customerId: customerId,
-        loanId: null,
+        creditId: null,
         itemReferenceId: 'COLL-DAO-016',
         category: CollateralItemCategory.gold,
         description: 'Unbound item',
@@ -525,10 +525,10 @@ void main() {
       );
       await collateralDao.createCollateralItem(item);
 
-      await collateralDao.associateWithLoan(shopId, item.id, unboundLoanId);
+      await collateralDao.associateWithCredit(shopId, item.id, unboundCreditId);
 
       final inDb = await collateralDao.getCollateralItemById(shopId, item.id);
-      expect(inDb!.loanId, equals(unboundLoanId));
+      expect(inDb!.creditId, equals(unboundCreditId));
     });
 
     test('insert with invalid customer FK throws', () async {
@@ -550,12 +550,12 @@ void main() {
       );
     });
 
-    test('insert with invalid loan FK throws', () async {
+    test('insert with invalid credit FK throws', () async {
       final item = CollateralItem(
         id: 'coll-dao-018',
         shopId: shopId,
         customerId: customerId,
-        loanId: 'nonexistent-loan',
+        creditId: 'nonexistent-credit',
         itemReferenceId: 'COLL-DAO-018',
         category: CollateralItemCategory.gold,
         description: 'Test',
@@ -583,7 +583,7 @@ void main() {
       collateralDao = CollateralDao(db);
       discrepancyDao = CollateralDiscrepancyDao(db);
       final now = DateTime.now().toUtc();
-      // Seed shop, customer, and loan for FK constraints
+      // Seed shop, customer, and credit for FK constraints
       await db.into(db.shops).insert(
         ShopEntry(
           id: shopId,
@@ -606,15 +606,15 @@ void main() {
           updatedAt: now,
         ),
       );
-      await db.into(db.loans).insert(
-        LoanEntry(
-          id: loanId,
+      await db.into(db.credits).insert(
+        CreditEntry(
+          id: creditId,
           shopId: shopId,
           customerId: customerId,
           principalCents: 100000,
           balanceCents: 100000,
           status: 'active',
-          workflowStatus: LoanWorkflowStatus.pendingDisbursement.value,
+          workflowStatus: CreditWorkflowStatus.pendingDisbursement.value,
           dueDate: now.add(const Duration(days: 30)),
           createdAt: now,
           correctionPending: false,
@@ -665,13 +665,13 @@ void main() {
     Future<CollateralItem> createItemInCustody({
       String itemId = 'coll-s34-001',
       String itemReferenceId = 'COLL-S34-001',
-      String? loanId,
+      String? creditId,
     }) async {
       final item = CollateralItem(
         id: itemId,
         shopId: shopId,
         customerId: customerId,
-        loanId: loanId,
+        creditId: creditId,
         itemReferenceId: itemReferenceId,
         category: CollateralItemCategory.gold,
         description: '22K gold necklace',
@@ -684,14 +684,14 @@ void main() {
     }
 
     test('transitionCustody completes the full handover flow and records custody events', () async {
-      final item = await createItemInCustody(loanId: loanId);
+      final item = await createItemInCustody(creditId: creditId);
 
       await collateralDao.transitionCustody(
         shopId, item.id, CollateralCustodyStatus.handoverRequested,
         reportedByUserId: cashier.id,
-        reason: 'Customer settled the loan, collecting item',
+        reason: 'Customer settled the credit, collecting item',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       expect(
         (await collateralDao.getCollateralItemById(shopId, item.id))!.custodyStatus,
@@ -703,7 +703,7 @@ void main() {
         reportedByUserId: cashier.id,
         reason: 'Physical handover reported at counter',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       expect(
         (await collateralDao.getCollateralItemById(shopId, item.id))!.custodyStatus,
@@ -743,14 +743,14 @@ void main() {
         reportedByUserId: cashier.id,
         reason: 'request',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, item.id, CollateralCustodyStatus.handoverReported,
         reportedByUserId: cashier.id,
         reason: 'reported',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, item.id, CollateralCustodyStatus.returned,
@@ -781,14 +781,14 @@ void main() {
         reportedByUserId: cashier.id,
         reason: 'request',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, item.id, CollateralCustodyStatus.handoverReported,
         reportedByUserId: cashier.id,
         reason: 'reported',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
 
       // Cashier lacks confirmCollateralReturn: must be rejected even though
@@ -807,12 +807,12 @@ void main() {
       expect(inDb!.custodyStatus, equals(CollateralCustodyStatus.handoverReported));
     });
 
-    test('per-item independence: transitioning one item does not affect sibling items on the same loan', () async {
+    test('per-item independence: transitioning one item does not affect sibling items on the same credit', () async {
       final itemA = await createItemInCustody(
-        itemId: 'coll-s34-a', itemReferenceId: 'COLL-S34-A', loanId: loanId,
+        itemId: 'coll-s34-a', itemReferenceId: 'COLL-S34-A', creditId: creditId,
       );
       final itemB = await createItemInCustody(
-        itemId: 'coll-s34-b', itemReferenceId: 'COLL-S34-B', loanId: loanId,
+        itemId: 'coll-s34-b', itemReferenceId: 'COLL-S34-B', creditId: creditId,
       );
 
       await collateralDao.transitionCustody(
@@ -820,14 +820,14 @@ void main() {
         reportedByUserId: cashier.id,
         reason: 'item A return requested',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, itemA.id, CollateralCustodyStatus.handoverReported,
         reportedByUserId: cashier.id,
         reason: 'item A handover reported',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
 
       expect(
@@ -846,14 +846,14 @@ void main() {
         reportedByUserId: owner.id,
         reason: 'item B requested',
         actor: owner,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, itemB.id, CollateralCustodyStatus.handoverReported,
         reportedByUserId: owner.id,
         reason: 'item B reported',
         actor: owner,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, itemB.id, CollateralCustodyStatus.returned,
@@ -879,14 +879,14 @@ void main() {
         reportedByUserId: cashier.id,
         reason: 'request',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, item.id, CollateralCustodyStatus.handoverReported,
         reportedByUserId: cashier.id,
         reason: 'reported',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, item.id, CollateralCustodyStatus.returned,
@@ -903,7 +903,7 @@ void main() {
           reportedByUserId: cashier.id,
           reason: 'double return',
           actor: cashier,
-          requiredPermission: AppPermission.createLoans,
+          requiredPermission: AppPermission.createCredits,
         ),
         throwsA(isA<CollateralCustodyTransitionException>()),
       );
@@ -916,7 +916,7 @@ void main() {
         shopId, item.id, cashier.id,
         'System shows in custody but staff report item already handed over',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
 
       final inDb = await collateralDao.getCollateralItemById(shopId, item.id);
@@ -946,7 +946,7 @@ void main() {
         shopId, item.id, cashier.id,
         'Item reported damaged on return',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       final pending = (await collateralDao.getDiscrepanciesByCollateralItemId(
         shopId, item.id,
@@ -977,7 +977,7 @@ void main() {
         shopId, item.id, cashier.id,
         'discrepancy reason',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       final pending = (await collateralDao.getDiscrepanciesByCollateralItemId(
         shopId, item.id,
@@ -1015,21 +1015,21 @@ void main() {
         reportedByUserId: cashier.id,
         reason: 'q',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, itemB.id, CollateralCustodyStatus.handoverRequested,
         reportedByUserId: cashier.id,
         reason: 'r requested',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       await collateralDao.transitionCustody(
         shopId, itemB.id, CollateralCustodyStatus.handoverReported,
         reportedByUserId: cashier.id,
         reason: 'r reported',
         actor: cashier,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
 
       final pending = await collateralDao.getPendingCustodyTransitions(shopId);
@@ -1150,14 +1150,14 @@ void main() {
           reportedByUserId: cashier.id,
           reason: 'request',
           actor: cashier,
-          requiredPermission: AppPermission.createLoans,
+          requiredPermission: AppPermission.createCredits,
         );
         await collateralDao.transitionCustody(
           shopId, item.id, CollateralCustodyStatus.handoverReported,
           reportedByUserId: cashier.id,
           reason: 'reported',
           actor: cashier,
-          requiredPermission: AppPermission.createLoans,
+          requiredPermission: AppPermission.createCredits,
         );
         await collateralDao.transitionCustody(
           shopId, item.id, CollateralCustodyStatus.returned,
@@ -1350,3 +1350,4 @@ void main() {
     });
   });
 }
+

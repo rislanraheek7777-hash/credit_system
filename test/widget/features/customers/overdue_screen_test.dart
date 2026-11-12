@@ -49,9 +49,9 @@ void main() {
     await db.close();
   });
 
-  Future<void> seedOverdueLoan({
+  Future<void> seedOverdueCredit({
     int customerId = 1,
-    String loanId = 'loan-overdue-001',
+    String creditId = 'credit-overdue-001',
     int balanceCents = 500000,
     DateTime? dueDate,
   }) async {
@@ -70,9 +70,9 @@ void main() {
       ),
     );
 
-    await db.into(db.loans).insert(
-      LoansCompanion.insert(
-        id: loanId,
+    await db.into(db.credits).insert(
+      CreditsCompanion.insert(
+        id: creditId,
         shopId: shopId,
         customerId: customerId,
         principalCents: balanceCents,
@@ -89,7 +89,7 @@ void main() {
   }
 
   group('OverdueScreen Widget Tests (Story 6.1)', () {
-    testWidgets('shows no overdue loans when none exist', (
+    testWidgets('shows no overdue credits when none exist', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -110,17 +110,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Overdue Loans'), findsOneWidget);
-      expect(find.text('No overdue loans.'), findsOneWidget);
+      expect(find.text('Overdue Credits'), findsOneWidget);
+      expect(find.text('No overdue credits.'), findsOneWidget);
     });
 
-    testWidgets('shows overdue loan with days overdue counter', (
+    testWidgets('shows overdue credit with days overdue counter', (
       WidgetTester tester,
     ) async {
-      // Create a loan with due date in the past
+      // Create a credit with due date in the past
       final pastDueDate = DateTime.utc(2026, 9, 1);
-      await seedOverdueLoan(
-        loanId: 'loan-past-due-001',
+      await seedOverdueCredit(
+        creditId: 'credit-past-due-001',
         dueDate: pastDueDate,
       );
 
@@ -142,7 +142,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Overdue Loans'), findsOneWidget);
+      expect(find.text('Overdue Credits'), findsOneWidget);
       expect(find.text('OVERDUE'), findsOneWidget);
       expect(find.text('Status: OVERDUE'), findsOneWidget);
       expect(find.textContaining('Days Overdue:'), findsOneWidget);
@@ -175,8 +175,8 @@ void main() {
     testWidgets('Story 6.2: Shop Owner can grant due date extension', (
       WidgetTester tester,
     ) async {
-      await seedOverdueLoan(
-        loanId: 'loan-ext-001',
+      await seedOverdueCredit(
+        creditId: 'credit-ext-001',
         dueDate: DateTime.utc(2026, 9, 1),
       );
 
@@ -198,9 +198,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('extend_due_date_button_loan-ext-001')), findsOneWidget);
+      expect(find.byKey(const Key('extend_due_date_button_credit-ext-001')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('extend_due_date_button_loan-ext-001')));
+      await tester.tap(find.byKey(const Key('extend_due_date_button_credit-ext-001')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Grant Due Date Extension'), findsOneWidget);
@@ -216,16 +216,16 @@ void main() {
       await tester.tap(find.byKey(const Key('submit_extension_button')));
       await tester.pumpAndSettle();
 
-      // Loan should have reset to active and no longer appear in overdue list
-      expect(find.text('No overdue loans.'), findsOneWidget);
+      // Credit should have reset to active and no longer appear in overdue list
+      expect(find.text('No overdue credits.'), findsOneWidget);
       expect(find.textContaining('Status: ACTIVE'), findsOneWidget);
     });
 
     testWidgets('Story 6.3: Staff can log follow-up and see promised pay date banner', (
       WidgetTester tester,
     ) async {
-      await seedOverdueLoan(
-        loanId: 'loan-followup-001',
+      await seedOverdueCredit(
+        creditId: 'credit-followup-001',
         dueDate: DateTime.utc(2026, 9, 1),
       );
 
@@ -247,9 +247,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('log_follow_up_button_loan-followup-001')), findsOneWidget);
+      expect(find.byKey(const Key('log_follow_up_button_credit-followup-001')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('log_follow_up_button_loan-followup-001')));
+      await tester.tap(find.byKey(const Key('log_follow_up_button_credit-followup-001')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Log Customer Follow-Up'), findsOneWidget);
@@ -271,8 +271,8 @@ void main() {
     testWidgets('Story 6.4: Shop Owner can record structured resolution', (
       WidgetTester tester,
     ) async {
-      await seedOverdueLoan(
-        loanId: 'loan-res-001',
+      await seedOverdueCredit(
+        creditId: 'credit-res-001',
         dueDate: DateTime.utc(2026, 9, 1),
       );
 
@@ -294,9 +294,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('resolve_case_button_loan-res-001')), findsOneWidget);
+      expect(find.byKey(const Key('resolve_case_button_credit-res-001')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('resolve_case_button_loan-res-001')));
+      await tester.tap(find.byKey(const Key('resolve_case_button_credit-res-001')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Owner Case Resolution'), findsOneWidget);
@@ -317,3 +317,4 @@ void main() {
     });
   });
 }
+

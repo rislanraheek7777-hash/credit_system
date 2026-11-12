@@ -164,7 +164,7 @@ void main() {
           final owner = _makeOwner();
           final events = [
             _makeEvent(id: '1', category: 1, actionType: 'CUSTOMER_CREATED'),
-            _makeEvent(id: '2', category: 2, actionType: 'LOAN_ORIGINATED'),
+            _makeEvent(id: '2', category: 2, actionType: 'CREDIT_ORIGINATED'),
             _makeEvent(id: '5', category: 5, actionType: 'PAYMENT_RECORDED'),
           ];
           final service = AuditTrailService(localMockStore: events);
@@ -186,7 +186,7 @@ void main() {
 
           // Action types from all three records are present.
           expect(find.text('CUSTOMER_CREATED'), findsOneWidget);
-          expect(find.text('LOAN_ORIGINATED'), findsOneWidget);
+          expect(find.text('CREDIT_ORIGINATED'), findsOneWidget);
           expect(find.text('PAYMENT_RECORDED'), findsOneWidget);
 
           // Category badge text for each category.
@@ -282,10 +282,10 @@ void main() {
           await tester.tap(find.byKey(const Key('audit_category_dropdown')));
           await tester.pumpAndSettle();
 
-          // Select "2. Loan agreement origination and cancellation".
+          // Select "2. Credit agreement origination and cancellation".
           // The dropdown items include the category number followed by period + title.
           await tester.tap(
-            find.textContaining('Loan agreement origination').last,
+            find.textContaining('Credit agreement origination').last,
           );
           await tester.pumpAndSettle();
 
@@ -605,3 +605,4 @@ void main() {
     });
   });
 }
+

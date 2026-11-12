@@ -10,11 +10,8 @@ import 'package:credit_system/features/customers/domain/models/customer_masking.
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
 import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
 import 'package:credit_system/features/customers/presentation/shop_profile_screen.dart';
-import 'package:credit_system/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:credit_system/features/settings/presentation/settings_screen.dart';
 import 'package:credit_system/features/auth/presentation/staff_management_screen.dart';
-import 'package:credit_system/features/customers/presentation/overdue_screen.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
 
 /// Customer search screen implementing Story 2.5 AC-1.
 ///
@@ -26,6 +23,8 @@ class CustomerSearchScreen extends StatefulWidget {
     super.key,
     required this.shopId,
     required this.currentUser,
+    this.database,
+    this.onLogout,
   });
 
   /// The active shop tenant UUID.
@@ -33,6 +32,12 @@ class CustomerSearchScreen extends StatefulWidget {
 
   /// The authenticated actor viewing search results.
   final AppUser currentUser;
+
+  /// Optional injected [AppDatabase] for testing.
+  final AppDatabase? database;
+
+  /// Invoked when the user chooses to log out from the settings screen.
+  final VoidCallback? onLogout;
 
   @override
   State<CustomerSearchScreen> createState() => _CustomerSearchScreenState();
@@ -45,6 +50,12 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
   List<CustomerSearchResult> _results = [];
   bool _isSearching = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomers();
+  }
 
   @override
   void dispose() {
@@ -69,31 +80,69 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
     }
   }
 
-  Future<void> _performSearch(String query) async {
+  Future<void> _performSearch(String query, {bool showLoading = true}) async {
     setState(() {
-      _isSearching = true;
+      if (showLoading) _isSearching = true;
       _error = null;
     });
 
     try {
-      final db = AppDatabase();
+      final db = widget.database ?? AppDatabase();
       final customerDao = CustomerDao(db);
 
       final results = await customerDao.searchCustomers(widget.shopId, query);
-
-      await db.close();
 
       if (!mounted) return;
 
       setState(() {
         _results = results
-            .map((c) => CustomerSearchResult(
-                  id: c.id,
-                  fullName: c.fullName,
-                  nic: c.nic,
-                  phone: c.phone,
-                  photoUri: c.photoUri,
-                ))
+            .map(
+              (c) => CustomerSearchResult(
+                id: c.id,
+                fullName: c.fullName,
+                nic: c.nic,
+                phone: c.phone,
+                photoUri: c.photoUri,
+              ),
+            )
+            .toList();
+        _isSearching = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSearching = false;
+        _error = 'Search failed: $e';
+      });
+    }
+  }
+
+  Future<void> _loadCustomers({bool showLoading = true}) async {
+    final query = _searchController.text.trim();
+    if (query.length >= 2) {
+      await _performSearch(query, showLoading: showLoading);
+      return;
+    }
+    setState(() {
+      if (showLoading) _isSearching = true;
+      _error = null;
+    });
+    try {
+      final db = widget.database ?? AppDatabase();
+      final customerDao = CustomerDao(db);
+      final results = await customerDao.getCustomersByShopId(widget.shopId);
+      if (!mounted) return;
+      setState(() {
+        _results = results
+            .map(
+              (c) => CustomerSearchResult(
+                id: c.id,
+                fullName: c.fullName,
+                nic: c.nic,
+                phone: c.phone,
+                photoUri: c.photoUri,
+              ),
+            )
             .toList();
         _isSearching = false;
       });
@@ -110,14 +159,17 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
+        onPressed: () async {
+          await Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => CustomerRegistrationScreen(
-                currentUser: widget.currentUser,
-              ),
+              builder: (context) =>
+                  CustomerRegistrationScreen(currentUser: widget.currentUser),
             ),
           );
+          // Refresh the customer list so a newly registered customer
+          // shows up on this screen.
+          if (!mounted) return;
+          await _loadCustomers();
         },
         icon: const Icon(Icons.person_add),
         label: const Text('Add Customer'),
@@ -135,22 +187,6 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.dashboard),
-            tooltip: 'Dashboard',
-            onPressed: () {
-              final db = AppDatabase();
-              final loanDao = LoanDao(db);
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => DashboardScreen(
-                    loanDao: loanDao,
-                    shopId: widget.shopId,
-                  ),
-                ),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',
             onPressed: () {
@@ -159,6 +195,7 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
                   builder: (context) => SettingsScreen(
                     shopId: widget.shopId,
                     currentUser: widget.currentUser,
+                    onLogout: widget.onLogout,
                   ),
                 ),
               );
@@ -193,103 +230,143 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
                 );
               },
             ),
-          if (widget.currentUser.hasPermission(AppPermission.viewOverdueLoans))
-            IconButton(
-              icon: const Icon(Icons.warning),
-              tooltip: 'Overdue Loans',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => OverdueScreen(
-                      shopId: widget.shopId,
-                      currentUser: widget.currentUser,
-                    ),
-                  ),
-                );
-              },
-            ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Search by NIC, phone, or name',
-                hintText: 'Enter at least 2 characters',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: _onSearchChanged,
-            ),
-            const SizedBox(height: 16),
-            if (_error != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.15),
-                  border: Border.all(color: Colors.red),
-                  borderRadius: BorderRadius.circular(8),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.people_alt, color: Color(0xFF1565C0), size: 28),
+                    SizedBox(width: 8),
+                    Text(
+                      'Customers',
+                      style: TextStyle(
+                        color: Color(0xFF1565C0),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: Colors.red.shade800),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    labelText: 'Search by NIC, phone, or name',
+                    hintText: 'Enter at least 2 characters',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onChanged: _onSearchChanged,
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            if (_isSearching)
-              const Center(child: CircularProgressIndicator()),
-            if (!_isSearching) ...[
-              Expanded(
-                child: _results.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No matching customers',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _results.length,
-                        itemBuilder: (context, index) {
-                          final result = _results[index];
-                          return ListTile(
-                            leading: result.photoUri != null
-                                ? CircleAvatar(
-                                    backgroundImage:
-                                        FileImage(File(result.photoUri!)),
-                                    radius: 24,
-                                  )
-                                : const CircleAvatar(
-                                    radius: 24,
-                                    child: Icon(Icons.person),
-                                  ),
-                            title: Text(result.fullName),
-                            subtitle: Text(
-                              'NIC: ${maskNic(result.nic)}  |  Phone: ${maskPhone(result.phone)}',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => CustomerProfileScreen(
-                                    shopId: widget.shopId,
-                                    customerId: result.id,
-                                    currentUser: widget.currentUser,
+                const SizedBox(height: 16),
+                if (_error != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.15),
+                      border: Border.all(color: Colors.red),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: Colors.red.shade800),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (_isSearching)
+                  const Center(child: CircularProgressIndicator()),
+                if (!_isSearching) ...[
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: () => _loadCustomers(showLoading: false),
+                      child: _results.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: const [
+                                SizedBox(height: 120),
+                                Icon(
+                                  Icons.search_off,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(height: 8),
+                                Center(
+                                  child: Text(
+                                    'No matching customers',
+                                    style: TextStyle(color: Colors.grey),
                                   ),
                                 ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ],
-        ),
+                              ],
+                            )
+                          : ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              itemCount: _results.length,
+                              itemBuilder: (context, index) {
+                                final result = _results[index];
+                                return Card(
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: ListTile(
+                                    leading: result.photoUri != null
+                                        ? CircleAvatar(
+                                            backgroundImage: FileImage(
+                                              File(result.photoUri!),
+                                            ),
+                                            radius: 24,
+                                          )
+                                        : const CircleAvatar(
+                                            radius: 24,
+                                            child: Icon(Icons.person),
+                                          ),
+                                    title: Text(result.fullName),
+                                    subtitle: Text(
+                                      'NIC: ${maskNic(result.nic)}  |  Phone: ${maskPhone(result.phone)}',
+                                    ),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              CustomerProfileScreen(
+                                                shopId: widget.shopId,
+                                                customerId: result.id,
+                                                currentUser: widget.currentUser,
+                                                database: widget.database,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -311,3 +388,4 @@ class CustomerSearchResult {
     this.photoUri,
   }) : assert(id >= 0); // Auto-increment ID must be non-negative
 }
+

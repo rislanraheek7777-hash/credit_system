@@ -6,10 +6,10 @@ import 'package:credit_system/core/data/local/connection/database_connection.dar
 import 'package:credit_system/core/money/money.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:credit_system/features/customers/data/daos/payment_dao.dart';
 import 'package:credit_system/features/customers/data/services/receipt_pdf_service.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/receipt.dart';
 import 'package:credit_system/features/customers/domain/services/receipt_service.dart';
 import 'package:uuid/uuid.dart';
@@ -19,7 +19,7 @@ const String otherShopId = 'pay-shop-1111-1111-1111-111111111102';
 const customerId = 1;
 const String managerId = 'pay-mgr-1111-1111-1111-111111111101';
 const String cashierId = 'pay-cash-1111-1111-1111-111111111101';
-const String loanId = 'pay-loan-1111-1111-1111-111111111101';
+const String creditId = 'pay-credit-1111-1111-1111-111111111101';
 
 Future<void> seedData(AppDatabase db) async {
   final now = DateTime.utc(2026, 10, 20);
@@ -82,10 +82,10 @@ Future<void> seedData(AppDatabase db) async {
     ),
   );
 
-  // Create a disbursed loan with principal 500000 (Rs. 5,000.00) and balance 500000
-  await db.into(db.loans).insert(
-    LoansCompanion.insert(
-      id: loanId,
+  // Create a disbursed credit with principal 500000 (Rs. 5,000.00) and balance 500000
+  await db.into(db.credits).insert(
+    CreditsCompanion.insert(
+      id: creditId,
       shopId: shopId,
       customerId: customerId,
       principalCents: 500000,
@@ -143,7 +143,7 @@ void main() {
       final receipt = await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(200000), // Rs. 2,000.00
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -154,18 +154,18 @@ void main() {
       expect(receipt.isFullSettlement, isFalse);
       expect(receipt.paymentTypeLabel, 'Partial Payment');
 
-      // Verify loan balance updated
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan!.balanceCents, 300000);
-      expect(loan.status, LoanStatus.active);
+      // Verify credit balance updated
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit!.balanceCents, 300000);
+      expect(credit.status, CreditStatus.active);
     });
 
     test('full settlement results in zero balance and settled status', () async {
       final receipt = await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(500000), // Rs. 5,000.00 (full balance)
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -174,11 +174,11 @@ void main() {
       expect(receipt.isFullSettlement, isTrue);
       expect(receipt.paymentTypeLabel, 'Full Settlement');
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan!.balanceCents, 0);
-      expect(loan.status, LoanStatus.settled);
-      expect(loan.settledAt, isNotNull);
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit!.balanceCents, 0);
+      expect(credit.status, CreditStatus.settled);
+      expect(credit.settledAt, isNotNull);
     });
 
     test('zero payment amount is rejected', () async {
@@ -186,7 +186,7 @@ void main() {
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: const Money(0),
           recordedAt: DateTime.utc(2026, 10, 22),
         ),
@@ -199,7 +199,7 @@ void main() {
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: const Money(-1000),
           recordedAt: DateTime.utc(2026, 10, 22),
         ),
@@ -212,7 +212,7 @@ void main() {
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: const Money(600000), // exceeds balance of 500000
           recordedAt: DateTime.utc(2026, 10, 22),
         ),
@@ -220,11 +220,11 @@ void main() {
       );
     });
 
-    test('payment against undisbursed loan is rejected', () async {
-      // Create a pending disbursement loan
-      await db.into(db.loans).insert(
-        LoansCompanion.insert(
-          id: 'pay-loan-pending',
+    test('payment against undisbursed credit is rejected', () async {
+      // Create a pending disbursement credit
+      await db.into(db.credits).insert(
+        CreditsCompanion.insert(
+          id: 'pay-credit-pending',
           shopId: shopId,
           customerId: customerId,
           principalCents: 100000,
@@ -241,7 +241,7 @@ void main() {
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: Uuid().v4(),
-          loanId: 'pay-loan-pending',
+          creditId: 'pay-credit-pending',
           amount: const Money(50000),
           recordedAt: DateTime.utc(2026, 10, 22),
         ),
@@ -249,12 +249,12 @@ void main() {
       );
     });
 
-    test('payment against settled loan is rejected', () async {
-      // First settle the loan
+    test('payment against settled credit is rejected', () async {
+      // First settle the credit
       await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(500000),
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -264,7 +264,7 @@ void main() {
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: const Money(10000),
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
@@ -287,7 +287,7 @@ void main() {
         paymentDao.recordPayment(
           actor: noPerm,
           idempotencyKey: Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: const Money(10000),
           recordedAt: DateTime.utc(2026, 10, 22),
         ),
@@ -295,11 +295,11 @@ void main() {
       );
     });
 
-    test('cross-shop loan access is rejected', () async {
-      // Create a loan in another shop
-      await db.into(db.loans).insert(
-        LoansCompanion.insert(
-          id: 'pay-loan-other-shop',
+    test('cross-shop credit access is rejected', () async {
+      // Create a credit in another shop
+      await db.into(db.credits).insert(
+        CreditsCompanion.insert(
+          id: 'pay-credit-other-shop',
           shopId: otherShopId,
           customerId: customerId,
           principalCents: 100000,
@@ -318,7 +318,7 @@ void main() {
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: Uuid().v4(),
-          loanId: 'pay-loan-other-shop',
+          creditId: 'pay-credit-other-shop',
           amount: const Money(10000),
           recordedAt: DateTime.utc(2026, 10, 22),
         ),
@@ -332,7 +332,7 @@ void main() {
       final receipt1 = await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(100000),
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -340,7 +340,7 @@ void main() {
       final receipt2 = await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(100000),
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -349,13 +349,13 @@ void main() {
       expect(receipt2.amountCents, receipt1.amountCents);
 
       // Verify only one payment row exists
-      final payments = await paymentDao.getPaymentsByLoan(shopId, loanId);
+      final payments = await paymentDao.getPaymentsByCredit(shopId, creditId);
       expect(payments, hasLength(1));
 
       // Verify balance was only reduced once
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan!.balanceCents, 400000);
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit!.balanceCents, 400000);
     });
 
     test('receipt generation failure does not lose committed payment', () async {
@@ -364,7 +364,7 @@ void main() {
       final receipt = await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(100000),
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -394,21 +394,21 @@ void main() {
       }
 
       // Payment still intact
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan!.balanceCents, 400000);
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit!.balanceCents, 400000);
     });
 
     test('payment history and receipt snapshots persist', () async {
       await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(150000),
         recordedAt: DateTime.utc(2026, 10, 22),
       );
 
-      final payments = await paymentDao.getPaymentsByLoan(shopId, loanId);
+      final payments = await paymentDao.getPaymentsByCredit(shopId, creditId);
       expect(payments, hasLength(1));
       expect(payments.first.receiptNumber, isNotEmpty);
       expect(payments.first.customerName, 'Payment Customer');
@@ -416,14 +416,14 @@ void main() {
       expect(payments.first.amountFormatted, 'Rs. 1,500.00');
     });
 
-    test('concurrent payments cannot overpay the same loan', () async {
-      // Reset loan balance to 100000 for this test
-      final loanDao = LoanDao(db);
-      await (db.update(db.loans)
-            ..where((l) => l.id.equals(loanId)))
-          .write(LoansCompanion(
+    test('concurrent payments cannot overpay the same credit', () async {
+      // Reset credit balance to 100000 for this test
+      final creditDao = CreditDao(db);
+      await (db.update(db.credits)
+            ..where((l) => l.id.equals(creditId)))
+          .write(CreditsCompanion(
         balanceCents: Value(100000),
-        status: Value(LoanStatus.active.value),
+        status: Value(CreditStatus.active.value),
       ));
 
       // Two concurrent payments of 100000 each against a 100000 balance.
@@ -433,14 +433,14 @@ void main() {
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: const Money(100000),
           recordedAt: DateTime.utc(2026, 10, 22),
         ).then((r) => results.add(r)).onError((e, _) => results.add(null)),
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: const Money(100000),
           recordedAt: DateTime.utc(2026, 10, 22),
         ).then((r) => results.add(r)).onError((e, _) => results.add(null)),
@@ -451,32 +451,32 @@ void main() {
       expect(successful, 1);
 
       // Balance should be 0 (only one payment of 100000 applied)
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan!.balanceCents, 0);
-      expect(loan.status, LoanStatus.settled);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit!.balanceCents, 0);
+      expect(credit.status, CreditStatus.settled);
 
       // Only one payment record should exist
-      final payments = await paymentDao.getPaymentsByLoan(shopId, loanId);
+      final payments = await paymentDao.getPaymentsByCredit(shopId, creditId);
       expect(payments, hasLength(1));
     });
 
-    test('reused idempotency key with different loan is rejected', () async {
+    test('reused idempotency key with different credit is rejected', () async {
       final key = const Uuid().v4();
 
       await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(100000),
         recordedAt: DateTime.utc(2026, 10, 22),
       );
 
-      // Same key, different loan - should be rejected
+      // Same key, different credit - should be rejected
       await expectLater(
         paymentDao.recordPayment(
           actor: manager(),
           idempotencyKey: key,
-          loanId: 'different-loan',
+          creditId: 'different-credit',
           amount: const Money(50000),
           recordedAt: DateTime.utc(2026, 10, 22),
         ),
@@ -490,7 +490,7 @@ void main() {
       final receipt1 = await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(100000),
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -499,7 +499,7 @@ void main() {
       final receipt2 = await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(200000), // different amount
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -508,9 +508,9 @@ void main() {
       expect(receipt2.amountCents, receipt1.amountCents);
     });
 
-    test('schema version is 20 and payments table is accessible', () async {
-      // Verify the database is at schema version 20
-      expect(db.schemaVersion, 20);
+    test('schema version is 22 and payments table is accessible', () async {
+      // Verify the database is at schema version 22
+      expect(db.schemaVersion, 22);
 
       // Verify the payments table exists and is queryable
       final count = await db.customSelect(
@@ -522,7 +522,7 @@ void main() {
       await paymentDao.recordPayment(
         actor: manager(),
         idempotencyKey: Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: const Money(250000),
         recordedAt: DateTime.utc(2026, 10, 22),
       );
@@ -535,43 +535,43 @@ void main() {
   });
 
   group('ReceiptService - validation and eligibility', () {
-    test('isEligibleForPayment returns true for disbursed active loan with balance', () async {
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(receiptService.isEligibleForPayment(loan!), isTrue);
+    test('isEligibleForPayment returns true for disbursed active credit with balance', () async {
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(receiptService.isEligibleForPayment(credit!), isTrue);
     });
 
-    test('isEligibleForPayment returns false for pending disbursement loan', () async {
-      final pendingLoan = Loan(
+    test('isEligibleForPayment returns false for pending disbursement credit', () async {
+      final pendingCredit = Credit(
         id: 'pending',
         shopId: shopId,
         customerId: customerId,
         principalCents: 100000,
         balanceCents: 100000,
-        status: LoanStatus.active,
-        workflowStatus: LoanWorkflowStatus.pendingDisbursement,
+        status: CreditStatus.active,
+        workflowStatus: CreditWorkflowStatus.pendingDisbursement,
         dueDate: DateTime.utc(2026, 11, 20),
         createdAt: DateTime.utc(2026, 10, 20),
       );
-      expect(receiptService.isEligibleForPayment(pendingLoan), isFalse);
+      expect(receiptService.isEligibleForPayment(pendingCredit), isFalse);
     });
 
-    test('isEligibleForPayment returns false for settled loan', () async {
-      final settledLoan = Loan(
+    test('isEligibleForPayment returns false for settled credit', () async {
+      final settledCredit = Credit(
         id: 'settled',
         shopId: shopId,
         customerId: customerId,
         principalCents: 100000,
         balanceCents: 0,
-        status: LoanStatus.settled,
-        workflowStatus: LoanWorkflowStatus.disbursed,
+        status: CreditStatus.settled,
+        workflowStatus: CreditWorkflowStatus.disbursed,
         dueDate: DateTime.utc(2026, 11, 20),
         disbursedAt: DateTime.utc(2026, 10, 21),
         disbursedByUserId: managerId,
         settledAt: DateTime.utc(2026, 10, 22),
         createdAt: DateTime.utc(2026, 10, 20),
       );
-      expect(receiptService.isEligibleForPayment(settledLoan), isFalse);
+      expect(receiptService.isEligibleForPayment(settledCredit), isFalse);
     });
 
     test('validateAmount rejects zero amount', () async {
@@ -613,7 +613,7 @@ void main() {
       final receipt = Receipt(
         id: 'receipt-1',
         shopId: shopId,
-        loanId: loanId,
+        creditId: creditId,
         receiptNumber: 'RCP-123',
         amountCents: 200000,
         preBalanceCents: 500000,
@@ -644,7 +644,7 @@ void main() {
       final receipt = Receipt(
         id: 'receipt-2',
         shopId: shopId,
-        loanId: loanId,
+        creditId: creditId,
         receiptNumber: 'RCP-456',
         amountCents: 500000,
         preBalanceCents: 500000,
@@ -664,3 +664,4 @@ void main() {
     });
   });
 }
+

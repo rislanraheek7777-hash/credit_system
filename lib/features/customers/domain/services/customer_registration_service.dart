@@ -24,7 +24,7 @@ class RegisterCustomerRequest {
   final String address;
 
   /// Raw customer KYC photograph bytes (from camera capture or file upload).
-  /// Required for standard customer registration (Story 2.2).
+  /// Optional — registration proceeds without a photograph when omitted.
   final Uint8List? rawPhotoBytes;
 
   /// Approved customer photo KYC exception identifier (Story 2.3).
@@ -56,15 +56,13 @@ class RegisterCustomerRequest {
 /// Application service coordinating customer KYC registration and photo processing (Story 2.2, Story 2.3).
 ///
 /// Business Rules:
-/// 1. Standard registration without a captured photograph is strictly blocked with:
-///    `"Customer photograph is mandatory."` unless an approved photo exception is provided.
-/// 2. If photo bytes are provided:
+/// 1. Customer photograph is optional. If photo bytes are provided:
 ///    - Optimizes/compresses via [CustomerPhotoCompressor] (<= 1600px, <= 500 KB, JPEG).
 ///    - Persists file in sandboxed app-private storage (`photos/{shopId}/customers/`).
 ///    - Updates customer metadata with relative path and SHA-256 hash.
-/// 3. Reverts and cleans up written photo files if database insertion fails (ACID hygiene).
-/// 4. Stores only metadata in SQLite; raw image bytes are strictly excluded from SQL tables.
-/// 5. Photo Exception workflow (Story 2.3):
+/// 2. Reverts and cleans up written photo files if database insertion fails (ACID hygiene).
+/// 3. Stores only metadata in SQLite; raw image bytes are strictly excluded from SQL tables.
+/// 4. Photo Exception workflow (Story 2.3):
 ///    - Only approved exceptions bound to the exact [targetCustomerId] and normalized [customerNic]
 ///      can unblock registration.
 ///    - Exception is atomically consumed to guarantee single-use.
@@ -86,19 +84,13 @@ class CustomerRegistrationService {
 
   /// Registers and persists a new customer profile.
   ///
-  /// Enforces the mandatory photo rule: throws [CustomerValidationException] with
-  /// exact message `"Customer photograph is mandatory."` if [request.rawPhotoBytes] is null or empty
-  /// and no valid approved [request.photoExceptionId] is provided.
+  /// Customer photograph is optional: registration proceeds without a photograph
+  /// when [request.rawPhotoBytes] is null or empty and no [request.photoExceptionId] is provided.
   Future<Customer> registerCustomer(RegisterCustomerRequest request) async {
     final hasPhotoBytes =
         request.rawPhotoBytes != null && request.rawPhotoBytes!.isNotEmpty;
     final hasExceptionId =
         request.photoExceptionId != null && request.photoExceptionId!.trim().isNotEmpty;
-
-    // 1. Mandatory Photo Rule Enforcement (Story 2.2 AC & Story 2.3 AC)
-    if (!hasPhotoBytes && !hasExceptionId) {
-      throw CustomerValidationException('Customer photograph is mandatory.');
-    }
 
     // 1a. Phone format validation — reject ambiguous or invalid inputs rather than guessing.
     if (!Customer.isValidPhoneFormat(request.phone)) {
@@ -219,14 +211,19 @@ class CustomerRegistrationService {
       return customer.copyWith(id: createdId);
     }
 
-    // 3. Standard Camera / Photo Flow (Story 2.2)
-    final compressionResult = await compressor.compress(request.rawPhotoBytes!);
+    // 3. Standard Camera / Photo Flow (Story 2.2) — photograph is optional.
+    String? relativePath;
+    String? photoHash;
+    if (hasPhotoBytes) {
+      final compressionResult = await compressor.compress(request.rawPhotoBytes!);
 
-    final relativePath = await storageService.saveCustomerPhoto(
-      shopId: request.shopId,
-      customerId: request.id,
-      bytes: compressionResult.bytes,
-    );
+      relativePath = await storageService.saveCustomerPhoto(
+        shopId: request.shopId,
+        customerId: request.id,
+        bytes: compressionResult.bytes,
+      );
+      photoHash = compressionResult.sha256Hash;
+    }
 
     // The pre-onboarding session id ([RegisterCustomerRequest.id]) names the
     // stored photo file; the database assigns the customer's auto-increment
@@ -239,7 +236,7 @@ class CustomerRegistrationService {
       phone: request.phone,
       address: request.address,
       photoUri: relativePath,
-      photoHash: compressionResult.sha256Hash,
+      photoHash: photoHash,
     );
 
     try {
@@ -258,7 +255,9 @@ class CustomerRegistrationService {
       });
       return customer.copyWith(id: createdId);
     } catch (e) {
-      await storageService.deletePhotoIfExists(relativePath);
+      if (relativePath != null) {
+        await storageService.deletePhotoIfExists(relativePath);
+      }
       rethrow;
     }
   }
@@ -315,3 +314,4 @@ class CustomerRegistrationService {
     ));
   }
 }
+

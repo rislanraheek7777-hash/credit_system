@@ -8,7 +8,7 @@ class PlatformAdminGuard {
   static const _protectedTables = {
     'customers',
     'collateral_items',
-    'loans',
+    'credits',
     'payments',
     'receipt_snapshots',
   };

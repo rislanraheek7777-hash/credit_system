@@ -184,3 +184,4 @@ class CustomerPhotoExceptionDao extends DatabaseAccessor<AppDatabase>
     }
   }
 }
+

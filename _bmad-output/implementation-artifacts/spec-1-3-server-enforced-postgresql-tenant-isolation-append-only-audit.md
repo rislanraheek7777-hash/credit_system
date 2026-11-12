@@ -21,7 +21,7 @@
 
 ## 2. PostgreSQL Row‑Level Security (RLS) & Tenant‑Isolation Policies
 
-1. **Enable RLS** on every tenant‑scoped table (e.g., `public.accounts`, `public.loans`, `public.transactions`).
+1. **Enable RLS** on every tenant‑scoped table (e.g., `public.accounts`, `public.credits`, `public.transactions`).
 2. **Policy naming convention**: `tenant_isolation_<table_name>`.
 3. **Policy definitions** will reference a session variable `app.current_tenant_id` set by the application after authenticating the request.
 
@@ -59,17 +59,17 @@ CREATE POLICY tenant_isolation_accounts ON public.accounts
 | Table | `USING` Clause | `WITH CHECK` Clause |
 |-------|----------------|----------------------|
 | `accounts` | `shop_id = current_setting('app.current_tenant_id')::uuid` | Same as USING |
-| `loans` | `shop_id = current_setting('app.current_tenant_id')::uuid` | Same as USING |
+| `credits` | `shop_id = current_setting('app.current_tenant_id')::uuid` | Same as USING |
 | `transactions` | `shop_id = current_setting('app.current_tenant_id')::uuid` | Same as USING |
 
 ### 1. Shared Reference Data Decisions
 
-- **Tenant‑isolated business tables**: customers, loans, collateral, repayments, receipts, and all shop‑specific records must remain isolated per tenant.
+- **Tenant‑isolated business tables**: customers, credits, collateral, repayments, receipts, and all shop‑specific records must remain isolated per tenant.
 - **Globally shared reference tables**: Currently no lookup tables (`countries`, `currencies`, `product_catalog`) are defined in the schema. They are identified as **candidates** pending confirmation and creation.
 - **Action required**: Verify existence and intended scope of any lookup tables before exempting them from RLS.
 ### 2. Future Tenant‑Owned Tables (Deferred)
 
-- **Tables not yet present**: `customers`, `loans`, `collateral`, `repayments`, `receipts`.
+- **Tables not yet present**: `customers`, `credits`, `collateral`, `repayments`, `receipts`.
 - **Tenant ownership requirement**: each row must include a non‑null `shop_id UUID NOT NULL` referencing `shops(id)`.
 - **Foreign‑key constraint**: `shop_id` → `shops(id)` with `ON DELETE RESTRICT`.
 - **RLS policy template** (to be applied once tables exist):
@@ -213,3 +213,4 @@ services:
 ---
 
 *Prepared based on existing Story 1.2 spec, sprint‑status.yaml, and architecture briefs. No code changes have been made.*
+

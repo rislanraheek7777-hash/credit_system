@@ -322,3 +322,4 @@ class CustomerPhotoExceptionService {
     return exceptionDao.getPendingExceptions(shopId);
   }
 }
+

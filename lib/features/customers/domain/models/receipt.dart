@@ -18,13 +18,13 @@ enum PaymentType {
   const PaymentType(this.name);
 }
 
-/// Exception thrown when a payment exceeds the outstanding balance or the loan
+/// Exception thrown when a payment exceeds the outstanding balance or the credit
 /// is ineligible for payment.
-class LoanOverpaymentException implements Exception {
+class CreditOverpaymentException implements Exception {
   final String message;
-  const LoanOverpaymentException(this.message);
+  const CreditOverpaymentException(this.message);
   @override
-  String toString() => 'LoanOverpaymentException: $message';
+  String toString() => 'CreditOverpaymentException: $message';
 }
 
 /// Immutable domain entity representing a payment receipt snapshot (Story 5-4,
@@ -41,8 +41,8 @@ class Receipt {
   /// Associated shop tenant boundary.
   final String shopId;
 
-  /// Associated loan agreement.
-  final String loanId;
+  /// Associated credit agreement.
+  final String creditId;
 
   /// Unique human-readable receipt number.
   final String receiptNumber;
@@ -95,7 +95,7 @@ class Receipt {
   Receipt({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.receiptNumber,
     required this.amountCents,
     required this.preBalanceCents,
@@ -119,8 +119,8 @@ class Receipt {
     if (shopId.trim().isEmpty) {
       throw ReceiptValidationException('Shop ID cannot be empty');
     }
-    if (loanId.trim().isEmpty) {
-      throw ReceiptValidationException('Loan ID cannot be empty');
+    if (creditId.trim().isEmpty) {
+      throw ReceiptValidationException('Credit ID cannot be empty');
     }
     if (receiptNumber.trim().isEmpty) {
       throw ReceiptValidationException('Receipt number cannot be empty');
@@ -184,3 +184,4 @@ class Receipt {
 
   String _two(int value) => value.toString().padLeft(2, '0');
 }
+

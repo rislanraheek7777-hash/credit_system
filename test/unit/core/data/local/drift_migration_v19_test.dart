@@ -9,8 +9,8 @@ import 'package:credit_system/core/data/local/app_database.dart';
 
 /// Regression coverage for the schema version 18 -> 19 migration (Epic 6: Stories 6.2, 6.3, 6.4).
 ///
-/// The migration creates the `due_date_extensions`, `customer_follow_ups`, and `loan_resolutions`
-/// tables for overdue loan governance.
+/// The migration creates the `due_date_extensions`, `customer_follow_ups`, and `credit_resolutions`
+/// tables for overdue credit governance.
 void main() {
   late Directory tempDir;
 
@@ -58,8 +58,8 @@ void main() {
       // Trigger lazy open
       await db.customSelect('SELECT 1').get();
 
-      expect(readUserVersion(file), equals(20));
-      expect(db.schemaVersion, equals(20));
+      expect(readUserVersion(file), equals(22));
+      expect(db.schemaVersion, equals(22));
 
       // Verify the new tables exist
       final tables = await db.customSelect("SELECT name FROM sqlite_master WHERE type='table'").get();
@@ -67,8 +67,9 @@ void main() {
 
       expect(tableNames, contains('due_date_extensions'));
       expect(tableNames, contains('customer_follow_ups'));
-      expect(tableNames, contains('loan_resolutions'));
-      expect(tableNames, contains('loan_administrative_closures'));
+      expect(tableNames, contains('credit_resolutions'));
+      expect(tableNames, contains('credit_administrative_closures'));
     });
   });
 }
+

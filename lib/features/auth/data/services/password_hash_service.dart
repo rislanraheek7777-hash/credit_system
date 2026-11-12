@@ -194,3 +194,4 @@ class PasswordHashService {
     return result == 0;
   }
 }
+

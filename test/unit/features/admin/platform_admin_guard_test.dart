@@ -7,7 +7,7 @@ void main() {
   group('PlatformAdminGuard', () {
     test('canAccessTable default-deny for platform_admin protected tables', () {
       expect(PlatformAdminGuard.canAccessTable('platform_admin', 'customers'), isFalse);
-      expect(PlatformAdminGuard.canAccessTable('platform_admin', 'loans'), isFalse);
+      expect(PlatformAdminGuard.canAccessTable('platform_admin', 'credits'), isFalse);
       expect(PlatformAdminGuard.canAccessTable('shop_owner', 'customers'), isTrue);
       expect(PlatformAdminGuard.canAccessTable('platform_admin', 'shops'), isTrue);
     });
@@ -68,3 +68,4 @@ void main() {
     });
   });
 }
+

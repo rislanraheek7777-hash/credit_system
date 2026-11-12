@@ -179,7 +179,7 @@ void main() {
         targetEntityType: 'app_user',
         targetEntityId: 'user-uuid-456',
         preState: {'role': 'cashier', 'permissions': ['recordPayments']},
-        postState: {'role': 'manager', 'permissions': ['recordPayments', 'confirmLoanDisbursement']},
+        postState: {'role': 'manager', 'permissions': ['recordPayments', 'confirmCreditDisbursement']},
         reason: 'Promoted from Cashier to Manager',
       );
 
@@ -225,3 +225,4 @@ void main() {
     });
   });
 }
+

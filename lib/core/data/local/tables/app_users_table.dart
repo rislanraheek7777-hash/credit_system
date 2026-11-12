@@ -69,3 +69,4 @@ class AppUsers extends Table {
     'CHECK (session_version >= 1)',
   ];
 }
+

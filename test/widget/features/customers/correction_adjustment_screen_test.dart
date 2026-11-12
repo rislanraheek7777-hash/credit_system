@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
@@ -7,7 +7,7 @@ import 'package:credit_system/core/money/money.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/correction_dao.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:credit_system/features/customers/presentation/correction_adjustment_screen.dart';
 import 'package:uuid/uuid.dart';
 
@@ -15,7 +15,7 @@ const String shopId = 'adj-shop-1111-1111-1111-111111111101';
 const customerId = 1;
 const String ownerId = 'adj-owner-1111-1111-111111111103';
 const String managerId = 'adj-mgr-1111-1111-111111111104';
-const String loanId = 'adj-loan-1111-1111-111111111105';
+const String creditId = 'adj-credit-1111-1111-111111111105';
 
 Future<void> seedAdjustmentData(AppDatabase db) async {
   final now = DateTime.now().toUtc();
@@ -67,9 +67,9 @@ Future<void> seedAdjustmentData(AppDatabase db) async {
       updatedAt: now,
     ),
   );
-  await db.into(db.loans).insert(
-    LoansCompanion.insert(
-      id: loanId,
+  await db.into(db.credits).insert(
+    CreditsCompanion.insert(
+      id: creditId,
       shopId: shopId,
       customerId: customerId,
       principalCents: 500000,
@@ -104,11 +104,11 @@ AppUser manager({bool isActive = true}) => AppUser(
   isActive: isActive,
 );
 
-Future<LoanCorrection> seedPendingCorrection(AppDatabase db) async {
+Future<CreditCorrection> seedPendingCorrection(AppDatabase db) async {
   return CorrectionDao(db).requestCorrection(
     actor: manager(),
     idempotencyKey: const Uuid().v4(),
-    loanId: loanId,
+    creditId: creditId,
     originalPaymentId: 'review-pay-alpha-1111-1111-1111-111111111108',
     amount: Money.fromCents(200000),
     reason: 'Typographical error: entered 35,000 instead of 3,500.',
@@ -126,7 +126,7 @@ Future<void> openScreen(
       home: CorrectionAdjustmentScreen(
         key: UniqueKey(),
         shopId: shopId,
-        loanId: loanId,
+        creditId: creditId,
         currentUser: actor,
         database: db,
       ),
@@ -155,7 +155,7 @@ void main() {
   });
 
   group('CorrectionAdjustmentScreen', () {
-    testWidgets('owner can open the screen for a valid loan',
+    testWidgets('owner can open the screen for a valid credit',
         (WidgetTester tester) async {
       await openScreen(tester, db, actor: owner());
 
@@ -190,16 +190,16 @@ void main() {
       expect(outcome, equals('success'));
 
       final correctionDao = CorrectionDao(db);
-      final entries = await correctionDao.getLedgerEntriesByLoan(
-          shopId, loanId);
+      final entries = await correctionDao.getLedgerEntriesByCredit(
+          shopId, creditId);
       expect(entries, hasLength(1));
       expect(entries.first.entryType,
-          equals(LoanLedgerEntryType.adjustmentDebit));
+          equals(CreditLedgerEntryType.adjustmentDebit));
       expect(entries.first.amountCents, equals(100000));
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan?.balanceCents, equals(400000));
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit?.balanceCents, equals(400000));
     });
 
     testWidgets('owner can perform a valid credit adjustment',
@@ -219,16 +219,16 @@ void main() {
       expect(outcome, equals('success'));
 
       final correctionDao = CorrectionDao(db);
-      final entries = await correctionDao.getLedgerEntriesByLoan(
-          shopId, loanId);
+      final entries = await correctionDao.getLedgerEntriesByCredit(
+          shopId, creditId);
       expect(entries, hasLength(1));
       expect(entries.first.entryType,
-          equals(LoanLedgerEntryType.adjustmentCredit));
+          equals(CreditLedgerEntryType.adjustmentCredit));
       expect(entries.first.amountCents, equals(50000));
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan?.balanceCents, equals(250000));
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit?.balanceCents, equals(250000));
     });
 
     testWidgets('invalid amount is rejected',
@@ -274,24 +274,24 @@ void main() {
       await tester.pumpAndSettle();
 
       final correctionDao = CorrectionDao(db);
-      final entries = await correctionDao.getLedgerEntriesByLoan(
-          shopId, loanId);
+      final entries = await correctionDao.getLedgerEntriesByCredit(
+          shopId, creditId);
       expect(entries, isEmpty);
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan?.balanceCents, equals(300000));
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit?.balanceCents, equals(300000));
     });
 
     testWidgets('adjustment is blocked while correction is pending',
         (WidgetTester tester) async {
       await db
           .customSelect(
-              'UPDATE loans SET correction_pending = 1 WHERE id = ?',
-              variables: [Variable<String>(loanId)])
+              'UPDATE credits SET correction_pending = 1 WHERE id = ?',
+              variables: [Variable<String>(creditId)])
           .get();
-      final lockedLoan = await LoanDao(db).getLoanById(shopId, loanId);
-      expect(lockedLoan?.correctionPending, isTrue);
+      final lockedCredit = await CreditDao(db).getCreditById(shopId, creditId);
+      expect(lockedCredit?.correctionPending, isTrue);
 
       await openScreen(tester, db, actor: owner());
 
@@ -306,13 +306,13 @@ void main() {
       await tester.pumpAndSettle();
 
       final correctionDao = CorrectionDao(db);
-      final entries = await correctionDao.getLedgerEntriesByLoan(
-          shopId, loanId);
+      final entries = await correctionDao.getLedgerEntriesByCredit(
+          shopId, creditId);
       expect(entries, isEmpty);
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan?.balanceCents, equals(300000));
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit?.balanceCents, equals(300000));
     });
 
     testWidgets('duplicate taps do not submit repeated adjustments',
@@ -330,13 +330,13 @@ void main() {
       await tester.pumpAndSettle();
       await _pumpUntilOutcome(tester);
 
-      final entries = await CorrectionDao(db).getLedgerEntriesByLoan(
-          shopId, loanId);
+      final entries = await CorrectionDao(db).getLedgerEntriesByCredit(
+          shopId, creditId);
       expect(entries, hasLength(1));
 
-      final loanDao = LoanDao(db);
-      final loan = await loanDao.getLoanById(shopId, loanId);
-      expect(loan?.balanceCents, equals(310000));
+      final creditDao = CreditDao(db);
+      final credit = await creditDao.getCreditById(shopId, creditId);
+      expect(credit?.balanceCents, equals(310000));
     });
   });
 }

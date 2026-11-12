@@ -25,6 +25,7 @@ class ShopDao extends DatabaseAccessor<AppDatabase> with _$ShopDaoMixin {
     return ShopProfile(
       id: entry.id,
       name: entry.name,
+      shopType: entry.shopType,
       currencyCode: entry.currencyCode,
       timezone: entry.timezone,
       businessAddress: entry.businessAddress,
@@ -44,6 +45,7 @@ class ShopDao extends DatabaseAccessor<AppDatabase> with _$ShopDaoMixin {
     return ShopsCompanion(
       id: Value(profile.id),
       name: Value(profile.name),
+      shopType: Value(profile.shopType),
       currencyCode: Value(profile.currencyCode),
       timezone: Value(profile.timezone),
       businessAddress: Value(profile.businessAddress),
@@ -79,7 +81,7 @@ class ShopDao extends DatabaseAccessor<AppDatabase> with _$ShopDaoMixin {
   /// other devices and not yet synchronized to this local device).
   ///
   /// In the current local database schema (v1 & v2), business financial ledger tables
-  /// (`loans`, `payments`, `disbursements`, etc.) have not yet been introduced
+  /// (`credits`, `payments`, `disbursements`, etc.) have not yet been introduced
   /// (scheduled for Epics 4 and 5).
   ///
   /// Authoritative, permanent currency locking MUST be enforced by the trusted backend
@@ -87,11 +89,11 @@ class ShopDao extends DatabaseAccessor<AppDatabase> with _$ShopDaoMixin {
   /// when the financial ledger is implemented in Epics 4 and 5.
   ///
   /// This local query inspects:
-  /// 1. Any queued financial transactions in `sync_queue` for this shop (`entity_type` IN ('loan', 'payment', 'disbursement', 'reversal')).
+  /// 1. Any queued financial transactions in `sync_queue` for this shop (`entity_type` IN ('credit', 'payment', 'disbursement', 'reversal')).
   /// 2. If future tables exist in `sqlite_master`, dynamically checks their row counts.
   Future<bool> hasFinancialTransactions(String shopId) async {
     // 1. Check sync_queue for pending or confirmed financial entities
-    final financialEntities = ['loan', 'payment', 'disbursement', 'reversal'];
+    final financialEntities = ['credit', 'payment', 'disbursement', 'reversal'];
     final queueCount = await (select(db.syncQueue)
           ..where((q) =>
               q.shopId.equals(shopId) & q.entityType.isIn(financialEntities)))
@@ -103,7 +105,7 @@ class ShopDao extends DatabaseAccessor<AppDatabase> with _$ShopDaoMixin {
 
     // 2. Check if any future financial transaction tables exist in SQLite catalog
     final tableCheck = await customSelect(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('loans', 'payments', 'transactions');",
+      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('credits', 'payments', 'transactions');",
     ).get();
 
     for (final row in tableCheck) {
@@ -124,7 +126,7 @@ class ShopDao extends DatabaseAccessor<AppDatabase> with _$ShopDaoMixin {
   /// Updates an existing shop profile.
   ///
   /// Enforces Story 1.6 Acceptance Criterion:
-  /// "Once any financial transaction (loan agreement, disbursement, payment, or reversal)
+  /// "Once any financial transaction (credit agreement, disbursement, payment, or reversal)
   /// exists within the shop tenant, the underlying base ledger currency code is strictly
   /// locked and cannot be altered."
   Future<void> updateShopProfile(ShopProfile updatedProfile) async {
@@ -148,3 +150,4 @@ class ShopDao extends DatabaseAccessor<AppDatabase> with _$ShopDaoMixin {
     await (update(shops)..where((s) => s.id.equals(updatedProfile.id))).write(companion);
   }
 }
+

@@ -197,21 +197,6 @@ void main() {
         throwsArgumentError,
       );
 
-      // Empty address
-      expect(
-        () => Customer(
-          id: 1,
-          shopId: 'shop-1',
-          fullName: 'Name',
-          nic: '851234567V',
-          phone: '+94 77 123 4567',
-          address: '   ',
-          createdAt: now,
-          updatedAt: now,
-        ),
-        throwsArgumentError,
-      );
-
       // Full name exceeding 255 characters
       expect(
         () => Customer(
@@ -313,3 +298,4 @@ void main() {
     });
   });
 }
+

@@ -17,3 +17,4 @@ Future<String?> viewVoucherPdf(Uint8List bytes, String fileName) async {
   URL.revokeObjectURL(url);
   return null;
 }
+

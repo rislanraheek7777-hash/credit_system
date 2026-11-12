@@ -58,6 +58,17 @@ class $ShopsTable extends Shops with TableInfo<$ShopsTable, ShopEntry> {
     requiredDuringInsert: false,
     defaultValue: const Constant('Asia/Colombo'),
   );
+  static const VerificationMeta _shopTypeMeta = const VerificationMeta(
+    'shopType',
+  );
+  @override
+  late final GeneratedColumn<String> shopType = GeneratedColumn<String>(
+    'shop_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _businessAddressMeta = const VerificationMeta(
     'businessAddress',
   );
@@ -163,6 +174,7 @@ class $ShopsTable extends Shops with TableInfo<$ShopsTable, ShopEntry> {
     name,
     currencyCode,
     timezone,
+    shopType,
     businessAddress,
     contactPhone,
     contactEmail,
@@ -211,6 +223,12 @@ class $ShopsTable extends Shops with TableInfo<$ShopsTable, ShopEntry> {
       context.handle(
         _timezoneMeta,
         timezone.isAcceptableOrUnknown(data['timezone']!, _timezoneMeta),
+      );
+    }
+    if (data.containsKey('shop_type')) {
+      context.handle(
+        _shopTypeMeta,
+        shopType.isAcceptableOrUnknown(data['shop_type']!, _shopTypeMeta),
       );
     }
     if (data.containsKey('business_address')) {
@@ -314,6 +332,10 @@ class $ShopsTable extends Shops with TableInfo<$ShopsTable, ShopEntry> {
         DriftSqlType.string,
         data['${effectivePrefix}timezone'],
       )!,
+      shopType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shop_type'],
+      ),
       businessAddress: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}business_address'],
@@ -372,6 +394,9 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
   /// Operational IANA timezone identifier for midnight boundary evaluation.
   final String timezone;
 
+  /// Type of shop (e.g. Retail, Wholesale, Service).
+  final String? shopType;
+
   /// Physical or business street address of the retail shop.
   final String? businessAddress;
 
@@ -403,6 +428,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
     required this.name,
     required this.currencyCode,
     required this.timezone,
+    this.shopType,
     this.businessAddress,
     this.contactPhone,
     this.contactEmail,
@@ -420,6 +446,9 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
     map['name'] = Variable<String>(name);
     map['currency_code'] = Variable<String>(currencyCode);
     map['timezone'] = Variable<String>(timezone);
+    if (!nullToAbsent || shopType != null) {
+      map['shop_type'] = Variable<String>(shopType);
+    }
     if (!nullToAbsent || businessAddress != null) {
       map['business_address'] = Variable<String>(businessAddress);
     }
@@ -452,6 +481,9 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
       name: Value(name),
       currencyCode: Value(currencyCode),
       timezone: Value(timezone),
+      shopType: shopType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shopType),
       businessAddress: businessAddress == null && nullToAbsent
           ? const Value.absent()
           : Value(businessAddress),
@@ -488,6 +520,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
       name: serializer.fromJson<String>(json['name']),
       currencyCode: serializer.fromJson<String>(json['currencyCode']),
       timezone: serializer.fromJson<String>(json['timezone']),
+      shopType: serializer.fromJson<String?>(json['shopType']),
       businessAddress: serializer.fromJson<String?>(json['businessAddress']),
       contactPhone: serializer.fromJson<String?>(json['contactPhone']),
       contactEmail: serializer.fromJson<String?>(json['contactEmail']),
@@ -513,6 +546,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
       'name': serializer.toJson<String>(name),
       'currencyCode': serializer.toJson<String>(currencyCode),
       'timezone': serializer.toJson<String>(timezone),
+      'shopType': serializer.toJson<String?>(shopType),
       'businessAddress': serializer.toJson<String?>(businessAddress),
       'contactPhone': serializer.toJson<String?>(contactPhone),
       'contactEmail': serializer.toJson<String?>(contactEmail),
@@ -530,6 +564,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
     String? name,
     String? currencyCode,
     String? timezone,
+    Value<String?> shopType = const Value.absent(),
     Value<String?> businessAddress = const Value.absent(),
     Value<String?> contactPhone = const Value.absent(),
     Value<String?> contactEmail = const Value.absent(),
@@ -544,6 +579,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
     name: name ?? this.name,
     currencyCode: currencyCode ?? this.currencyCode,
     timezone: timezone ?? this.timezone,
+    shopType: shopType.present ? shopType.value : this.shopType,
     businessAddress: businessAddress.present
         ? businessAddress.value
         : this.businessAddress,
@@ -570,6 +606,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
           ? data.currencyCode.value
           : this.currencyCode,
       timezone: data.timezone.present ? data.timezone.value : this.timezone,
+      shopType: data.shopType.present ? data.shopType.value : this.shopType,
       businessAddress: data.businessAddress.present
           ? data.businessAddress.value
           : this.businessAddress,
@@ -601,6 +638,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
           ..write('name: $name, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('timezone: $timezone, ')
+          ..write('shopType: $shopType, ')
           ..write('businessAddress: $businessAddress, ')
           ..write('contactPhone: $contactPhone, ')
           ..write('contactEmail: $contactEmail, ')
@@ -620,6 +658,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
     name,
     currencyCode,
     timezone,
+    shopType,
     businessAddress,
     contactPhone,
     contactEmail,
@@ -638,6 +677,7 @@ class ShopEntry extends DataClass implements Insertable<ShopEntry> {
           other.name == this.name &&
           other.currencyCode == this.currencyCode &&
           other.timezone == this.timezone &&
+          other.shopType == this.shopType &&
           other.businessAddress == this.businessAddress &&
           other.contactPhone == this.contactPhone &&
           other.contactEmail == this.contactEmail &&
@@ -654,6 +694,7 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
   final Value<String> name;
   final Value<String> currencyCode;
   final Value<String> timezone;
+  final Value<String?> shopType;
   final Value<String?> businessAddress;
   final Value<String?> contactPhone;
   final Value<String?> contactEmail;
@@ -669,6 +710,7 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
     this.name = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.timezone = const Value.absent(),
+    this.shopType = const Value.absent(),
     this.businessAddress = const Value.absent(),
     this.contactPhone = const Value.absent(),
     this.contactEmail = const Value.absent(),
@@ -685,6 +727,7 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
     required String name,
     this.currencyCode = const Value.absent(),
     this.timezone = const Value.absent(),
+    this.shopType = const Value.absent(),
     this.businessAddress = const Value.absent(),
     this.contactPhone = const Value.absent(),
     this.contactEmail = const Value.absent(),
@@ -704,6 +747,7 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
     Expression<String>? name,
     Expression<String>? currencyCode,
     Expression<String>? timezone,
+    Expression<String>? shopType,
     Expression<String>? businessAddress,
     Expression<String>? contactPhone,
     Expression<String>? contactEmail,
@@ -720,6 +764,7 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
       if (name != null) 'name': name,
       if (currencyCode != null) 'currency_code': currencyCode,
       if (timezone != null) 'timezone': timezone,
+      if (shopType != null) 'shop_type': shopType,
       if (businessAddress != null) 'business_address': businessAddress,
       if (contactPhone != null) 'contact_phone': contactPhone,
       if (contactEmail != null) 'contact_email': contactEmail,
@@ -740,6 +785,7 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
     Value<String>? name,
     Value<String>? currencyCode,
     Value<String>? timezone,
+    Value<String?>? shopType,
     Value<String?>? businessAddress,
     Value<String?>? contactPhone,
     Value<String?>? contactEmail,
@@ -756,6 +802,7 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
       name: name ?? this.name,
       currencyCode: currencyCode ?? this.currencyCode,
       timezone: timezone ?? this.timezone,
+      shopType: shopType ?? this.shopType,
       businessAddress: businessAddress ?? this.businessAddress,
       contactPhone: contactPhone ?? this.contactPhone,
       contactEmail: contactEmail ?? this.contactEmail,
@@ -783,6 +830,9 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
     }
     if (timezone.present) {
       map['timezone'] = Variable<String>(timezone.value);
+    }
+    if (shopType.present) {
+      map['shop_type'] = Variable<String>(shopType.value);
     }
     if (businessAddress.present) {
       map['business_address'] = Variable<String>(businessAddress.value);
@@ -824,6 +874,7 @@ class ShopsCompanion extends UpdateCompanion<ShopEntry> {
           ..write('name: $name, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('timezone: $timezone, ')
+          ..write('shopType: $shopType, ')
           ..write('businessAddress: $businessAddress, ')
           ..write('contactPhone: $contactPhone, ')
           ..write('contactEmail: $contactEmail, ')
@@ -1999,13 +2050,13 @@ class SyncQueueRecord extends DataClass implements Insertable<SyncQueueRecord> {
   /// Client-generated UUIDv4 idempotency key to prevent duplicate processing.
   final String idempotencyKey;
 
-  /// Logical type of the entity being synchronized (e.g. 'loan', 'payment', 'customer').
+  /// Logical type of the entity being synchronized (e.g. 'credit', 'payment', 'customer').
   final String entityType;
 
   /// Canonical UUIDv4 identifier of the target domain entity.
   final String entityId;
 
-  /// Verb / operation type (e.g. 'create_loan', 'disburse_loan', 'record_payment').
+  /// Verb / operation type (e.g. 'create_credit', 'disburse_credit', 'record_payment').
   final String actionType;
 
   /// Serialized JSON payload containing the operational mutation parameters.
@@ -2462,13 +2513,10 @@ class $CustomersTable extends Customers
   late final GeneratedColumn<String> nic = GeneratedColumn<String>(
     'nic',
     aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 1,
-      maxTextLength: 50,
-    ),
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 50),
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
   @override
@@ -2490,10 +2538,9 @@ class $CustomersTable extends Customers
   late final GeneratedColumn<String> address = GeneratedColumn<String>(
     'address',
     aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(minTextLength: 1),
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _photoUriMeta = const VerificationMeta(
     'photoUri',
@@ -2588,8 +2635,6 @@ class $CustomersTable extends Customers
         _nicMeta,
         nic.isAcceptableOrUnknown(data['nic']!, _nicMeta),
       );
-    } else if (isInserting) {
-      context.missing(_nicMeta);
     }
     if (data.containsKey('phone')) {
       context.handle(
@@ -2604,8 +2649,6 @@ class $CustomersTable extends Customers
         _addressMeta,
         address.isAcceptableOrUnknown(data['address']!, _addressMeta),
       );
-    } else if (isInserting) {
-      context.missing(_addressMeta);
     }
     if (data.containsKey('photo_uri')) {
       context.handle(
@@ -2663,7 +2706,7 @@ class $CustomersTable extends Customers
       nic: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}nic'],
-      )!,
+      ),
       phone: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}phone'],
@@ -2671,7 +2714,7 @@ class $CustomersTable extends Customers
       address: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}address'],
-      )!,
+      ),
       photoUri: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}photo_uri'],
@@ -2708,13 +2751,15 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
   final String fullName;
 
   /// National Identity Card (NIC) number, normalized to uppercase.
-  final String nic;
+  /// Optional: nullable to allow multiple customers without NIC.
+  final String? nic;
 
   /// Primary contact telephone number.
   final String phone;
 
   /// Residential street address.
-  final String address;
+  /// Optional: nullable to allow customers without an address.
+  final String? address;
 
   /// Local file URI or sandboxed path to compressed customer KYC photo.
   final String? photoUri;
@@ -2731,9 +2776,9 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     required this.id,
     required this.shopId,
     required this.fullName,
-    required this.nic,
+    this.nic,
     required this.phone,
-    required this.address,
+    this.address,
     this.photoUri,
     this.photoHash,
     required this.createdAt,
@@ -2745,9 +2790,13 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     map['id'] = Variable<int>(id);
     map['shop_id'] = Variable<String>(shopId);
     map['full_name'] = Variable<String>(fullName);
-    map['nic'] = Variable<String>(nic);
+    if (!nullToAbsent || nic != null) {
+      map['nic'] = Variable<String>(nic);
+    }
     map['phone'] = Variable<String>(phone);
-    map['address'] = Variable<String>(address);
+    if (!nullToAbsent || address != null) {
+      map['address'] = Variable<String>(address);
+    }
     if (!nullToAbsent || photoUri != null) {
       map['photo_uri'] = Variable<String>(photoUri);
     }
@@ -2764,9 +2813,11 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
       id: Value(id),
       shopId: Value(shopId),
       fullName: Value(fullName),
-      nic: Value(nic),
+      nic: nic == null && nullToAbsent ? const Value.absent() : Value(nic),
       phone: Value(phone),
-      address: Value(address),
+      address: address == null && nullToAbsent
+          ? const Value.absent()
+          : Value(address),
       photoUri: photoUri == null && nullToAbsent
           ? const Value.absent()
           : Value(photoUri),
@@ -2787,9 +2838,9 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
       id: serializer.fromJson<int>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
       fullName: serializer.fromJson<String>(json['fullName']),
-      nic: serializer.fromJson<String>(json['nic']),
+      nic: serializer.fromJson<String?>(json['nic']),
       phone: serializer.fromJson<String>(json['phone']),
-      address: serializer.fromJson<String>(json['address']),
+      address: serializer.fromJson<String?>(json['address']),
       photoUri: serializer.fromJson<String?>(json['photoUri']),
       photoHash: serializer.fromJson<String?>(json['photoHash']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -2803,9 +2854,9 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
       'id': serializer.toJson<int>(id),
       'shopId': serializer.toJson<String>(shopId),
       'fullName': serializer.toJson<String>(fullName),
-      'nic': serializer.toJson<String>(nic),
+      'nic': serializer.toJson<String?>(nic),
       'phone': serializer.toJson<String>(phone),
-      'address': serializer.toJson<String>(address),
+      'address': serializer.toJson<String?>(address),
       'photoUri': serializer.toJson<String?>(photoUri),
       'photoHash': serializer.toJson<String?>(photoHash),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -2817,9 +2868,9 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     int? id,
     String? shopId,
     String? fullName,
-    String? nic,
+    Value<String?> nic = const Value.absent(),
     String? phone,
-    String? address,
+    Value<String?> address = const Value.absent(),
     Value<String?> photoUri = const Value.absent(),
     Value<String?> photoHash = const Value.absent(),
     DateTime? createdAt,
@@ -2828,9 +2879,9 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
     fullName: fullName ?? this.fullName,
-    nic: nic ?? this.nic,
+    nic: nic.present ? nic.value : this.nic,
     phone: phone ?? this.phone,
-    address: address ?? this.address,
+    address: address.present ? address.value : this.address,
     photoUri: photoUri.present ? photoUri.value : this.photoUri,
     photoHash: photoHash.present ? photoHash.value : this.photoHash,
     createdAt: createdAt ?? this.createdAt,
@@ -2901,9 +2952,9 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
   final Value<int> id;
   final Value<String> shopId;
   final Value<String> fullName;
-  final Value<String> nic;
+  final Value<String?> nic;
   final Value<String> phone;
-  final Value<String> address;
+  final Value<String?> address;
   final Value<String?> photoUri;
   final Value<String?> photoHash;
   final Value<DateTime> createdAt;
@@ -2924,18 +2975,16 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     this.id = const Value.absent(),
     required String shopId,
     required String fullName,
-    required String nic,
+    this.nic = const Value.absent(),
     required String phone,
-    required String address,
+    this.address = const Value.absent(),
     this.photoUri = const Value.absent(),
     this.photoHash = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : shopId = Value(shopId),
        fullName = Value(fullName),
-       nic = Value(nic),
        phone = Value(phone),
-       address = Value(address),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<CustomerEntry> custom({
@@ -2968,9 +3017,9 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     Value<int>? id,
     Value<String>? shopId,
     Value<String>? fullName,
-    Value<String>? nic,
+    Value<String?>? nic,
     Value<String>? phone,
-    Value<String>? address,
+    Value<String?>? address,
     Value<String?>? photoUri,
     Value<String?>? photoHash,
     Value<DateTime>? createdAt,
@@ -3828,11 +3877,11 @@ class CustomerPhotoExceptionsCompanion
   }
 }
 
-class $LoansTable extends Loans with TableInfo<$LoansTable, LoanEntry> {
+class $CreditsTable extends Credits with TableInfo<$CreditsTable, CreditEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $LoansTable(this.attachedDatabase, [this._alias]);
+  $CreditsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -4067,10 +4116,10 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, LoanEntry> {
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'loans';
+  static const String $name = 'credits';
   @override
   VerificationContext validateIntegrity(
-    Insertable<LoanEntry> instance, {
+    Insertable<CreditEntry> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -4233,9 +4282,9 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, LoanEntry> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  LoanEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+  CreditEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return LoanEntry(
+    return CreditEntry(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -4312,12 +4361,12 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, LoanEntry> {
   }
 
   @override
-  $LoansTable createAlias(String alias) {
-    return $LoansTable(attachedDatabase, alias);
+  $CreditsTable createAlias(String alias) {
+    return $CreditsTable(attachedDatabase, alias);
   }
 }
 
-class LoanEntry extends DataClass implements Insertable<LoanEntry> {
+class CreditEntry extends DataClass implements Insertable<CreditEntry> {
   /// Canonical UUIDv4 primary key.
   final String id;
 
@@ -4356,7 +4405,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
 
   /// UTC timestamp of the confirmed physical cash handover.
   ///
-  /// Null until cash is disbursed. Cash-out reporting considers only loans
+  /// Null until cash is disbursed. Cash-out reporting considers only credits
   /// with a confirmed disbursement (PRD FR-19).
   final DateTime? disbursedAt;
 
@@ -4378,7 +4427,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
   /// UTC settlement timestamp (null while not settled).
   final DateTime? settledAt;
 
-  /// Correction-pending flag. When true, payments on this loan are blocked
+  /// Correction-pending flag. When true, payments on this credit are blocked
   /// until a Shop Owner approves or rejects the pending correction
   /// (Story 5.3 AC-3, Story 5.5).
   final bool correctionPending;
@@ -4386,12 +4435,12 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
   /// Document snapshot identifier, set at disbursement time.
   ///
   /// The current Story 4.4 scaffold stores only this identifier. It does not
-  /// persist the branding, customer, loan, or collateral content required to
+  /// persist the branding, customer, credit, or collateral content required to
   /// reproduce a previously issued document, so this column must not be treated
   /// as proof of immutable content. Full snapshot persistence remains pending
   /// decision D4.4-03.
   final String? documentSnapshotId;
-  const LoanEntry({
+  const CreditEntry({
     required this.id,
     required this.shopId,
     required this.customerId,
@@ -4451,8 +4500,8 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
     return map;
   }
 
-  LoansCompanion toCompanion(bool nullToAbsent) {
-    return LoansCompanion(
+  CreditsCompanion toCompanion(bool nullToAbsent) {
+    return CreditsCompanion(
       id: Value(id),
       shopId: Value(shopId),
       customerId: Value(customerId),
@@ -4490,12 +4539,12 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
     );
   }
 
-  factory LoanEntry.fromJson(
+  factory CreditEntry.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return LoanEntry(
+    return CreditEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
       customerId: serializer.fromJson<int>(json['customerId']),
@@ -4547,7 +4596,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
     };
   }
 
-  LoanEntry copyWith({
+  CreditEntry copyWith({
     String? id,
     String? shopId,
     int? customerId,
@@ -4566,7 +4615,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
     Value<DateTime?> settledAt = const Value.absent(),
     bool? correctionPending,
     Value<String?> documentSnapshotId = const Value.absent(),
-  }) => LoanEntry(
+  }) => CreditEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
     customerId: customerId ?? this.customerId,
@@ -4596,8 +4645,8 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
         ? documentSnapshotId.value
         : this.documentSnapshotId,
   );
-  LoanEntry copyWithCompanion(LoansCompanion data) {
-    return LoanEntry(
+  CreditEntry copyWithCompanion(CreditsCompanion data) {
+    return CreditEntry(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
       customerId: data.customerId.present
@@ -4645,7 +4694,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
 
   @override
   String toString() {
-    return (StringBuffer('LoanEntry(')
+    return (StringBuffer('CreditEntry(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
           ..write('customerId: $customerId, ')
@@ -4692,7 +4741,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LoanEntry &&
+      (other is CreditEntry &&
           other.id == this.id &&
           other.shopId == this.shopId &&
           other.customerId == this.customerId &&
@@ -4713,7 +4762,7 @@ class LoanEntry extends DataClass implements Insertable<LoanEntry> {
           other.documentSnapshotId == this.documentSnapshotId);
 }
 
-class LoansCompanion extends UpdateCompanion<LoanEntry> {
+class CreditsCompanion extends UpdateCompanion<CreditEntry> {
   final Value<String> id;
   final Value<String> shopId;
   final Value<int> customerId;
@@ -4733,7 +4782,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
   final Value<bool> correctionPending;
   final Value<String?> documentSnapshotId;
   final Value<int> rowid;
-  const LoansCompanion({
+  const CreditsCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
     this.customerId = const Value.absent(),
@@ -4754,7 +4803,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
     this.documentSnapshotId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  LoansCompanion.insert({
+  CreditsCompanion.insert({
     required String id,
     required String shopId,
     required int customerId,
@@ -4781,7 +4830,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
        balanceCents = Value(balanceCents),
        dueDate = Value(dueDate),
        createdAt = Value(createdAt);
-  static Insertable<LoanEntry> custom({
+  static Insertable<CreditEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
     Expression<int>? customerId,
@@ -4826,7 +4875,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
     });
   }
 
-  LoansCompanion copyWith({
+  CreditsCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
     Value<int>? customerId,
@@ -4847,7 +4896,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
     Value<String?>? documentSnapshotId,
     Value<int>? rowid,
   }) {
-    return LoansCompanion(
+    return CreditsCompanion(
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
       customerId: customerId ?? this.customerId,
@@ -4935,7 +4984,7 @@ class LoansCompanion extends UpdateCompanion<LoanEntry> {
 
   @override
   String toString() {
-    return (StringBuffer('LoansCompanion(')
+    return (StringBuffer('CreditsCompanion(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
           ..write('customerId: $customerId, ')
@@ -5001,16 +5050,18 @@ class $CollateralItemsTable extends CollateralItems
       'REFERENCES customers (id) ON DELETE RESTRICT',
     ),
   );
-  static const VerificationMeta _loanIdMeta = const VerificationMeta('loanId');
+  static const VerificationMeta _creditIdMeta = const VerificationMeta(
+    'creditId',
+  );
   @override
-  late final GeneratedColumn<String> loanId = GeneratedColumn<String>(
-    'loan_id',
+  late final GeneratedColumn<String> creditId = GeneratedColumn<String>(
+    'credit_id',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loans (id) ON DELETE RESTRICT',
+      'REFERENCES credits (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _itemReferenceIdMeta = const VerificationMeta(
@@ -5155,7 +5206,7 @@ class $CollateralItemsTable extends CollateralItems
     id,
     shopId,
     customerId,
-    loanId,
+    creditId,
     itemReferenceId,
     category,
     description,
@@ -5201,10 +5252,10 @@ class $CollateralItemsTable extends CollateralItems
     } else if (isInserting) {
       context.missing(_customerIdMeta);
     }
-    if (data.containsKey('loan_id')) {
+    if (data.containsKey('credit_id')) {
       context.handle(
-        _loanIdMeta,
-        loanId.isAcceptableOrUnknown(data['loan_id']!, _loanIdMeta),
+        _creditIdMeta,
+        creditId.isAcceptableOrUnknown(data['credit_id']!, _creditIdMeta),
       );
     }
     if (data.containsKey('item_reference_id')) {
@@ -5332,9 +5383,9 @@ class $CollateralItemsTable extends CollateralItems
         DriftSqlType.int,
         data['${effectivePrefix}customer_id'],
       )!,
-      loanId: attachedDatabase.typeMapping.read(
+      creditId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}loan_id'],
+        data['${effectivePrefix}credit_id'],
       ),
       itemReferenceId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -5400,8 +5451,8 @@ class CollateralItemEntry extends DataClass
   /// Associated customer borrower (immutable foreign key boundary, required).
   final int customerId;
 
-  /// Optional associated loan (nullable until Epic 4 enforces loan-collateral binding).
-  final String? loanId;
+  /// Optional associated credit (nullable until Epic 4 enforces credit-collateral binding).
+  final String? creditId;
 
   /// Unique item reference within the shop (e.g., "COLL-001").
   final String itemReferenceId;
@@ -5442,7 +5493,7 @@ class CollateralItemEntry extends DataClass
     required this.id,
     required this.shopId,
     required this.customerId,
-    this.loanId,
+    this.creditId,
     required this.itemReferenceId,
     required this.category,
     required this.description,
@@ -5461,8 +5512,8 @@ class CollateralItemEntry extends DataClass
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
     map['customer_id'] = Variable<int>(customerId);
-    if (!nullToAbsent || loanId != null) {
-      map['loan_id'] = Variable<String>(loanId);
+    if (!nullToAbsent || creditId != null) {
+      map['credit_id'] = Variable<String>(creditId);
     }
     map['item_reference_id'] = Variable<String>(itemReferenceId);
     map['category'] = Variable<String>(category);
@@ -5487,9 +5538,9 @@ class CollateralItemEntry extends DataClass
       id: Value(id),
       shopId: Value(shopId),
       customerId: Value(customerId),
-      loanId: loanId == null && nullToAbsent
+      creditId: creditId == null && nullToAbsent
           ? const Value.absent()
-          : Value(loanId),
+          : Value(creditId),
       itemReferenceId: Value(itemReferenceId),
       category: Value(category),
       description: Value(description),
@@ -5517,7 +5568,7 @@ class CollateralItemEntry extends DataClass
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
       customerId: serializer.fromJson<int>(json['customerId']),
-      loanId: serializer.fromJson<String?>(json['loanId']),
+      creditId: serializer.fromJson<String?>(json['creditId']),
       itemReferenceId: serializer.fromJson<String>(json['itemReferenceId']),
       category: serializer.fromJson<String>(json['category']),
       description: serializer.fromJson<String>(json['description']),
@@ -5540,7 +5591,7 @@ class CollateralItemEntry extends DataClass
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
       'customerId': serializer.toJson<int>(customerId),
-      'loanId': serializer.toJson<String?>(loanId),
+      'creditId': serializer.toJson<String?>(creditId),
       'itemReferenceId': serializer.toJson<String>(itemReferenceId),
       'category': serializer.toJson<String>(category),
       'description': serializer.toJson<String>(description),
@@ -5559,7 +5610,7 @@ class CollateralItemEntry extends DataClass
     String? id,
     String? shopId,
     int? customerId,
-    Value<String?> loanId = const Value.absent(),
+    Value<String?> creditId = const Value.absent(),
     String? itemReferenceId,
     String? category,
     String? description,
@@ -5575,7 +5626,7 @@ class CollateralItemEntry extends DataClass
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
     customerId: customerId ?? this.customerId,
-    loanId: loanId.present ? loanId.value : this.loanId,
+    creditId: creditId.present ? creditId.value : this.creditId,
     itemReferenceId: itemReferenceId ?? this.itemReferenceId,
     category: category ?? this.category,
     description: description ?? this.description,
@@ -5595,7 +5646,7 @@ class CollateralItemEntry extends DataClass
       customerId: data.customerId.present
           ? data.customerId.value
           : this.customerId,
-      loanId: data.loanId.present ? data.loanId.value : this.loanId,
+      creditId: data.creditId.present ? data.creditId.value : this.creditId,
       itemReferenceId: data.itemReferenceId.present
           ? data.itemReferenceId.value
           : this.itemReferenceId,
@@ -5628,7 +5679,7 @@ class CollateralItemEntry extends DataClass
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
           ..write('customerId: $customerId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('itemReferenceId: $itemReferenceId, ')
           ..write('category: $category, ')
           ..write('description: $description, ')
@@ -5649,7 +5700,7 @@ class CollateralItemEntry extends DataClass
     id,
     shopId,
     customerId,
-    loanId,
+    creditId,
     itemReferenceId,
     category,
     description,
@@ -5669,7 +5720,7 @@ class CollateralItemEntry extends DataClass
           other.id == this.id &&
           other.shopId == this.shopId &&
           other.customerId == this.customerId &&
-          other.loanId == this.loanId &&
+          other.creditId == this.creditId &&
           other.itemReferenceId == this.itemReferenceId &&
           other.category == this.category &&
           other.description == this.description &&
@@ -5687,7 +5738,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
   final Value<String> id;
   final Value<String> shopId;
   final Value<int> customerId;
-  final Value<String?> loanId;
+  final Value<String?> creditId;
   final Value<String> itemReferenceId;
   final Value<String> category;
   final Value<String> description;
@@ -5704,7 +5755,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
     this.customerId = const Value.absent(),
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     this.itemReferenceId = const Value.absent(),
     this.category = const Value.absent(),
     this.description = const Value.absent(),
@@ -5722,7 +5773,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
     required String id,
     required String shopId,
     required int customerId,
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     required String itemReferenceId,
     required String category,
     required String description,
@@ -5750,7 +5801,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
     Expression<String>? id,
     Expression<String>? shopId,
     Expression<int>? customerId,
-    Expression<String>? loanId,
+    Expression<String>? creditId,
     Expression<String>? itemReferenceId,
     Expression<String>? category,
     Expression<String>? description,
@@ -5768,7 +5819,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
       if (customerId != null) 'customer_id': customerId,
-      if (loanId != null) 'loan_id': loanId,
+      if (creditId != null) 'credit_id': creditId,
       if (itemReferenceId != null) 'item_reference_id': itemReferenceId,
       if (category != null) 'category': category,
       if (description != null) 'description': description,
@@ -5789,7 +5840,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
     Value<String>? id,
     Value<String>? shopId,
     Value<int>? customerId,
-    Value<String?>? loanId,
+    Value<String?>? creditId,
     Value<String>? itemReferenceId,
     Value<String>? category,
     Value<String>? description,
@@ -5807,7 +5858,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
       customerId: customerId ?? this.customerId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       itemReferenceId: itemReferenceId ?? this.itemReferenceId,
       category: category ?? this.category,
       description: description ?? this.description,
@@ -5835,8 +5886,8 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
     if (customerId.present) {
       map['customer_id'] = Variable<int>(customerId.value);
     }
-    if (loanId.present) {
-      map['loan_id'] = Variable<String>(loanId.value);
+    if (creditId.present) {
+      map['credit_id'] = Variable<String>(creditId.value);
     }
     if (itemReferenceId.present) {
       map['item_reference_id'] = Variable<String>(itemReferenceId.value);
@@ -5883,7 +5934,7 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
           ..write('customerId: $customerId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('itemReferenceId: $itemReferenceId, ')
           ..write('category: $category, ')
           ..write('description: $description, ')
@@ -7945,16 +7996,18 @@ class $PaymentsTable extends Payments
       'REFERENCES shops (id) ON DELETE RESTRICT',
     ),
   );
-  static const VerificationMeta _loanIdMeta = const VerificationMeta('loanId');
+  static const VerificationMeta _creditIdMeta = const VerificationMeta(
+    'creditId',
+  );
   @override
-  late final GeneratedColumn<String> loanId = GeneratedColumn<String>(
-    'loan_id',
+  late final GeneratedColumn<String> creditId = GeneratedColumn<String>(
+    'credit_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loans (id) ON DELETE RESTRICT',
+      'REFERENCES credits (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _receiptNumberMeta = const VerificationMeta(
@@ -8152,7 +8205,7 @@ class $PaymentsTable extends Payments
   List<GeneratedColumn> get $columns => [
     id,
     shopId,
-    loanId,
+    creditId,
     receiptNumber,
     amountCents,
     preBalanceCents,
@@ -8195,13 +8248,13 @@ class $PaymentsTable extends Payments
     } else if (isInserting) {
       context.missing(_shopIdMeta);
     }
-    if (data.containsKey('loan_id')) {
+    if (data.containsKey('credit_id')) {
       context.handle(
-        _loanIdMeta,
-        loanId.isAcceptableOrUnknown(data['loan_id']!, _loanIdMeta),
+        _creditIdMeta,
+        creditId.isAcceptableOrUnknown(data['credit_id']!, _creditIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_loanIdMeta);
+      context.missing(_creditIdMeta);
     }
     if (data.containsKey('receipt_number')) {
       context.handle(
@@ -8378,9 +8431,9 @@ class $PaymentsTable extends Payments
         DriftSqlType.string,
         data['${effectivePrefix}shop_id'],
       )!,
-      loanId: attachedDatabase.typeMapping.read(
+      creditId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}loan_id'],
+        data['${effectivePrefix}credit_id'],
       )!,
       receiptNumber: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -8462,8 +8515,8 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
   /// Tenant shop association (immutable foreign key boundary).
   final String shopId;
 
-  /// Associated loan agreement (immutable foreign key boundary).
-  final String loanId;
+  /// Associated credit agreement (immutable foreign key boundary).
+  final String creditId;
 
   /// Unique human-readable receipt number (e.g. `RCP-<shop>-<YYYYMMDD>-<short>`).
   final String receiptNumber;
@@ -8515,7 +8568,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
   const PaymentEntry({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.receiptNumber,
     required this.amountCents,
     required this.preBalanceCents,
@@ -8538,7 +8591,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['loan_id'] = Variable<String>(loanId);
+    map['credit_id'] = Variable<String>(creditId);
     map['receipt_number'] = Variable<String>(receiptNumber);
     map['amount_cents'] = Variable<int>(amountCents);
     map['pre_balance_cents'] = Variable<int>(preBalanceCents);
@@ -8570,7 +8623,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
     return PaymentsCompanion(
       id: Value(id),
       shopId: Value(shopId),
-      loanId: Value(loanId),
+      creditId: Value(creditId),
       receiptNumber: Value(receiptNumber),
       amountCents: Value(amountCents),
       preBalanceCents: Value(preBalanceCents),
@@ -8606,7 +8659,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
     return PaymentEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      loanId: serializer.fromJson<String>(json['loanId']),
+      creditId: serializer.fromJson<String>(json['creditId']),
       receiptNumber: serializer.fromJson<String>(json['receiptNumber']),
       amountCents: serializer.fromJson<int>(json['amountCents']),
       preBalanceCents: serializer.fromJson<int>(json['preBalanceCents']),
@@ -8631,7 +8684,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'loanId': serializer.toJson<String>(loanId),
+      'creditId': serializer.toJson<String>(creditId),
       'receiptNumber': serializer.toJson<String>(receiptNumber),
       'amountCents': serializer.toJson<int>(amountCents),
       'preBalanceCents': serializer.toJson<int>(preBalanceCents),
@@ -8654,7 +8707,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
   PaymentEntry copyWith({
     String? id,
     String? shopId,
-    String? loanId,
+    String? creditId,
     String? receiptNumber,
     int? amountCents,
     int? preBalanceCents,
@@ -8674,7 +8727,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
   }) => PaymentEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
-    loanId: loanId ?? this.loanId,
+    creditId: creditId ?? this.creditId,
     receiptNumber: receiptNumber ?? this.receiptNumber,
     amountCents: amountCents ?? this.amountCents,
     preBalanceCents: preBalanceCents ?? this.preBalanceCents,
@@ -8698,7 +8751,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
     return PaymentEntry(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
-      loanId: data.loanId.present ? data.loanId.value : this.loanId,
+      creditId: data.creditId.present ? data.creditId.value : this.creditId,
       receiptNumber: data.receiptNumber.present
           ? data.receiptNumber.value
           : this.receiptNumber,
@@ -8749,7 +8802,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
     return (StringBuffer('PaymentEntry(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('receiptNumber: $receiptNumber, ')
           ..write('amountCents: $amountCents, ')
           ..write('preBalanceCents: $preBalanceCents, ')
@@ -8774,7 +8827,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
   int get hashCode => Object.hash(
     id,
     shopId,
-    loanId,
+    creditId,
     receiptNumber,
     amountCents,
     preBalanceCents,
@@ -8798,7 +8851,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
       (other is PaymentEntry &&
           other.id == this.id &&
           other.shopId == this.shopId &&
-          other.loanId == this.loanId &&
+          other.creditId == this.creditId &&
           other.receiptNumber == this.receiptNumber &&
           other.amountCents == this.amountCents &&
           other.preBalanceCents == this.preBalanceCents &&
@@ -8820,7 +8873,7 @@ class PaymentEntry extends DataClass implements Insertable<PaymentEntry> {
 class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> loanId;
+  final Value<String> creditId;
   final Value<String> receiptNumber;
   final Value<int> amountCents;
   final Value<int> preBalanceCents;
@@ -8841,7 +8894,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
   const PaymentsCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     this.receiptNumber = const Value.absent(),
     this.amountCents = const Value.absent(),
     this.preBalanceCents = const Value.absent(),
@@ -8863,7 +8916,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
   PaymentsCompanion.insert({
     required String id,
     required String shopId,
-    required String loanId,
+    required String creditId,
     required String receiptNumber,
     required int amountCents,
     required int preBalanceCents,
@@ -8883,7 +8936,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
-       loanId = Value(loanId),
+       creditId = Value(creditId),
        receiptNumber = Value(receiptNumber),
        amountCents = Value(amountCents),
        preBalanceCents = Value(preBalanceCents),
@@ -8899,7 +8952,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
   static Insertable<PaymentEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? loanId,
+    Expression<String>? creditId,
     Expression<String>? receiptNumber,
     Expression<int>? amountCents,
     Expression<int>? preBalanceCents,
@@ -8921,7 +8974,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
-      if (loanId != null) 'loan_id': loanId,
+      if (creditId != null) 'credit_id': creditId,
       if (receiptNumber != null) 'receipt_number': receiptNumber,
       if (amountCents != null) 'amount_cents': amountCents,
       if (preBalanceCents != null) 'pre_balance_cents': preBalanceCents,
@@ -8945,7 +8998,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
   PaymentsCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? loanId,
+    Value<String>? creditId,
     Value<String>? receiptNumber,
     Value<int>? amountCents,
     Value<int>? preBalanceCents,
@@ -8967,7 +9020,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
     return PaymentsCompanion(
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       receiptNumber: receiptNumber ?? this.receiptNumber,
       amountCents: amountCents ?? this.amountCents,
       preBalanceCents: preBalanceCents ?? this.preBalanceCents,
@@ -8997,8 +9050,8 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
     if (shopId.present) {
       map['shop_id'] = Variable<String>(shopId.value);
     }
-    if (loanId.present) {
-      map['loan_id'] = Variable<String>(loanId.value);
+    if (creditId.present) {
+      map['credit_id'] = Variable<String>(creditId.value);
     }
     if (receiptNumber.present) {
       map['receipt_number'] = Variable<String>(receiptNumber.value);
@@ -9059,7 +9112,7 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
     return (StringBuffer('PaymentsCompanion(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('receiptNumber: $receiptNumber, ')
           ..write('amountCents: $amountCents, ')
           ..write('preBalanceCents: $preBalanceCents, ')
@@ -9082,12 +9135,12 @@ class PaymentsCompanion extends UpdateCompanion<PaymentEntry> {
   }
 }
 
-class $LoanCorrectionsTable extends LoanCorrections
-    with TableInfo<$LoanCorrectionsTable, LoanCorrectionEntry> {
+class $CreditCorrectionsTable extends CreditCorrections
+    with TableInfo<$CreditCorrectionsTable, CreditCorrectionEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $LoanCorrectionsTable(this.attachedDatabase, [this._alias]);
+  $CreditCorrectionsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -9109,16 +9162,18 @@ class $LoanCorrectionsTable extends LoanCorrections
       'REFERENCES shops (id) ON DELETE RESTRICT',
     ),
   );
-  static const VerificationMeta _loanIdMeta = const VerificationMeta('loanId');
+  static const VerificationMeta _creditIdMeta = const VerificationMeta(
+    'creditId',
+  );
   @override
-  late final GeneratedColumn<String> loanId = GeneratedColumn<String>(
-    'loan_id',
+  late final GeneratedColumn<String> creditId = GeneratedColumn<String>(
+    'credit_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loans (id) ON DELETE RESTRICT',
+      'REFERENCES credits (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _originalPaymentIdMeta = const VerificationMeta(
@@ -9253,7 +9308,7 @@ class $LoanCorrectionsTable extends LoanCorrections
   List<GeneratedColumn> get $columns => [
     id,
     shopId,
-    loanId,
+    creditId,
     originalPaymentId,
     requestedByUserId,
     correctionAmountCents,
@@ -9270,10 +9325,10 @@ class $LoanCorrectionsTable extends LoanCorrections
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'loan_corrections';
+  static const String $name = 'credit_corrections';
   @override
   VerificationContext validateIntegrity(
-    Insertable<LoanCorrectionEntry> instance, {
+    Insertable<CreditCorrectionEntry> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -9291,13 +9346,13 @@ class $LoanCorrectionsTable extends LoanCorrections
     } else if (isInserting) {
       context.missing(_shopIdMeta);
     }
-    if (data.containsKey('loan_id')) {
+    if (data.containsKey('credit_id')) {
       context.handle(
-        _loanIdMeta,
-        loanId.isAcceptableOrUnknown(data['loan_id']!, _loanIdMeta),
+        _creditIdMeta,
+        creditId.isAcceptableOrUnknown(data['credit_id']!, _creditIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_loanIdMeta);
+      context.missing(_creditIdMeta);
     }
     if (data.containsKey('original_payment_id')) {
       context.handle(
@@ -9399,9 +9454,9 @@ class $LoanCorrectionsTable extends LoanCorrections
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  LoanCorrectionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+  CreditCorrectionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return LoanCorrectionEntry(
+    return CreditCorrectionEntry(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -9410,9 +9465,9 @@ class $LoanCorrectionsTable extends LoanCorrections
         DriftSqlType.string,
         data['${effectivePrefix}shop_id'],
       )!,
-      loanId: attachedDatabase.typeMapping.read(
+      creditId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}loan_id'],
+        data['${effectivePrefix}credit_id'],
       )!,
       originalPaymentId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -9462,21 +9517,21 @@ class $LoanCorrectionsTable extends LoanCorrections
   }
 
   @override
-  $LoanCorrectionsTable createAlias(String alias) {
-    return $LoanCorrectionsTable(attachedDatabase, alias);
+  $CreditCorrectionsTable createAlias(String alias) {
+    return $CreditCorrectionsTable(attachedDatabase, alias);
   }
 }
 
-class LoanCorrectionEntry extends DataClass
-    implements Insertable<LoanCorrectionEntry> {
+class CreditCorrectionEntry extends DataClass
+    implements Insertable<CreditCorrectionEntry> {
   /// Canonical UUIDv4 primary key.
   final String id;
 
   /// Tenant shop association (immutable foreign key boundary).
   final String shopId;
 
-  /// Associated loan agreement (immutable foreign key boundary).
-  final String loanId;
+  /// Associated credit agreement (immutable foreign key boundary).
+  final String creditId;
 
   /// Original erroneous payment being corrected (nullable to also support
   /// Shop Owner manual balance adjustments that do not reference a payment).
@@ -9497,7 +9552,7 @@ class LoanCorrectionEntry extends DataClass
   /// Lifecycle status of the correction request.
   ///
   /// - `pending_approval`: Awaiting Shop Owner decision; the correction lock
-  ///   is active on the loan and new payments are blocked.
+  ///   is active on the credit and new payments are blocked.
   /// - `approved`: Approved by Shop Owner; the compensating adjustment has
   ///   been applied and the lock is lifted.
   /// - `rejected`: Rejected by Shop Owner; the balance is unchanged and the
@@ -9515,7 +9570,7 @@ class LoanCorrectionEntry extends DataClass
   /// Empty/null for `pending_approval` and `approved`.
   final String? rejectionReason;
 
-  /// Resulting loan balance in minor units after an approved adjustment.
+  /// Resulting credit balance in minor units after an approved adjustment.
   ///
   /// Snapshot recorded at approval for audit. Null while the request is
   /// pending or rejected (rejection leaves the balance unchanged).
@@ -9526,10 +9581,10 @@ class LoanCorrectionEntry extends DataClass
 
   /// UTC timestamp of the last status change.
   final DateTime updatedAt;
-  const LoanCorrectionEntry({
+  const CreditCorrectionEntry({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     this.originalPaymentId,
     required this.requestedByUserId,
     required this.correctionAmountCents,
@@ -9547,7 +9602,7 @@ class LoanCorrectionEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['loan_id'] = Variable<String>(loanId);
+    map['credit_id'] = Variable<String>(creditId);
     if (!nullToAbsent || originalPaymentId != null) {
       map['original_payment_id'] = Variable<String>(originalPaymentId);
     }
@@ -9572,11 +9627,11 @@ class LoanCorrectionEntry extends DataClass
     return map;
   }
 
-  LoanCorrectionsCompanion toCompanion(bool nullToAbsent) {
-    return LoanCorrectionsCompanion(
+  CreditCorrectionsCompanion toCompanion(bool nullToAbsent) {
+    return CreditCorrectionsCompanion(
       id: Value(id),
       shopId: Value(shopId),
-      loanId: Value(loanId),
+      creditId: Value(creditId),
       originalPaymentId: originalPaymentId == null && nullToAbsent
           ? const Value.absent()
           : Value(originalPaymentId),
@@ -9601,15 +9656,15 @@ class LoanCorrectionEntry extends DataClass
     );
   }
 
-  factory LoanCorrectionEntry.fromJson(
+  factory CreditCorrectionEntry.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return LoanCorrectionEntry(
+    return CreditCorrectionEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      loanId: serializer.fromJson<String>(json['loanId']),
+      creditId: serializer.fromJson<String>(json['creditId']),
       originalPaymentId: serializer.fromJson<String?>(
         json['originalPaymentId'],
       ),
@@ -9635,7 +9690,7 @@ class LoanCorrectionEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'loanId': serializer.toJson<String>(loanId),
+      'creditId': serializer.toJson<String>(creditId),
       'originalPaymentId': serializer.toJson<String?>(originalPaymentId),
       'requestedByUserId': serializer.toJson<String>(requestedByUserId),
       'correctionAmountCents': serializer.toJson<int>(correctionAmountCents),
@@ -9650,10 +9705,10 @@ class LoanCorrectionEntry extends DataClass
     };
   }
 
-  LoanCorrectionEntry copyWith({
+  CreditCorrectionEntry copyWith({
     String? id,
     String? shopId,
-    String? loanId,
+    String? creditId,
     Value<String?> originalPaymentId = const Value.absent(),
     String? requestedByUserId,
     int? correctionAmountCents,
@@ -9665,10 +9720,10 @@ class LoanCorrectionEntry extends DataClass
     Value<int?> resultingBalanceCents = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) => LoanCorrectionEntry(
+  }) => CreditCorrectionEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
-    loanId: loanId ?? this.loanId,
+    creditId: creditId ?? this.creditId,
     originalPaymentId: originalPaymentId.present
         ? originalPaymentId.value
         : this.originalPaymentId,
@@ -9689,11 +9744,11 @@ class LoanCorrectionEntry extends DataClass
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
-  LoanCorrectionEntry copyWithCompanion(LoanCorrectionsCompanion data) {
-    return LoanCorrectionEntry(
+  CreditCorrectionEntry copyWithCompanion(CreditCorrectionsCompanion data) {
+    return CreditCorrectionEntry(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
-      loanId: data.loanId.present ? data.loanId.value : this.loanId,
+      creditId: data.creditId.present ? data.creditId.value : this.creditId,
       originalPaymentId: data.originalPaymentId.present
           ? data.originalPaymentId.value
           : this.originalPaymentId,
@@ -9724,10 +9779,10 @@ class LoanCorrectionEntry extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('LoanCorrectionEntry(')
+    return (StringBuffer('CreditCorrectionEntry(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('originalPaymentId: $originalPaymentId, ')
           ..write('requestedByUserId: $requestedByUserId, ')
           ..write('correctionAmountCents: $correctionAmountCents, ')
@@ -9747,7 +9802,7 @@ class LoanCorrectionEntry extends DataClass
   int get hashCode => Object.hash(
     id,
     shopId,
-    loanId,
+    creditId,
     originalPaymentId,
     requestedByUserId,
     correctionAmountCents,
@@ -9763,10 +9818,10 @@ class LoanCorrectionEntry extends DataClass
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LoanCorrectionEntry &&
+      (other is CreditCorrectionEntry &&
           other.id == this.id &&
           other.shopId == this.shopId &&
-          other.loanId == this.loanId &&
+          other.creditId == this.creditId &&
           other.originalPaymentId == this.originalPaymentId &&
           other.requestedByUserId == this.requestedByUserId &&
           other.correctionAmountCents == this.correctionAmountCents &&
@@ -9780,10 +9835,11 @@ class LoanCorrectionEntry extends DataClass
           other.updatedAt == this.updatedAt);
 }
 
-class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
+class CreditCorrectionsCompanion
+    extends UpdateCompanion<CreditCorrectionEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> loanId;
+  final Value<String> creditId;
   final Value<String?> originalPaymentId;
   final Value<String> requestedByUserId;
   final Value<int> correctionAmountCents;
@@ -9796,10 +9852,10 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
-  const LoanCorrectionsCompanion({
+  const CreditCorrectionsCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     this.originalPaymentId = const Value.absent(),
     this.requestedByUserId = const Value.absent(),
     this.correctionAmountCents = const Value.absent(),
@@ -9813,10 +9869,10 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  LoanCorrectionsCompanion.insert({
+  CreditCorrectionsCompanion.insert({
     required String id,
     required String shopId,
-    required String loanId,
+    required String creditId,
     this.originalPaymentId = const Value.absent(),
     required String requestedByUserId,
     required int correctionAmountCents,
@@ -9831,16 +9887,16 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
-       loanId = Value(loanId),
+       creditId = Value(creditId),
        requestedByUserId = Value(requestedByUserId),
        correctionAmountCents = Value(correctionAmountCents),
        reason = Value(reason),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
-  static Insertable<LoanCorrectionEntry> custom({
+  static Insertable<CreditCorrectionEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? loanId,
+    Expression<String>? creditId,
     Expression<String>? originalPaymentId,
     Expression<String>? requestedByUserId,
     Expression<int>? correctionAmountCents,
@@ -9857,7 +9913,7 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
-      if (loanId != null) 'loan_id': loanId,
+      if (creditId != null) 'credit_id': creditId,
       if (originalPaymentId != null) 'original_payment_id': originalPaymentId,
       if (requestedByUserId != null) 'requested_by_user_id': requestedByUserId,
       if (correctionAmountCents != null)
@@ -9875,10 +9931,10 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
     });
   }
 
-  LoanCorrectionsCompanion copyWith({
+  CreditCorrectionsCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? loanId,
+    Value<String>? creditId,
     Value<String?>? originalPaymentId,
     Value<String>? requestedByUserId,
     Value<int>? correctionAmountCents,
@@ -9892,10 +9948,10 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
-    return LoanCorrectionsCompanion(
+    return CreditCorrectionsCompanion(
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       originalPaymentId: originalPaymentId ?? this.originalPaymentId,
       requestedByUserId: requestedByUserId ?? this.requestedByUserId,
       correctionAmountCents:
@@ -9922,8 +9978,8 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
     if (shopId.present) {
       map['shop_id'] = Variable<String>(shopId.value);
     }
-    if (loanId.present) {
-      map['loan_id'] = Variable<String>(loanId.value);
+    if (creditId.present) {
+      map['credit_id'] = Variable<String>(creditId.value);
     }
     if (originalPaymentId.present) {
       map['original_payment_id'] = Variable<String>(originalPaymentId.value);
@@ -9970,10 +10026,10 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
 
   @override
   String toString() {
-    return (StringBuffer('LoanCorrectionsCompanion(')
+    return (StringBuffer('CreditCorrectionsCompanion(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('originalPaymentId: $originalPaymentId, ')
           ..write('requestedByUserId: $requestedByUserId, ')
           ..write('correctionAmountCents: $correctionAmountCents, ')
@@ -9991,12 +10047,12 @@ class LoanCorrectionsCompanion extends UpdateCompanion<LoanCorrectionEntry> {
   }
 }
 
-class $LoanLedgerEntriesTable extends LoanLedgerEntries
-    with TableInfo<$LoanLedgerEntriesTable, LoanLedgerEntryEntry> {
+class $CreditLedgerEntriesTable extends CreditLedgerEntries
+    with TableInfo<$CreditLedgerEntriesTable, CreditLedgerEntryEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $LoanLedgerEntriesTable(this.attachedDatabase, [this._alias]);
+  $CreditLedgerEntriesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -10018,16 +10074,18 @@ class $LoanLedgerEntriesTable extends LoanLedgerEntries
       'REFERENCES shops (id) ON DELETE RESTRICT',
     ),
   );
-  static const VerificationMeta _loanIdMeta = const VerificationMeta('loanId');
+  static const VerificationMeta _creditIdMeta = const VerificationMeta(
+    'creditId',
+  );
   @override
-  late final GeneratedColumn<String> loanId = GeneratedColumn<String>(
-    'loan_id',
+  late final GeneratedColumn<String> creditId = GeneratedColumn<String>(
+    'credit_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loans (id) ON DELETE RESTRICT',
+      'REFERENCES credits (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _originalPaymentIdMeta = const VerificationMeta(
@@ -10056,7 +10114,7 @@ class $LoanLedgerEntriesTable extends LoanLedgerEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loan_corrections (id) ON DELETE RESTRICT',
+      'REFERENCES credit_corrections (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _entryTypeMeta = const VerificationMeta(
@@ -10153,7 +10211,7 @@ class $LoanLedgerEntriesTable extends LoanLedgerEntries
   List<GeneratedColumn> get $columns => [
     id,
     shopId,
-    loanId,
+    creditId,
     originalPaymentId,
     correctionId,
     entryType,
@@ -10169,10 +10227,10 @@ class $LoanLedgerEntriesTable extends LoanLedgerEntries
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'loan_ledger_entries';
+  static const String $name = 'credit_ledger_entries';
   @override
   VerificationContext validateIntegrity(
-    Insertable<LoanLedgerEntryEntry> instance, {
+    Insertable<CreditLedgerEntryEntry> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -10190,13 +10248,13 @@ class $LoanLedgerEntriesTable extends LoanLedgerEntries
     } else if (isInserting) {
       context.missing(_shopIdMeta);
     }
-    if (data.containsKey('loan_id')) {
+    if (data.containsKey('credit_id')) {
       context.handle(
-        _loanIdMeta,
-        loanId.isAcceptableOrUnknown(data['loan_id']!, _loanIdMeta),
+        _creditIdMeta,
+        creditId.isAcceptableOrUnknown(data['credit_id']!, _creditIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_loanIdMeta);
+      context.missing(_creditIdMeta);
     }
     if (data.containsKey('original_payment_id')) {
       context.handle(
@@ -10298,9 +10356,9 @@ class $LoanLedgerEntriesTable extends LoanLedgerEntries
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  LoanLedgerEntryEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+  CreditLedgerEntryEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return LoanLedgerEntryEntry(
+    return CreditLedgerEntryEntry(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -10309,9 +10367,9 @@ class $LoanLedgerEntriesTable extends LoanLedgerEntries
         DriftSqlType.string,
         data['${effectivePrefix}shop_id'],
       )!,
-      loanId: attachedDatabase.typeMapping.read(
+      creditId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}loan_id'],
+        data['${effectivePrefix}credit_id'],
       )!,
       originalPaymentId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -10357,21 +10415,21 @@ class $LoanLedgerEntriesTable extends LoanLedgerEntries
   }
 
   @override
-  $LoanLedgerEntriesTable createAlias(String alias) {
-    return $LoanLedgerEntriesTable(attachedDatabase, alias);
+  $CreditLedgerEntriesTable createAlias(String alias) {
+    return $CreditLedgerEntriesTable(attachedDatabase, alias);
   }
 }
 
-class LoanLedgerEntryEntry extends DataClass
-    implements Insertable<LoanLedgerEntryEntry> {
+class CreditLedgerEntryEntry extends DataClass
+    implements Insertable<CreditLedgerEntryEntry> {
   /// Canonical UUIDv4 primary key.
   final String id;
 
   /// Tenant shop association (immutable foreign key boundary).
   final String shopId;
 
-  /// Associated loan agreement (immutable foreign key boundary).
-  final String loanId;
+  /// Associated credit agreement (immutable foreign key boundary).
+  final String creditId;
 
   /// Original erroneous payment being corrected (nullable for manual
   /// adjustments that do not reference a payment).
@@ -10408,10 +10466,10 @@ class LoanLedgerEntryEntry extends DataClass
 
   /// UTC creation timestamp.
   final DateTime createdAt;
-  const LoanLedgerEntryEntry({
+  const CreditLedgerEntryEntry({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     this.originalPaymentId,
     this.correctionId,
     required this.entryType,
@@ -10428,7 +10486,7 @@ class LoanLedgerEntryEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['loan_id'] = Variable<String>(loanId);
+    map['credit_id'] = Variable<String>(creditId);
     if (!nullToAbsent || originalPaymentId != null) {
       map['original_payment_id'] = Variable<String>(originalPaymentId);
     }
@@ -10446,11 +10504,11 @@ class LoanLedgerEntryEntry extends DataClass
     return map;
   }
 
-  LoanLedgerEntriesCompanion toCompanion(bool nullToAbsent) {
-    return LoanLedgerEntriesCompanion(
+  CreditLedgerEntriesCompanion toCompanion(bool nullToAbsent) {
+    return CreditLedgerEntriesCompanion(
       id: Value(id),
       shopId: Value(shopId),
-      loanId: Value(loanId),
+      creditId: Value(creditId),
       originalPaymentId: originalPaymentId == null && nullToAbsent
           ? const Value.absent()
           : Value(originalPaymentId),
@@ -10468,15 +10526,15 @@ class LoanLedgerEntryEntry extends DataClass
     );
   }
 
-  factory LoanLedgerEntryEntry.fromJson(
+  factory CreditLedgerEntryEntry.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return LoanLedgerEntryEntry(
+    return CreditLedgerEntryEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      loanId: serializer.fromJson<String>(json['loanId']),
+      creditId: serializer.fromJson<String>(json['creditId']),
       originalPaymentId: serializer.fromJson<String?>(
         json['originalPaymentId'],
       ),
@@ -10497,7 +10555,7 @@ class LoanLedgerEntryEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'loanId': serializer.toJson<String>(loanId),
+      'creditId': serializer.toJson<String>(creditId),
       'originalPaymentId': serializer.toJson<String?>(originalPaymentId),
       'correctionId': serializer.toJson<String?>(correctionId),
       'entryType': serializer.toJson<String>(entryType),
@@ -10511,10 +10569,10 @@ class LoanLedgerEntryEntry extends DataClass
     };
   }
 
-  LoanLedgerEntryEntry copyWith({
+  CreditLedgerEntryEntry copyWith({
     String? id,
     String? shopId,
-    String? loanId,
+    String? creditId,
     Value<String?> originalPaymentId = const Value.absent(),
     Value<String?> correctionId = const Value.absent(),
     String? entryType,
@@ -10525,10 +10583,10 @@ class LoanLedgerEntryEntry extends DataClass
     String? recordedByUserId,
     DateTime? recordedAt,
     DateTime? createdAt,
-  }) => LoanLedgerEntryEntry(
+  }) => CreditLedgerEntryEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
-    loanId: loanId ?? this.loanId,
+    creditId: creditId ?? this.creditId,
     originalPaymentId: originalPaymentId.present
         ? originalPaymentId.value
         : this.originalPaymentId,
@@ -10542,11 +10600,11 @@ class LoanLedgerEntryEntry extends DataClass
     recordedAt: recordedAt ?? this.recordedAt,
     createdAt: createdAt ?? this.createdAt,
   );
-  LoanLedgerEntryEntry copyWithCompanion(LoanLedgerEntriesCompanion data) {
-    return LoanLedgerEntryEntry(
+  CreditLedgerEntryEntry copyWithCompanion(CreditLedgerEntriesCompanion data) {
+    return CreditLedgerEntryEntry(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
-      loanId: data.loanId.present ? data.loanId.value : this.loanId,
+      creditId: data.creditId.present ? data.creditId.value : this.creditId,
       originalPaymentId: data.originalPaymentId.present
           ? data.originalPaymentId.value
           : this.originalPaymentId,
@@ -10576,10 +10634,10 @@ class LoanLedgerEntryEntry extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('LoanLedgerEntryEntry(')
+    return (StringBuffer('CreditLedgerEntryEntry(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('originalPaymentId: $originalPaymentId, ')
           ..write('correctionId: $correctionId, ')
           ..write('entryType: $entryType, ')
@@ -10598,7 +10656,7 @@ class LoanLedgerEntryEntry extends DataClass
   int get hashCode => Object.hash(
     id,
     shopId,
-    loanId,
+    creditId,
     originalPaymentId,
     correctionId,
     entryType,
@@ -10613,10 +10671,10 @@ class LoanLedgerEntryEntry extends DataClass
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LoanLedgerEntryEntry &&
+      (other is CreditLedgerEntryEntry &&
           other.id == this.id &&
           other.shopId == this.shopId &&
-          other.loanId == this.loanId &&
+          other.creditId == this.creditId &&
           other.originalPaymentId == this.originalPaymentId &&
           other.correctionId == this.correctionId &&
           other.entryType == this.entryType &&
@@ -10629,10 +10687,11 @@ class LoanLedgerEntryEntry extends DataClass
           other.createdAt == this.createdAt);
 }
 
-class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
+class CreditLedgerEntriesCompanion
+    extends UpdateCompanion<CreditLedgerEntryEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> loanId;
+  final Value<String> creditId;
   final Value<String?> originalPaymentId;
   final Value<String?> correctionId;
   final Value<String> entryType;
@@ -10644,10 +10703,10 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
   final Value<DateTime> recordedAt;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
-  const LoanLedgerEntriesCompanion({
+  const CreditLedgerEntriesCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     this.originalPaymentId = const Value.absent(),
     this.correctionId = const Value.absent(),
     this.entryType = const Value.absent(),
@@ -10660,10 +10719,10 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  LoanLedgerEntriesCompanion.insert({
+  CreditLedgerEntriesCompanion.insert({
     required String id,
     required String shopId,
-    required String loanId,
+    required String creditId,
     this.originalPaymentId = const Value.absent(),
     this.correctionId = const Value.absent(),
     required String entryType,
@@ -10677,7 +10736,7 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
-       loanId = Value(loanId),
+       creditId = Value(creditId),
        entryType = Value(entryType),
        amountCents = Value(amountCents),
        preBalanceCents = Value(preBalanceCents),
@@ -10686,10 +10745,10 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
        recordedByUserId = Value(recordedByUserId),
        recordedAt = Value(recordedAt),
        createdAt = Value(createdAt);
-  static Insertable<LoanLedgerEntryEntry> custom({
+  static Insertable<CreditLedgerEntryEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? loanId,
+    Expression<String>? creditId,
     Expression<String>? originalPaymentId,
     Expression<String>? correctionId,
     Expression<String>? entryType,
@@ -10705,7 +10764,7 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
-      if (loanId != null) 'loan_id': loanId,
+      if (creditId != null) 'credit_id': creditId,
       if (originalPaymentId != null) 'original_payment_id': originalPaymentId,
       if (correctionId != null) 'correction_id': correctionId,
       if (entryType != null) 'entry_type': entryType,
@@ -10720,10 +10779,10 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
     });
   }
 
-  LoanLedgerEntriesCompanion copyWith({
+  CreditLedgerEntriesCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? loanId,
+    Value<String>? creditId,
     Value<String?>? originalPaymentId,
     Value<String?>? correctionId,
     Value<String>? entryType,
@@ -10736,10 +10795,10 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
-    return LoanLedgerEntriesCompanion(
+    return CreditLedgerEntriesCompanion(
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       originalPaymentId: originalPaymentId ?? this.originalPaymentId,
       correctionId: correctionId ?? this.correctionId,
       entryType: entryType ?? this.entryType,
@@ -10763,8 +10822,8 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
     if (shopId.present) {
       map['shop_id'] = Variable<String>(shopId.value);
     }
-    if (loanId.present) {
-      map['loan_id'] = Variable<String>(loanId.value);
+    if (creditId.present) {
+      map['credit_id'] = Variable<String>(creditId.value);
     }
     if (originalPaymentId.present) {
       map['original_payment_id'] = Variable<String>(originalPaymentId.value);
@@ -10804,10 +10863,10 @@ class LoanLedgerEntriesCompanion extends UpdateCompanion<LoanLedgerEntryEntry> {
 
   @override
   String toString() {
-    return (StringBuffer('LoanLedgerEntriesCompanion(')
+    return (StringBuffer('CreditLedgerEntriesCompanion(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('originalPaymentId: $originalPaymentId, ')
           ..write('correctionId: $correctionId, ')
           ..write('entryType: $entryType, ')
@@ -10851,16 +10910,18 @@ class $DueDateExtensionsTable extends DueDateExtensions
       'REFERENCES shops (id) ON DELETE RESTRICT',
     ),
   );
-  static const VerificationMeta _loanIdMeta = const VerificationMeta('loanId');
+  static const VerificationMeta _creditIdMeta = const VerificationMeta(
+    'creditId',
+  );
   @override
-  late final GeneratedColumn<String> loanId = GeneratedColumn<String>(
-    'loan_id',
+  late final GeneratedColumn<String> creditId = GeneratedColumn<String>(
+    'credit_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loans (id) ON DELETE RESTRICT',
+      'REFERENCES credits (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _previousDueDateMeta = const VerificationMeta(
@@ -10925,7 +10986,7 @@ class $DueDateExtensionsTable extends DueDateExtensions
   List<GeneratedColumn> get $columns => [
     id,
     shopId,
-    loanId,
+    creditId,
     previousDueDate,
     newDueDate,
     reason,
@@ -10957,13 +11018,13 @@ class $DueDateExtensionsTable extends DueDateExtensions
     } else if (isInserting) {
       context.missing(_shopIdMeta);
     }
-    if (data.containsKey('loan_id')) {
+    if (data.containsKey('credit_id')) {
       context.handle(
-        _loanIdMeta,
-        loanId.isAcceptableOrUnknown(data['loan_id']!, _loanIdMeta),
+        _creditIdMeta,
+        creditId.isAcceptableOrUnknown(data['credit_id']!, _creditIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_loanIdMeta);
+      context.missing(_creditIdMeta);
     }
     if (data.containsKey('previous_due_date')) {
       context.handle(
@@ -11031,9 +11092,9 @@ class $DueDateExtensionsTable extends DueDateExtensions
         DriftSqlType.string,
         data['${effectivePrefix}shop_id'],
       )!,
-      loanId: attachedDatabase.typeMapping.read(
+      creditId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}loan_id'],
+        data['${effectivePrefix}credit_id'],
       )!,
       previousDueDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -11072,8 +11133,8 @@ class DueDateExtensionEntry extends DataClass
   /// Tenant shop association (immutable foreign key boundary).
   final String shopId;
 
-  /// Associated loan agreement (immutable foreign key boundary).
-  final String loanId;
+  /// Associated credit agreement (immutable foreign key boundary).
+  final String creditId;
 
   /// Calendar due date prior to this extension (stored in UTC).
   final DateTime previousDueDate;
@@ -11092,7 +11153,7 @@ class DueDateExtensionEntry extends DataClass
   const DueDateExtensionEntry({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.previousDueDate,
     required this.newDueDate,
     required this.reason,
@@ -11104,7 +11165,7 @@ class DueDateExtensionEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['loan_id'] = Variable<String>(loanId);
+    map['credit_id'] = Variable<String>(creditId);
     map['previous_due_date'] = Variable<DateTime>(previousDueDate);
     map['new_due_date'] = Variable<DateTime>(newDueDate);
     map['reason'] = Variable<String>(reason);
@@ -11117,7 +11178,7 @@ class DueDateExtensionEntry extends DataClass
     return DueDateExtensionsCompanion(
       id: Value(id),
       shopId: Value(shopId),
-      loanId: Value(loanId),
+      creditId: Value(creditId),
       previousDueDate: Value(previousDueDate),
       newDueDate: Value(newDueDate),
       reason: Value(reason),
@@ -11134,7 +11195,7 @@ class DueDateExtensionEntry extends DataClass
     return DueDateExtensionEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      loanId: serializer.fromJson<String>(json['loanId']),
+      creditId: serializer.fromJson<String>(json['creditId']),
       previousDueDate: serializer.fromJson<DateTime>(json['previousDueDate']),
       newDueDate: serializer.fromJson<DateTime>(json['newDueDate']),
       reason: serializer.fromJson<String>(json['reason']),
@@ -11148,7 +11209,7 @@ class DueDateExtensionEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'loanId': serializer.toJson<String>(loanId),
+      'creditId': serializer.toJson<String>(creditId),
       'previousDueDate': serializer.toJson<DateTime>(previousDueDate),
       'newDueDate': serializer.toJson<DateTime>(newDueDate),
       'reason': serializer.toJson<String>(reason),
@@ -11160,7 +11221,7 @@ class DueDateExtensionEntry extends DataClass
   DueDateExtensionEntry copyWith({
     String? id,
     String? shopId,
-    String? loanId,
+    String? creditId,
     DateTime? previousDueDate,
     DateTime? newDueDate,
     String? reason,
@@ -11169,7 +11230,7 @@ class DueDateExtensionEntry extends DataClass
   }) => DueDateExtensionEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
-    loanId: loanId ?? this.loanId,
+    creditId: creditId ?? this.creditId,
     previousDueDate: previousDueDate ?? this.previousDueDate,
     newDueDate: newDueDate ?? this.newDueDate,
     reason: reason ?? this.reason,
@@ -11180,7 +11241,7 @@ class DueDateExtensionEntry extends DataClass
     return DueDateExtensionEntry(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
-      loanId: data.loanId.present ? data.loanId.value : this.loanId,
+      creditId: data.creditId.present ? data.creditId.value : this.creditId,
       previousDueDate: data.previousDueDate.present
           ? data.previousDueDate.value
           : this.previousDueDate,
@@ -11200,7 +11261,7 @@ class DueDateExtensionEntry extends DataClass
     return (StringBuffer('DueDateExtensionEntry(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('previousDueDate: $previousDueDate, ')
           ..write('newDueDate: $newDueDate, ')
           ..write('reason: $reason, ')
@@ -11214,7 +11275,7 @@ class DueDateExtensionEntry extends DataClass
   int get hashCode => Object.hash(
     id,
     shopId,
-    loanId,
+    creditId,
     previousDueDate,
     newDueDate,
     reason,
@@ -11227,7 +11288,7 @@ class DueDateExtensionEntry extends DataClass
       (other is DueDateExtensionEntry &&
           other.id == this.id &&
           other.shopId == this.shopId &&
-          other.loanId == this.loanId &&
+          other.creditId == this.creditId &&
           other.previousDueDate == this.previousDueDate &&
           other.newDueDate == this.newDueDate &&
           other.reason == this.reason &&
@@ -11239,7 +11300,7 @@ class DueDateExtensionsCompanion
     extends UpdateCompanion<DueDateExtensionEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> loanId;
+  final Value<String> creditId;
   final Value<DateTime> previousDueDate;
   final Value<DateTime> newDueDate;
   final Value<String> reason;
@@ -11249,7 +11310,7 @@ class DueDateExtensionsCompanion
   const DueDateExtensionsCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     this.previousDueDate = const Value.absent(),
     this.newDueDate = const Value.absent(),
     this.reason = const Value.absent(),
@@ -11260,7 +11321,7 @@ class DueDateExtensionsCompanion
   DueDateExtensionsCompanion.insert({
     required String id,
     required String shopId,
-    required String loanId,
+    required String creditId,
     required DateTime previousDueDate,
     required DateTime newDueDate,
     required String reason,
@@ -11269,7 +11330,7 @@ class DueDateExtensionsCompanion
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
-       loanId = Value(loanId),
+       creditId = Value(creditId),
        previousDueDate = Value(previousDueDate),
        newDueDate = Value(newDueDate),
        reason = Value(reason),
@@ -11278,7 +11339,7 @@ class DueDateExtensionsCompanion
   static Insertable<DueDateExtensionEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? loanId,
+    Expression<String>? creditId,
     Expression<DateTime>? previousDueDate,
     Expression<DateTime>? newDueDate,
     Expression<String>? reason,
@@ -11289,7 +11350,7 @@ class DueDateExtensionsCompanion
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
-      if (loanId != null) 'loan_id': loanId,
+      if (creditId != null) 'credit_id': creditId,
       if (previousDueDate != null) 'previous_due_date': previousDueDate,
       if (newDueDate != null) 'new_due_date': newDueDate,
       if (reason != null) 'reason': reason,
@@ -11302,7 +11363,7 @@ class DueDateExtensionsCompanion
   DueDateExtensionsCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? loanId,
+    Value<String>? creditId,
     Value<DateTime>? previousDueDate,
     Value<DateTime>? newDueDate,
     Value<String>? reason,
@@ -11313,7 +11374,7 @@ class DueDateExtensionsCompanion
     return DueDateExtensionsCompanion(
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       previousDueDate: previousDueDate ?? this.previousDueDate,
       newDueDate: newDueDate ?? this.newDueDate,
       reason: reason ?? this.reason,
@@ -11332,8 +11393,8 @@ class DueDateExtensionsCompanion
     if (shopId.present) {
       map['shop_id'] = Variable<String>(shopId.value);
     }
-    if (loanId.present) {
-      map['loan_id'] = Variable<String>(loanId.value);
+    if (creditId.present) {
+      map['credit_id'] = Variable<String>(creditId.value);
     }
     if (previousDueDate.present) {
       map['previous_due_date'] = Variable<DateTime>(previousDueDate.value);
@@ -11361,7 +11422,7 @@ class DueDateExtensionsCompanion
     return (StringBuffer('DueDateExtensionsCompanion(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('previousDueDate: $previousDueDate, ')
           ..write('newDueDate: $newDueDate, ')
           ..write('reason: $reason, ')
@@ -11400,16 +11461,18 @@ class $CustomerFollowUpsTable extends CustomerFollowUps
       'REFERENCES shops (id) ON DELETE RESTRICT',
     ),
   );
-  static const VerificationMeta _loanIdMeta = const VerificationMeta('loanId');
+  static const VerificationMeta _creditIdMeta = const VerificationMeta(
+    'creditId',
+  );
   @override
-  late final GeneratedColumn<String> loanId = GeneratedColumn<String>(
-    'loan_id',
+  late final GeneratedColumn<String> creditId = GeneratedColumn<String>(
+    'credit_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loans (id) ON DELETE RESTRICT',
+      'REFERENCES credits (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _customerIdMeta = const VerificationMeta(
@@ -11487,7 +11550,7 @@ class $CustomerFollowUpsTable extends CustomerFollowUps
   List<GeneratedColumn> get $columns => [
     id,
     shopId,
-    loanId,
+    creditId,
     customerId,
     staffId,
     channel,
@@ -11520,13 +11583,13 @@ class $CustomerFollowUpsTable extends CustomerFollowUps
     } else if (isInserting) {
       context.missing(_shopIdMeta);
     }
-    if (data.containsKey('loan_id')) {
+    if (data.containsKey('credit_id')) {
       context.handle(
-        _loanIdMeta,
-        loanId.isAcceptableOrUnknown(data['loan_id']!, _loanIdMeta),
+        _creditIdMeta,
+        creditId.isAcceptableOrUnknown(data['credit_id']!, _creditIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_loanIdMeta);
+      context.missing(_creditIdMeta);
     }
     if (data.containsKey('customer_id')) {
       context.handle(
@@ -11594,9 +11657,9 @@ class $CustomerFollowUpsTable extends CustomerFollowUps
         DriftSqlType.string,
         data['${effectivePrefix}shop_id'],
       )!,
-      loanId: attachedDatabase.typeMapping.read(
+      creditId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}loan_id'],
+        data['${effectivePrefix}credit_id'],
       )!,
       customerId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -11639,8 +11702,8 @@ class CustomerFollowUpEntry extends DataClass
   /// Tenant shop association (immutable foreign key boundary).
   final String shopId;
 
-  /// Associated loan agreement (immutable foreign key boundary).
-  final String loanId;
+  /// Associated credit agreement (immutable foreign key boundary).
+  final String creditId;
 
   /// Associated customer borrower.
   final int customerId;
@@ -11662,7 +11725,7 @@ class CustomerFollowUpEntry extends DataClass
   const CustomerFollowUpEntry({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.customerId,
     required this.staffId,
     required this.channel,
@@ -11675,7 +11738,7 @@ class CustomerFollowUpEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['loan_id'] = Variable<String>(loanId);
+    map['credit_id'] = Variable<String>(creditId);
     map['customer_id'] = Variable<int>(customerId);
     map['staff_id'] = Variable<String>(staffId);
     map['channel'] = Variable<String>(channel);
@@ -11691,7 +11754,7 @@ class CustomerFollowUpEntry extends DataClass
     return CustomerFollowUpsCompanion(
       id: Value(id),
       shopId: Value(shopId),
-      loanId: Value(loanId),
+      creditId: Value(creditId),
       customerId: Value(customerId),
       staffId: Value(staffId),
       channel: Value(channel),
@@ -11711,7 +11774,7 @@ class CustomerFollowUpEntry extends DataClass
     return CustomerFollowUpEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      loanId: serializer.fromJson<String>(json['loanId']),
+      creditId: serializer.fromJson<String>(json['creditId']),
       customerId: serializer.fromJson<int>(json['customerId']),
       staffId: serializer.fromJson<String>(json['staffId']),
       channel: serializer.fromJson<String>(json['channel']),
@@ -11728,7 +11791,7 @@ class CustomerFollowUpEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'loanId': serializer.toJson<String>(loanId),
+      'creditId': serializer.toJson<String>(creditId),
       'customerId': serializer.toJson<int>(customerId),
       'staffId': serializer.toJson<String>(staffId),
       'channel': serializer.toJson<String>(channel),
@@ -11741,7 +11804,7 @@ class CustomerFollowUpEntry extends DataClass
   CustomerFollowUpEntry copyWith({
     String? id,
     String? shopId,
-    String? loanId,
+    String? creditId,
     int? customerId,
     String? staffId,
     String? channel,
@@ -11751,7 +11814,7 @@ class CustomerFollowUpEntry extends DataClass
   }) => CustomerFollowUpEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
-    loanId: loanId ?? this.loanId,
+    creditId: creditId ?? this.creditId,
     customerId: customerId ?? this.customerId,
     staffId: staffId ?? this.staffId,
     channel: channel ?? this.channel,
@@ -11765,7 +11828,7 @@ class CustomerFollowUpEntry extends DataClass
     return CustomerFollowUpEntry(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
-      loanId: data.loanId.present ? data.loanId.value : this.loanId,
+      creditId: data.creditId.present ? data.creditId.value : this.creditId,
       customerId: data.customerId.present
           ? data.customerId.value
           : this.customerId,
@@ -11784,7 +11847,7 @@ class CustomerFollowUpEntry extends DataClass
     return (StringBuffer('CustomerFollowUpEntry(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('customerId: $customerId, ')
           ..write('staffId: $staffId, ')
           ..write('channel: $channel, ')
@@ -11799,7 +11862,7 @@ class CustomerFollowUpEntry extends DataClass
   int get hashCode => Object.hash(
     id,
     shopId,
-    loanId,
+    creditId,
     customerId,
     staffId,
     channel,
@@ -11813,7 +11876,7 @@ class CustomerFollowUpEntry extends DataClass
       (other is CustomerFollowUpEntry &&
           other.id == this.id &&
           other.shopId == this.shopId &&
-          other.loanId == this.loanId &&
+          other.creditId == this.creditId &&
           other.customerId == this.customerId &&
           other.staffId == this.staffId &&
           other.channel == this.channel &&
@@ -11826,7 +11889,7 @@ class CustomerFollowUpsCompanion
     extends UpdateCompanion<CustomerFollowUpEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> loanId;
+  final Value<String> creditId;
   final Value<int> customerId;
   final Value<String> staffId;
   final Value<String> channel;
@@ -11837,7 +11900,7 @@ class CustomerFollowUpsCompanion
   const CustomerFollowUpsCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     this.customerId = const Value.absent(),
     this.staffId = const Value.absent(),
     this.channel = const Value.absent(),
@@ -11849,7 +11912,7 @@ class CustomerFollowUpsCompanion
   CustomerFollowUpsCompanion.insert({
     required String id,
     required String shopId,
-    required String loanId,
+    required String creditId,
     required int customerId,
     required String staffId,
     required String channel,
@@ -11859,7 +11922,7 @@ class CustomerFollowUpsCompanion
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
-       loanId = Value(loanId),
+       creditId = Value(creditId),
        customerId = Value(customerId),
        staffId = Value(staffId),
        channel = Value(channel),
@@ -11868,7 +11931,7 @@ class CustomerFollowUpsCompanion
   static Insertable<CustomerFollowUpEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? loanId,
+    Expression<String>? creditId,
     Expression<int>? customerId,
     Expression<String>? staffId,
     Expression<String>? channel,
@@ -11880,7 +11943,7 @@ class CustomerFollowUpsCompanion
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
-      if (loanId != null) 'loan_id': loanId,
+      if (creditId != null) 'credit_id': creditId,
       if (customerId != null) 'customer_id': customerId,
       if (staffId != null) 'staff_id': staffId,
       if (channel != null) 'channel': channel,
@@ -11895,7 +11958,7 @@ class CustomerFollowUpsCompanion
   CustomerFollowUpsCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? loanId,
+    Value<String>? creditId,
     Value<int>? customerId,
     Value<String>? staffId,
     Value<String>? channel,
@@ -11907,7 +11970,7 @@ class CustomerFollowUpsCompanion
     return CustomerFollowUpsCompanion(
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       customerId: customerId ?? this.customerId,
       staffId: staffId ?? this.staffId,
       channel: channel ?? this.channel,
@@ -11927,8 +11990,8 @@ class CustomerFollowUpsCompanion
     if (shopId.present) {
       map['shop_id'] = Variable<String>(shopId.value);
     }
-    if (loanId.present) {
-      map['loan_id'] = Variable<String>(loanId.value);
+    if (creditId.present) {
+      map['credit_id'] = Variable<String>(creditId.value);
     }
     if (customerId.present) {
       map['customer_id'] = Variable<int>(customerId.value);
@@ -11961,7 +12024,7 @@ class CustomerFollowUpsCompanion
     return (StringBuffer('CustomerFollowUpsCompanion(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('customerId: $customerId, ')
           ..write('staffId: $staffId, ')
           ..write('channel: $channel, ')
@@ -11974,12 +12037,12 @@ class CustomerFollowUpsCompanion
   }
 }
 
-class $LoanResolutionsTable extends LoanResolutions
-    with TableInfo<$LoanResolutionsTable, LoanResolutionEntry> {
+class $CreditResolutionsTable extends CreditResolutions
+    with TableInfo<$CreditResolutionsTable, CreditResolutionEntry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $LoanResolutionsTable(this.attachedDatabase, [this._alias]);
+  $CreditResolutionsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -12001,16 +12064,18 @@ class $LoanResolutionsTable extends LoanResolutions
       'REFERENCES shops (id) ON DELETE RESTRICT',
     ),
   );
-  static const VerificationMeta _loanIdMeta = const VerificationMeta('loanId');
+  static const VerificationMeta _creditIdMeta = const VerificationMeta(
+    'creditId',
+  );
   @override
-  late final GeneratedColumn<String> loanId = GeneratedColumn<String>(
-    'loan_id',
+  late final GeneratedColumn<String> creditId = GeneratedColumn<String>(
+    'credit_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loans (id) ON DELETE RESTRICT',
+      'REFERENCES credits (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _resolutionTypeMeta = const VerificationMeta(
@@ -12063,7 +12128,7 @@ class $LoanResolutionsTable extends LoanResolutions
   List<GeneratedColumn> get $columns => [
     id,
     shopId,
-    loanId,
+    creditId,
     resolutionType,
     reason,
     resolvedByUserId,
@@ -12073,10 +12138,10 @@ class $LoanResolutionsTable extends LoanResolutions
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'loan_resolutions';
+  static const String $name = 'credit_resolutions';
   @override
   VerificationContext validateIntegrity(
-    Insertable<LoanResolutionEntry> instance, {
+    Insertable<CreditResolutionEntry> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -12094,13 +12159,13 @@ class $LoanResolutionsTable extends LoanResolutions
     } else if (isInserting) {
       context.missing(_shopIdMeta);
     }
-    if (data.containsKey('loan_id')) {
+    if (data.containsKey('credit_id')) {
       context.handle(
-        _loanIdMeta,
-        loanId.isAcceptableOrUnknown(data['loan_id']!, _loanIdMeta),
+        _creditIdMeta,
+        creditId.isAcceptableOrUnknown(data['credit_id']!, _creditIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_loanIdMeta);
+      context.missing(_creditIdMeta);
     }
     if (data.containsKey('resolution_type')) {
       context.handle(
@@ -12146,9 +12211,9 @@ class $LoanResolutionsTable extends LoanResolutions
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  LoanResolutionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+  CreditResolutionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return LoanResolutionEntry(
+    return CreditResolutionEntry(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -12157,9 +12222,9 @@ class $LoanResolutionsTable extends LoanResolutions
         DriftSqlType.string,
         data['${effectivePrefix}shop_id'],
       )!,
-      loanId: attachedDatabase.typeMapping.read(
+      creditId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}loan_id'],
+        data['${effectivePrefix}credit_id'],
       )!,
       resolutionType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -12181,21 +12246,21 @@ class $LoanResolutionsTable extends LoanResolutions
   }
 
   @override
-  $LoanResolutionsTable createAlias(String alias) {
-    return $LoanResolutionsTable(attachedDatabase, alias);
+  $CreditResolutionsTable createAlias(String alias) {
+    return $CreditResolutionsTable(attachedDatabase, alias);
   }
 }
 
-class LoanResolutionEntry extends DataClass
-    implements Insertable<LoanResolutionEntry> {
+class CreditResolutionEntry extends DataClass
+    implements Insertable<CreditResolutionEntry> {
   /// Canonical UUIDv4 primary key.
   final String id;
 
   /// Tenant shop association (immutable foreign key boundary).
   final String shopId;
 
-  /// Associated loan agreement (unique per loan or latest resolution).
-  final String loanId;
+  /// Associated credit agreement (unique per credit or latest resolution).
+  final String creditId;
 
   /// Resolution type: 'under_review', 'owner_settled_written_off', 'collateral_retained'.
   final String resolutionType;
@@ -12208,10 +12273,10 @@ class LoanResolutionEntry extends DataClass
 
   /// UTC creation timestamp.
   final DateTime createdAt;
-  const LoanResolutionEntry({
+  const CreditResolutionEntry({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.resolutionType,
     required this.reason,
     required this.resolvedByUserId,
@@ -12222,7 +12287,7 @@ class LoanResolutionEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['loan_id'] = Variable<String>(loanId);
+    map['credit_id'] = Variable<String>(creditId);
     map['resolution_type'] = Variable<String>(resolutionType);
     map['reason'] = Variable<String>(reason);
     map['resolved_by_user_id'] = Variable<String>(resolvedByUserId);
@@ -12230,11 +12295,11 @@ class LoanResolutionEntry extends DataClass
     return map;
   }
 
-  LoanResolutionsCompanion toCompanion(bool nullToAbsent) {
-    return LoanResolutionsCompanion(
+  CreditResolutionsCompanion toCompanion(bool nullToAbsent) {
+    return CreditResolutionsCompanion(
       id: Value(id),
       shopId: Value(shopId),
-      loanId: Value(loanId),
+      creditId: Value(creditId),
       resolutionType: Value(resolutionType),
       reason: Value(reason),
       resolvedByUserId: Value(resolvedByUserId),
@@ -12242,15 +12307,15 @@ class LoanResolutionEntry extends DataClass
     );
   }
 
-  factory LoanResolutionEntry.fromJson(
+  factory CreditResolutionEntry.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return LoanResolutionEntry(
+    return CreditResolutionEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      loanId: serializer.fromJson<String>(json['loanId']),
+      creditId: serializer.fromJson<String>(json['creditId']),
       resolutionType: serializer.fromJson<String>(json['resolutionType']),
       reason: serializer.fromJson<String>(json['reason']),
       resolvedByUserId: serializer.fromJson<String>(json['resolvedByUserId']),
@@ -12263,7 +12328,7 @@ class LoanResolutionEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'loanId': serializer.toJson<String>(loanId),
+      'creditId': serializer.toJson<String>(creditId),
       'resolutionType': serializer.toJson<String>(resolutionType),
       'reason': serializer.toJson<String>(reason),
       'resolvedByUserId': serializer.toJson<String>(resolvedByUserId),
@@ -12271,28 +12336,28 @@ class LoanResolutionEntry extends DataClass
     };
   }
 
-  LoanResolutionEntry copyWith({
+  CreditResolutionEntry copyWith({
     String? id,
     String? shopId,
-    String? loanId,
+    String? creditId,
     String? resolutionType,
     String? reason,
     String? resolvedByUserId,
     DateTime? createdAt,
-  }) => LoanResolutionEntry(
+  }) => CreditResolutionEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
-    loanId: loanId ?? this.loanId,
+    creditId: creditId ?? this.creditId,
     resolutionType: resolutionType ?? this.resolutionType,
     reason: reason ?? this.reason,
     resolvedByUserId: resolvedByUserId ?? this.resolvedByUserId,
     createdAt: createdAt ?? this.createdAt,
   );
-  LoanResolutionEntry copyWithCompanion(LoanResolutionsCompanion data) {
-    return LoanResolutionEntry(
+  CreditResolutionEntry copyWithCompanion(CreditResolutionsCompanion data) {
+    return CreditResolutionEntry(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
-      loanId: data.loanId.present ? data.loanId.value : this.loanId,
+      creditId: data.creditId.present ? data.creditId.value : this.creditId,
       resolutionType: data.resolutionType.present
           ? data.resolutionType.value
           : this.resolutionType,
@@ -12306,10 +12371,10 @@ class LoanResolutionEntry extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('LoanResolutionEntry(')
+    return (StringBuffer('CreditResolutionEntry(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('resolutionType: $resolutionType, ')
           ..write('reason: $reason, ')
           ..write('resolvedByUserId: $resolvedByUserId, ')
@@ -12322,7 +12387,7 @@ class LoanResolutionEntry extends DataClass
   int get hashCode => Object.hash(
     id,
     shopId,
-    loanId,
+    creditId,
     resolutionType,
     reason,
     resolvedByUserId,
@@ -12331,39 +12396,40 @@ class LoanResolutionEntry extends DataClass
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LoanResolutionEntry &&
+      (other is CreditResolutionEntry &&
           other.id == this.id &&
           other.shopId == this.shopId &&
-          other.loanId == this.loanId &&
+          other.creditId == this.creditId &&
           other.resolutionType == this.resolutionType &&
           other.reason == this.reason &&
           other.resolvedByUserId == this.resolvedByUserId &&
           other.createdAt == this.createdAt);
 }
 
-class LoanResolutionsCompanion extends UpdateCompanion<LoanResolutionEntry> {
+class CreditResolutionsCompanion
+    extends UpdateCompanion<CreditResolutionEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> loanId;
+  final Value<String> creditId;
   final Value<String> resolutionType;
   final Value<String> reason;
   final Value<String> resolvedByUserId;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
-  const LoanResolutionsCompanion({
+  const CreditResolutionsCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     this.resolutionType = const Value.absent(),
     this.reason = const Value.absent(),
     this.resolvedByUserId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  LoanResolutionsCompanion.insert({
+  CreditResolutionsCompanion.insert({
     required String id,
     required String shopId,
-    required String loanId,
+    required String creditId,
     required String resolutionType,
     required String reason,
     required String resolvedByUserId,
@@ -12371,15 +12437,15 @@ class LoanResolutionsCompanion extends UpdateCompanion<LoanResolutionEntry> {
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
-       loanId = Value(loanId),
+       creditId = Value(creditId),
        resolutionType = Value(resolutionType),
        reason = Value(reason),
        resolvedByUserId = Value(resolvedByUserId),
        createdAt = Value(createdAt);
-  static Insertable<LoanResolutionEntry> custom({
+  static Insertable<CreditResolutionEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? loanId,
+    Expression<String>? creditId,
     Expression<String>? resolutionType,
     Expression<String>? reason,
     Expression<String>? resolvedByUserId,
@@ -12389,7 +12455,7 @@ class LoanResolutionsCompanion extends UpdateCompanion<LoanResolutionEntry> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
-      if (loanId != null) 'loan_id': loanId,
+      if (creditId != null) 'credit_id': creditId,
       if (resolutionType != null) 'resolution_type': resolutionType,
       if (reason != null) 'reason': reason,
       if (resolvedByUserId != null) 'resolved_by_user_id': resolvedByUserId,
@@ -12398,20 +12464,20 @@ class LoanResolutionsCompanion extends UpdateCompanion<LoanResolutionEntry> {
     });
   }
 
-  LoanResolutionsCompanion copyWith({
+  CreditResolutionsCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? loanId,
+    Value<String>? creditId,
     Value<String>? resolutionType,
     Value<String>? reason,
     Value<String>? resolvedByUserId,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
-    return LoanResolutionsCompanion(
+    return CreditResolutionsCompanion(
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       resolutionType: resolutionType ?? this.resolutionType,
       reason: reason ?? this.reason,
       resolvedByUserId: resolvedByUserId ?? this.resolvedByUserId,
@@ -12429,8 +12495,8 @@ class LoanResolutionsCompanion extends UpdateCompanion<LoanResolutionEntry> {
     if (shopId.present) {
       map['shop_id'] = Variable<String>(shopId.value);
     }
-    if (loanId.present) {
-      map['loan_id'] = Variable<String>(loanId.value);
+    if (creditId.present) {
+      map['credit_id'] = Variable<String>(creditId.value);
     }
     if (resolutionType.present) {
       map['resolution_type'] = Variable<String>(resolutionType.value);
@@ -12452,10 +12518,10 @@ class LoanResolutionsCompanion extends UpdateCompanion<LoanResolutionEntry> {
 
   @override
   String toString() {
-    return (StringBuffer('LoanResolutionsCompanion(')
+    return (StringBuffer('CreditResolutionsCompanion(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('resolutionType: $resolutionType, ')
           ..write('reason: $reason, ')
           ..write('resolvedByUserId: $resolvedByUserId, ')
@@ -12466,16 +12532,16 @@ class LoanResolutionsCompanion extends UpdateCompanion<LoanResolutionEntry> {
   }
 }
 
-class $LoanAdministrativeClosuresTable extends LoanAdministrativeClosures
+class $CreditAdministrativeClosuresTable extends CreditAdministrativeClosures
     with
         TableInfo<
-          $LoanAdministrativeClosuresTable,
-          LoanAdministrativeClosureEntry
+          $CreditAdministrativeClosuresTable,
+          CreditAdministrativeClosureEntry
         > {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $LoanAdministrativeClosuresTable(this.attachedDatabase, [this._alias]);
+  $CreditAdministrativeClosuresTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -12497,16 +12563,18 @@ class $LoanAdministrativeClosuresTable extends LoanAdministrativeClosures
       'REFERENCES shops (id) ON DELETE RESTRICT',
     ),
   );
-  static const VerificationMeta _loanIdMeta = const VerificationMeta('loanId');
+  static const VerificationMeta _creditIdMeta = const VerificationMeta(
+    'creditId',
+  );
   @override
-  late final GeneratedColumn<String> loanId = GeneratedColumn<String>(
-    'loan_id',
+  late final GeneratedColumn<String> creditId = GeneratedColumn<String>(
+    'credit_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES loans (id) ON DELETE RESTRICT',
+      'REFERENCES credits (id) ON DELETE RESTRICT',
     ),
   );
   static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
@@ -12559,7 +12627,7 @@ class $LoanAdministrativeClosuresTable extends LoanAdministrativeClosures
   List<GeneratedColumn> get $columns => [
     id,
     shopId,
-    loanId,
+    creditId,
     reason,
     closedByUserId,
     itemIdsJson,
@@ -12569,10 +12637,10 @@ class $LoanAdministrativeClosuresTable extends LoanAdministrativeClosures
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'loan_administrative_closures';
+  static const String $name = 'credit_administrative_closures';
   @override
   VerificationContext validateIntegrity(
-    Insertable<LoanAdministrativeClosureEntry> instance, {
+    Insertable<CreditAdministrativeClosureEntry> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -12590,13 +12658,13 @@ class $LoanAdministrativeClosuresTable extends LoanAdministrativeClosures
     } else if (isInserting) {
       context.missing(_shopIdMeta);
     }
-    if (data.containsKey('loan_id')) {
+    if (data.containsKey('credit_id')) {
       context.handle(
-        _loanIdMeta,
-        loanId.isAcceptableOrUnknown(data['loan_id']!, _loanIdMeta),
+        _creditIdMeta,
+        creditId.isAcceptableOrUnknown(data['credit_id']!, _creditIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_loanIdMeta);
+      context.missing(_creditIdMeta);
     }
     if (data.containsKey('reason')) {
       context.handle(
@@ -12642,12 +12710,12 @@ class $LoanAdministrativeClosuresTable extends LoanAdministrativeClosures
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  LoanAdministrativeClosureEntry map(
+  CreditAdministrativeClosureEntry map(
     Map<String, dynamic> data, {
     String? tablePrefix,
   }) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return LoanAdministrativeClosureEntry(
+    return CreditAdministrativeClosureEntry(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -12656,9 +12724,9 @@ class $LoanAdministrativeClosuresTable extends LoanAdministrativeClosures
         DriftSqlType.string,
         data['${effectivePrefix}shop_id'],
       )!,
-      loanId: attachedDatabase.typeMapping.read(
+      creditId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}loan_id'],
+        data['${effectivePrefix}credit_id'],
       )!,
       reason: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -12680,23 +12748,23 @@ class $LoanAdministrativeClosuresTable extends LoanAdministrativeClosures
   }
 
   @override
-  $LoanAdministrativeClosuresTable createAlias(String alias) {
-    return $LoanAdministrativeClosuresTable(attachedDatabase, alias);
+  $CreditAdministrativeClosuresTable createAlias(String alias) {
+    return $CreditAdministrativeClosuresTable(attachedDatabase, alias);
   }
 }
 
-class LoanAdministrativeClosureEntry extends DataClass
-    implements Insertable<LoanAdministrativeClosureEntry> {
+class CreditAdministrativeClosureEntry extends DataClass
+    implements Insertable<CreditAdministrativeClosureEntry> {
   /// Canonical UUIDv4 primary key.
   final String id;
 
   /// Tenant shop association (immutable foreign key boundary).
   final String shopId;
 
-  /// Associated loan agreement. A loan may only have one administrative
+  /// Associated credit agreement. A credit may only have one administrative
   /// closure; uniqueness is enforced at the application layer (the DAO checks
   /// for an existing closure before inserting).
-  final String loanId;
+  final String creditId;
 
   /// Mandatory business rationale for the administrative closure.
   final String reason;
@@ -12711,10 +12779,10 @@ class LoanAdministrativeClosureEntry extends DataClass
 
   /// UTC creation timestamp.
   final DateTime createdAt;
-  const LoanAdministrativeClosureEntry({
+  const CreditAdministrativeClosureEntry({
     required this.id,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.reason,
     required this.closedByUserId,
     required this.itemIdsJson,
@@ -12725,7 +12793,7 @@ class LoanAdministrativeClosureEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['shop_id'] = Variable<String>(shopId);
-    map['loan_id'] = Variable<String>(loanId);
+    map['credit_id'] = Variable<String>(creditId);
     map['reason'] = Variable<String>(reason);
     map['closed_by_user_id'] = Variable<String>(closedByUserId);
     map['item_ids_json'] = Variable<String>(itemIdsJson);
@@ -12733,11 +12801,11 @@ class LoanAdministrativeClosureEntry extends DataClass
     return map;
   }
 
-  LoanAdministrativeClosuresCompanion toCompanion(bool nullToAbsent) {
-    return LoanAdministrativeClosuresCompanion(
+  CreditAdministrativeClosuresCompanion toCompanion(bool nullToAbsent) {
+    return CreditAdministrativeClosuresCompanion(
       id: Value(id),
       shopId: Value(shopId),
-      loanId: Value(loanId),
+      creditId: Value(creditId),
       reason: Value(reason),
       closedByUserId: Value(closedByUserId),
       itemIdsJson: Value(itemIdsJson),
@@ -12745,15 +12813,15 @@ class LoanAdministrativeClosureEntry extends DataClass
     );
   }
 
-  factory LoanAdministrativeClosureEntry.fromJson(
+  factory CreditAdministrativeClosureEntry.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return LoanAdministrativeClosureEntry(
+    return CreditAdministrativeClosureEntry(
       id: serializer.fromJson<String>(json['id']),
       shopId: serializer.fromJson<String>(json['shopId']),
-      loanId: serializer.fromJson<String>(json['loanId']),
+      creditId: serializer.fromJson<String>(json['creditId']),
       reason: serializer.fromJson<String>(json['reason']),
       closedByUserId: serializer.fromJson<String>(json['closedByUserId']),
       itemIdsJson: serializer.fromJson<String>(json['itemIdsJson']),
@@ -12766,7 +12834,7 @@ class LoanAdministrativeClosureEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'shopId': serializer.toJson<String>(shopId),
-      'loanId': serializer.toJson<String>(loanId),
+      'creditId': serializer.toJson<String>(creditId),
       'reason': serializer.toJson<String>(reason),
       'closedByUserId': serializer.toJson<String>(closedByUserId),
       'itemIdsJson': serializer.toJson<String>(itemIdsJson),
@@ -12774,30 +12842,30 @@ class LoanAdministrativeClosureEntry extends DataClass
     };
   }
 
-  LoanAdministrativeClosureEntry copyWith({
+  CreditAdministrativeClosureEntry copyWith({
     String? id,
     String? shopId,
-    String? loanId,
+    String? creditId,
     String? reason,
     String? closedByUserId,
     String? itemIdsJson,
     DateTime? createdAt,
-  }) => LoanAdministrativeClosureEntry(
+  }) => CreditAdministrativeClosureEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
-    loanId: loanId ?? this.loanId,
+    creditId: creditId ?? this.creditId,
     reason: reason ?? this.reason,
     closedByUserId: closedByUserId ?? this.closedByUserId,
     itemIdsJson: itemIdsJson ?? this.itemIdsJson,
     createdAt: createdAt ?? this.createdAt,
   );
-  LoanAdministrativeClosureEntry copyWithCompanion(
-    LoanAdministrativeClosuresCompanion data,
+  CreditAdministrativeClosureEntry copyWithCompanion(
+    CreditAdministrativeClosuresCompanion data,
   ) {
-    return LoanAdministrativeClosureEntry(
+    return CreditAdministrativeClosureEntry(
       id: data.id.present ? data.id.value : this.id,
       shopId: data.shopId.present ? data.shopId.value : this.shopId,
-      loanId: data.loanId.present ? data.loanId.value : this.loanId,
+      creditId: data.creditId.present ? data.creditId.value : this.creditId,
       reason: data.reason.present ? data.reason.value : this.reason,
       closedByUserId: data.closedByUserId.present
           ? data.closedByUserId.value
@@ -12811,10 +12879,10 @@ class LoanAdministrativeClosureEntry extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('LoanAdministrativeClosureEntry(')
+    return (StringBuffer('CreditAdministrativeClosureEntry(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('reason: $reason, ')
           ..write('closedByUserId: $closedByUserId, ')
           ..write('itemIdsJson: $itemIdsJson, ')
@@ -12827,7 +12895,7 @@ class LoanAdministrativeClosureEntry extends DataClass
   int get hashCode => Object.hash(
     id,
     shopId,
-    loanId,
+    creditId,
     reason,
     closedByUserId,
     itemIdsJson,
@@ -12836,40 +12904,40 @@ class LoanAdministrativeClosureEntry extends DataClass
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LoanAdministrativeClosureEntry &&
+      (other is CreditAdministrativeClosureEntry &&
           other.id == this.id &&
           other.shopId == this.shopId &&
-          other.loanId == this.loanId &&
+          other.creditId == this.creditId &&
           other.reason == this.reason &&
           other.closedByUserId == this.closedByUserId &&
           other.itemIdsJson == this.itemIdsJson &&
           other.createdAt == this.createdAt);
 }
 
-class LoanAdministrativeClosuresCompanion
-    extends UpdateCompanion<LoanAdministrativeClosureEntry> {
+class CreditAdministrativeClosuresCompanion
+    extends UpdateCompanion<CreditAdministrativeClosureEntry> {
   final Value<String> id;
   final Value<String> shopId;
-  final Value<String> loanId;
+  final Value<String> creditId;
   final Value<String> reason;
   final Value<String> closedByUserId;
   final Value<String> itemIdsJson;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
-  const LoanAdministrativeClosuresCompanion({
+  const CreditAdministrativeClosuresCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
-    this.loanId = const Value.absent(),
+    this.creditId = const Value.absent(),
     this.reason = const Value.absent(),
     this.closedByUserId = const Value.absent(),
     this.itemIdsJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  LoanAdministrativeClosuresCompanion.insert({
+  CreditAdministrativeClosuresCompanion.insert({
     required String id,
     required String shopId,
-    required String loanId,
+    required String creditId,
     required String reason,
     required String closedByUserId,
     required String itemIdsJson,
@@ -12877,15 +12945,15 @@ class LoanAdministrativeClosuresCompanion
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        shopId = Value(shopId),
-       loanId = Value(loanId),
+       creditId = Value(creditId),
        reason = Value(reason),
        closedByUserId = Value(closedByUserId),
        itemIdsJson = Value(itemIdsJson),
        createdAt = Value(createdAt);
-  static Insertable<LoanAdministrativeClosureEntry> custom({
+  static Insertable<CreditAdministrativeClosureEntry> custom({
     Expression<String>? id,
     Expression<String>? shopId,
-    Expression<String>? loanId,
+    Expression<String>? creditId,
     Expression<String>? reason,
     Expression<String>? closedByUserId,
     Expression<String>? itemIdsJson,
@@ -12895,7 +12963,7 @@ class LoanAdministrativeClosuresCompanion
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (shopId != null) 'shop_id': shopId,
-      if (loanId != null) 'loan_id': loanId,
+      if (creditId != null) 'credit_id': creditId,
       if (reason != null) 'reason': reason,
       if (closedByUserId != null) 'closed_by_user_id': closedByUserId,
       if (itemIdsJson != null) 'item_ids_json': itemIdsJson,
@@ -12904,20 +12972,20 @@ class LoanAdministrativeClosuresCompanion
     });
   }
 
-  LoanAdministrativeClosuresCompanion copyWith({
+  CreditAdministrativeClosuresCompanion copyWith({
     Value<String>? id,
     Value<String>? shopId,
-    Value<String>? loanId,
+    Value<String>? creditId,
     Value<String>? reason,
     Value<String>? closedByUserId,
     Value<String>? itemIdsJson,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
-    return LoanAdministrativeClosuresCompanion(
+    return CreditAdministrativeClosuresCompanion(
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
-      loanId: loanId ?? this.loanId,
+      creditId: creditId ?? this.creditId,
       reason: reason ?? this.reason,
       closedByUserId: closedByUserId ?? this.closedByUserId,
       itemIdsJson: itemIdsJson ?? this.itemIdsJson,
@@ -12935,8 +13003,8 @@ class LoanAdministrativeClosuresCompanion
     if (shopId.present) {
       map['shop_id'] = Variable<String>(shopId.value);
     }
-    if (loanId.present) {
-      map['loan_id'] = Variable<String>(loanId.value);
+    if (creditId.present) {
+      map['credit_id'] = Variable<String>(creditId.value);
     }
     if (reason.present) {
       map['reason'] = Variable<String>(reason.value);
@@ -12958,10 +13026,10 @@ class LoanAdministrativeClosuresCompanion
 
   @override
   String toString() {
-    return (StringBuffer('LoanAdministrativeClosuresCompanion(')
+    return (StringBuffer('CreditAdministrativeClosuresCompanion(')
           ..write('id: $id, ')
           ..write('shopId: $shopId, ')
-          ..write('loanId: $loanId, ')
+          ..write('creditId: $creditId, ')
           ..write('reason: $reason, ')
           ..write('closedByUserId: $closedByUserId, ')
           ..write('itemIdsJson: $itemIdsJson, ')
@@ -12981,7 +13049,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CustomersTable customers = $CustomersTable(this);
   late final $CustomerPhotoExceptionsTable customerPhotoExceptions =
       $CustomerPhotoExceptionsTable(this);
-  late final $LoansTable loans = $LoansTable(this);
+  late final $CreditsTable credits = $CreditsTable(this);
   late final $CollateralItemsTable collateralItems = $CollateralItemsTable(
     this,
   );
@@ -12992,20 +13060,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CollateralDiscrepanciesTable collateralDiscrepancies =
       $CollateralDiscrepanciesTable(this);
   late final $PaymentsTable payments = $PaymentsTable(this);
-  late final $LoanCorrectionsTable loanCorrections = $LoanCorrectionsTable(
-    this,
-  );
-  late final $LoanLedgerEntriesTable loanLedgerEntries =
-      $LoanLedgerEntriesTable(this);
+  late final $CreditCorrectionsTable creditCorrections =
+      $CreditCorrectionsTable(this);
+  late final $CreditLedgerEntriesTable creditLedgerEntries =
+      $CreditLedgerEntriesTable(this);
   late final $DueDateExtensionsTable dueDateExtensions =
       $DueDateExtensionsTable(this);
   late final $CustomerFollowUpsTable customerFollowUps =
       $CustomerFollowUpsTable(this);
-  late final $LoanResolutionsTable loanResolutions = $LoanResolutionsTable(
-    this,
-  );
-  late final $LoanAdministrativeClosuresTable loanAdministrativeClosures =
-      $LoanAdministrativeClosuresTable(this);
+  late final $CreditResolutionsTable creditResolutions =
+      $CreditResolutionsTable(this);
+  late final $CreditAdministrativeClosuresTable creditAdministrativeClosures =
+      $CreditAdministrativeClosuresTable(this);
   late final Index idxAppUsersShopId = Index(
     'idx_app_users_shop_id',
     'CREATE INDEX idx_app_users_shop_id ON app_users (shop_id)',
@@ -13042,21 +13108,21 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_photo_exceptions_nic',
     'CREATE INDEX idx_photo_exceptions_nic ON customer_photo_exceptions (shop_id, customer_nic)',
   );
-  late final Index idxLoansShopId = Index(
-    'idx_loans_shop_id',
-    'CREATE INDEX idx_loans_shop_id ON loans (shop_id)',
+  late final Index idxCreditsShopId = Index(
+    'idx_credits_shop_id',
+    'CREATE INDEX idx_credits_shop_id ON credits (shop_id)',
   );
-  late final Index idxLoansShopCustomer = Index(
-    'idx_loans_shop_customer',
-    'CREATE INDEX idx_loans_shop_customer ON loans (shop_id, customer_id)',
+  late final Index idxCreditsShopCustomer = Index(
+    'idx_credits_shop_customer',
+    'CREATE INDEX idx_credits_shop_customer ON credits (shop_id, customer_id)',
   );
-  late final Index idxLoansShopStatus = Index(
-    'idx_loans_shop_status',
-    'CREATE INDEX idx_loans_shop_status ON loans (shop_id, status)',
+  late final Index idxCreditsShopStatus = Index(
+    'idx_credits_shop_status',
+    'CREATE INDEX idx_credits_shop_status ON credits (shop_id, status)',
   );
-  late final Index idxLoansShopCustomerStatus = Index(
-    'idx_loans_shop_customer_status',
-    'CREATE INDEX idx_loans_shop_customer_status ON loans (shop_id, customer_id, status)',
+  late final Index idxCreditsShopCustomerStatus = Index(
+    'idx_credits_shop_customer_status',
+    'CREATE INDEX idx_credits_shop_customer_status ON credits (shop_id, customer_id, status)',
   );
   late final Index idxCollateralShopId = Index(
     'idx_collateral_shop_id',
@@ -13066,9 +13132,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_collateral_shop_customer',
     'CREATE INDEX idx_collateral_shop_customer ON collateral_items (shop_id, customer_id)',
   );
-  late final Index idxCollateralShopLoan = Index(
-    'idx_collateral_shop_loan',
-    'CREATE INDEX idx_collateral_shop_loan ON collateral_items (shop_id, loan_id)',
+  late final Index idxCollateralShopCredit = Index(
+    'idx_collateral_shop_credit',
+    'CREATE INDEX idx_collateral_shop_credit ON collateral_items (shop_id, credit_id)',
   );
   late final Index idxCollateralShopCustody = Index(
     'idx_collateral_shop_custody',
@@ -13114,84 +13180,84 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_payments_shop_id',
     'CREATE INDEX idx_payments_shop_id ON payments (shop_id)',
   );
-  late final Index idxPaymentsShopLoan = Index(
-    'idx_payments_shop_loan',
-    'CREATE INDEX idx_payments_shop_loan ON payments (shop_id, loan_id)',
+  late final Index idxPaymentsShopCredit = Index(
+    'idx_payments_shop_credit',
+    'CREATE INDEX idx_payments_shop_credit ON payments (shop_id, credit_id)',
   );
   late final Index idxPaymentsReceiptNumber = Index(
     'idx_payments_receipt_number',
     'CREATE INDEX idx_payments_receipt_number ON payments (shop_id, receipt_number)',
   );
-  late final Index idxLoanCorrectionsShopId = Index(
-    'idx_loan_corrections_shop_id',
-    'CREATE INDEX idx_loan_corrections_shop_id ON loan_corrections (shop_id)',
+  late final Index idxCreditCorrectionsShopId = Index(
+    'idx_credit_corrections_shop_id',
+    'CREATE INDEX idx_credit_corrections_shop_id ON credit_corrections (shop_id)',
   );
-  late final Index idxLoanCorrectionsShopStatus = Index(
-    'idx_loan_corrections_shop_status',
-    'CREATE INDEX idx_loan_corrections_shop_status ON loan_corrections (shop_id, status)',
+  late final Index idxCreditCorrectionsShopStatus = Index(
+    'idx_credit_corrections_shop_status',
+    'CREATE INDEX idx_credit_corrections_shop_status ON credit_corrections (shop_id, status)',
   );
-  late final Index idxLoanCorrectionsShopLoan = Index(
-    'idx_loan_corrections_shop_loan',
-    'CREATE INDEX idx_loan_corrections_shop_loan ON loan_corrections (shop_id, loan_id)',
+  late final Index idxCreditCorrectionsShopCredit = Index(
+    'idx_credit_corrections_shop_credit',
+    'CREATE INDEX idx_credit_corrections_shop_credit ON credit_corrections (shop_id, credit_id)',
   );
-  late final Index idxLoanCorrectionsShopPayment = Index(
-    'idx_loan_corrections_shop_payment',
-    'CREATE INDEX idx_loan_corrections_shop_payment ON loan_corrections (shop_id, original_payment_id)',
+  late final Index idxCreditCorrectionsShopPayment = Index(
+    'idx_credit_corrections_shop_payment',
+    'CREATE INDEX idx_credit_corrections_shop_payment ON credit_corrections (shop_id, original_payment_id)',
   );
   late final Index idxLedgerEntriesShopId = Index(
     'idx_ledger_entries_shop_id',
-    'CREATE INDEX idx_ledger_entries_shop_id ON loan_ledger_entries (shop_id)',
+    'CREATE INDEX idx_ledger_entries_shop_id ON credit_ledger_entries (shop_id)',
   );
-  late final Index idxLedgerEntriesShopLoan = Index(
-    'idx_ledger_entries_shop_loan',
-    'CREATE INDEX idx_ledger_entries_shop_loan ON loan_ledger_entries (shop_id, loan_id)',
+  late final Index idxLedgerEntriesShopCredit = Index(
+    'idx_ledger_entries_shop_credit',
+    'CREATE INDEX idx_ledger_entries_shop_credit ON credit_ledger_entries (shop_id, credit_id)',
   );
   late final Index idxLedgerEntriesShopEntryType = Index(
     'idx_ledger_entries_shop_entry_type',
-    'CREATE INDEX idx_ledger_entries_shop_entry_type ON loan_ledger_entries (shop_id, entry_type)',
+    'CREATE INDEX idx_ledger_entries_shop_entry_type ON credit_ledger_entries (shop_id, entry_type)',
   );
   late final Index idxLedgerEntriesShopCorrection = Index(
     'idx_ledger_entries_shop_correction',
-    'CREATE INDEX idx_ledger_entries_shop_correction ON loan_ledger_entries (shop_id, correction_id)',
+    'CREATE INDEX idx_ledger_entries_shop_correction ON credit_ledger_entries (shop_id, correction_id)',
   );
   late final Index idxDueDateExtensionsShopId = Index(
     'idx_due_date_extensions_shop_id',
     'CREATE INDEX idx_due_date_extensions_shop_id ON due_date_extensions (shop_id)',
   );
-  late final Index idxDueDateExtensionsShopLoan = Index(
-    'idx_due_date_extensions_shop_loan',
-    'CREATE INDEX idx_due_date_extensions_shop_loan ON due_date_extensions (shop_id, loan_id)',
+  late final Index idxDueDateExtensionsShopCredit = Index(
+    'idx_due_date_extensions_shop_credit',
+    'CREATE INDEX idx_due_date_extensions_shop_credit ON due_date_extensions (shop_id, credit_id)',
   );
   late final Index idxCustomerFollowUpsShopId = Index(
     'idx_customer_follow_ups_shop_id',
     'CREATE INDEX idx_customer_follow_ups_shop_id ON customer_follow_ups (shop_id)',
   );
-  late final Index idxCustomerFollowUpsShopLoan = Index(
-    'idx_customer_follow_ups_shop_loan',
-    'CREATE INDEX idx_customer_follow_ups_shop_loan ON customer_follow_ups (shop_id, loan_id)',
+  late final Index idxCustomerFollowUpsShopCredit = Index(
+    'idx_customer_follow_ups_shop_credit',
+    'CREATE INDEX idx_customer_follow_ups_shop_credit ON customer_follow_ups (shop_id, credit_id)',
   );
-  late final Index idxLoanResolutionsShopId = Index(
-    'idx_loan_resolutions_shop_id',
-    'CREATE INDEX idx_loan_resolutions_shop_id ON loan_resolutions (shop_id)',
+  late final Index idxCreditResolutionsShopId = Index(
+    'idx_credit_resolutions_shop_id',
+    'CREATE INDEX idx_credit_resolutions_shop_id ON credit_resolutions (shop_id)',
   );
-  late final Index idxLoanResolutionsShopLoan = Index(
-    'idx_loan_resolutions_shop_loan',
-    'CREATE INDEX idx_loan_resolutions_shop_loan ON loan_resolutions (shop_id, loan_id)',
+  late final Index idxCreditResolutionsShopCredit = Index(
+    'idx_credit_resolutions_shop_credit',
+    'CREATE INDEX idx_credit_resolutions_shop_credit ON credit_resolutions (shop_id, credit_id)',
   );
-  late final Index idxLoanAdminClosuresShopId = Index(
-    'idx_loan_admin_closures_shop_id',
-    'CREATE INDEX idx_loan_admin_closures_shop_id ON loan_administrative_closures (shop_id)',
+  late final Index idxCreditAdminClosuresShopId = Index(
+    'idx_credit_admin_closures_shop_id',
+    'CREATE INDEX idx_credit_admin_closures_shop_id ON credit_administrative_closures (shop_id)',
   );
-  late final Index idxLoanAdminClosuresShopLoan = Index(
-    'idx_loan_admin_closures_shop_loan',
-    'CREATE INDEX idx_loan_admin_closures_shop_loan ON loan_administrative_closures (shop_id, loan_id)',
+  late final Index idxCreditAdminClosuresShopCredit = Index(
+    'idx_credit_admin_closures_shop_credit',
+    'CREATE INDEX idx_credit_admin_closures_shop_credit ON credit_administrative_closures (shop_id, credit_id)',
   );
   late final ShopDao shopDao = ShopDao(this as AppDatabase);
   late final UserDao userDao = UserDao(this as AppDatabase);
   late final CustomerDao customerDao = CustomerDao(this as AppDatabase);
   late final CustomerPhotoExceptionDao customerPhotoExceptionDao =
       CustomerPhotoExceptionDao(this as AppDatabase);
-  late final LoanDao loanDao = LoanDao(this as AppDatabase);
+  late final CreditDao creditDao = CreditDao(this as AppDatabase);
   late final PaymentDao paymentDao = PaymentDao(this as AppDatabase);
   late final CorrectionDao correctionDao = CorrectionDao(this as AppDatabase);
   late final OverdueDao overdueDao = OverdueDao(this as AppDatabase);
@@ -13212,18 +13278,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncQueue,
     customers,
     customerPhotoExceptions,
-    loans,
+    credits,
     collateralItems,
     collateralPhotoExceptions,
     collateralCustodyEvents,
     collateralDiscrepancies,
     payments,
-    loanCorrections,
-    loanLedgerEntries,
+    creditCorrections,
+    creditLedgerEntries,
     dueDateExtensions,
     customerFollowUps,
-    loanResolutions,
-    loanAdministrativeClosures,
+    creditResolutions,
+    creditAdministrativeClosures,
     idxAppUsersShopId,
     idxSyncQueueShopStatus,
     idxSyncQueueIdempotency,
@@ -13233,13 +13299,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxPhotoExceptionsShopStatus,
     idxPhotoExceptionsCustomer,
     idxPhotoExceptionsNic,
-    idxLoansShopId,
-    idxLoansShopCustomer,
-    idxLoansShopStatus,
-    idxLoansShopCustomerStatus,
+    idxCreditsShopId,
+    idxCreditsShopCustomer,
+    idxCreditsShopStatus,
+    idxCreditsShopCustomerStatus,
     idxCollateralShopId,
     idxCollateralShopCustomer,
-    idxCollateralShopLoan,
+    idxCollateralShopCredit,
     idxCollateralShopCustody,
     idxCollateralShopCategory,
     idxCollateralPhotoExceptionsShopStatus,
@@ -13251,24 +13317,24 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxCollateralDiscrepanciesItemId,
     idxCollateralDiscrepanciesStatus,
     idxPaymentsShopId,
-    idxPaymentsShopLoan,
+    idxPaymentsShopCredit,
     idxPaymentsReceiptNumber,
-    idxLoanCorrectionsShopId,
-    idxLoanCorrectionsShopStatus,
-    idxLoanCorrectionsShopLoan,
-    idxLoanCorrectionsShopPayment,
+    idxCreditCorrectionsShopId,
+    idxCreditCorrectionsShopStatus,
+    idxCreditCorrectionsShopCredit,
+    idxCreditCorrectionsShopPayment,
     idxLedgerEntriesShopId,
-    idxLedgerEntriesShopLoan,
+    idxLedgerEntriesShopCredit,
     idxLedgerEntriesShopEntryType,
     idxLedgerEntriesShopCorrection,
     idxDueDateExtensionsShopId,
-    idxDueDateExtensionsShopLoan,
+    idxDueDateExtensionsShopCredit,
     idxCustomerFollowUpsShopId,
-    idxCustomerFollowUpsShopLoan,
-    idxLoanResolutionsShopId,
-    idxLoanResolutionsShopLoan,
-    idxLoanAdminClosuresShopId,
-    idxLoanAdminClosuresShopLoan,
+    idxCustomerFollowUpsShopCredit,
+    idxCreditResolutionsShopId,
+    idxCreditResolutionsShopCredit,
+    idxCreditAdminClosuresShopId,
+    idxCreditAdminClosuresShopCredit,
   ];
 }
 
@@ -13277,6 +13343,7 @@ typedef $$ShopsTableCreateCompanionBuilder = ShopsCompanion Function({
   required String name,
   Value<String> currencyCode,
   Value<String> timezone,
+  Value<String?> shopType,
   Value<String?> businessAddress,
   Value<String?> contactPhone,
   Value<String?> contactEmail,
@@ -13293,6 +13360,7 @@ typedef $$ShopsTableUpdateCompanionBuilder = ShopsCompanion Function({
   Value<String> name,
   Value<String> currencyCode,
   Value<String> timezone,
+  Value<String?> shopType,
   Value<String?> businessAddress,
   Value<String?> contactPhone,
   Value<String?> contactEmail,
@@ -13388,20 +13456,19 @@ final class $$ShopsTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoansTable, List<LoanEntry>> _loansRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.loans,
-    aliasName: 'shops__id__loans__shop_id',
+  static MultiTypedResultKey<$CreditsTable, List<CreditEntry>>
+  _creditsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.credits,
+    aliasName: 'shops__id__credits__shop_id',
   );
 
-  $$LoansTableProcessedTableManager get loansRefs {
-    final manager = $$LoansTableTableManager(
+  $$CreditsTableProcessedTableManager get creditsRefs {
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.shopId.id.sqlEquals($_itemColumn<String>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(_loansRefsTable($_db));
+    final cache = $_typedResult.readTableOrNull(_creditsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -13520,20 +13587,24 @@ final class $$ShopsTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoanCorrectionsTable, List<LoanCorrectionEntry>>
-  _loanCorrectionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanCorrections,
-    aliasName: 'shops__id__loan_corrections__shop_id',
-  );
+  static MultiTypedResultKey<
+    $CreditCorrectionsTable,
+    List<CreditCorrectionEntry>
+  >
+  _creditCorrectionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.creditCorrections,
+        aliasName: 'shops__id__credit_corrections__shop_id',
+      );
 
-  $$LoanCorrectionsTableProcessedTableManager get loanCorrectionsRefs {
-    final manager = $$LoanCorrectionsTableTableManager(
+  $$CreditCorrectionsTableProcessedTableManager get creditCorrectionsRefs {
+    final manager = $$CreditCorrectionsTableTableManager(
       $_db,
-      $_db.loanCorrections,
+      $_db.creditCorrections,
     ).filter((f) => f.shopId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanCorrectionsRefsTable($_db),
+      _creditCorrectionsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -13541,23 +13612,23 @@ final class $$ShopsTableReferences
   }
 
   static MultiTypedResultKey<
-    $LoanLedgerEntriesTable,
-    List<LoanLedgerEntryEntry>
+    $CreditLedgerEntriesTable,
+    List<CreditLedgerEntryEntry>
   >
-  _loanLedgerEntriesRefsTable(_$AppDatabase db) =>
+  _creditLedgerEntriesRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
-        db.loanLedgerEntries,
-        aliasName: 'shops__id__loan_ledger_entries__shop_id',
+        db.creditLedgerEntries,
+        aliasName: 'shops__id__credit_ledger_entries__shop_id',
       );
 
-  $$LoanLedgerEntriesTableProcessedTableManager get loanLedgerEntriesRefs {
-    final manager = $$LoanLedgerEntriesTableTableManager(
+  $$CreditLedgerEntriesTableProcessedTableManager get creditLedgerEntriesRefs {
+    final manager = $$CreditLedgerEntriesTableTableManager(
       $_db,
-      $_db.loanLedgerEntries,
+      $_db.creditLedgerEntries,
     ).filter((f) => f.shopId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanLedgerEntriesRefsTable($_db),
+      _creditLedgerEntriesRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -13612,20 +13683,24 @@ final class $$ShopsTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoanResolutionsTable, List<LoanResolutionEntry>>
-  _loanResolutionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanResolutions,
-    aliasName: 'shops__id__loan_resolutions__shop_id',
-  );
+  static MultiTypedResultKey<
+    $CreditResolutionsTable,
+    List<CreditResolutionEntry>
+  >
+  _creditResolutionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.creditResolutions,
+        aliasName: 'shops__id__credit_resolutions__shop_id',
+      );
 
-  $$LoanResolutionsTableProcessedTableManager get loanResolutionsRefs {
-    final manager = $$LoanResolutionsTableTableManager(
+  $$CreditResolutionsTableProcessedTableManager get creditResolutionsRefs {
+    final manager = $$CreditResolutionsTableTableManager(
       $_db,
-      $_db.loanResolutions,
+      $_db.creditResolutions,
     ).filter((f) => f.shopId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanResolutionsRefsTable($_db),
+      _creditResolutionsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -13633,24 +13708,24 @@ final class $$ShopsTableReferences
   }
 
   static MultiTypedResultKey<
-    $LoanAdministrativeClosuresTable,
-    List<LoanAdministrativeClosureEntry>
+    $CreditAdministrativeClosuresTable,
+    List<CreditAdministrativeClosureEntry>
   >
-  _loanAdministrativeClosuresRefsTable(_$AppDatabase db) =>
+  _creditAdministrativeClosuresRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
-        db.loanAdministrativeClosures,
-        aliasName: 'shops__id__loan_administrative_closures__shop_id',
+        db.creditAdministrativeClosures,
+        aliasName: 'shops__id__credit_administrative_closures__shop_id',
       );
 
-  $$LoanAdministrativeClosuresTableProcessedTableManager
-  get loanAdministrativeClosuresRefs {
-    final manager = $$LoanAdministrativeClosuresTableTableManager(
+  $$CreditAdministrativeClosuresTableProcessedTableManager
+  get creditAdministrativeClosuresRefs {
+    final manager = $$CreditAdministrativeClosuresTableTableManager(
       $_db,
-      $_db.loanAdministrativeClosures,
+      $_db.creditAdministrativeClosures,
     ).filter((f) => f.shopId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanAdministrativeClosuresRefsTable($_db),
+      _creditAdministrativeClosuresRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -13683,6 +13758,11 @@ class $$ShopsTableFilterComposer extends Composer<_$AppDatabase, $ShopsTable> {
 
   ColumnFilters<String> get timezone => $composableBuilder(
     column: $table.timezone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shopType => $composableBuilder(
+    column: $table.shopType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13832,22 +13912,22 @@ class $$ShopsTableFilterComposer extends Composer<_$AppDatabase, $ShopsTable> {
     return f(composer);
   }
 
-  Expression<bool> loansRefs(
-    Expression<bool> Function($$LoansTableFilterComposer f) f,
+  Expression<bool> creditsRefs(
+    Expression<bool> Function($$CreditsTableFilterComposer f) f,
   ) {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loans,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.shopId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -13986,22 +14066,22 @@ class $$ShopsTableFilterComposer extends Composer<_$AppDatabase, $ShopsTable> {
     return f(composer);
   }
 
-  Expression<bool> loanCorrectionsRefs(
-    Expression<bool> Function($$LoanCorrectionsTableFilterComposer f) f,
+  Expression<bool> creditCorrectionsRefs(
+    Expression<bool> Function($$CreditCorrectionsTableFilterComposer f) f,
   ) {
-    final $$LoanCorrectionsTableFilterComposer composer = $composerBuilder(
+    final $$CreditCorrectionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
+      referencedTable: $db.creditCorrections,
       getReferencedColumn: (t) => t.shopId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableFilterComposer(
+          }) => $$CreditCorrectionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanCorrections,
+            $table: $db.creditCorrections,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -14011,22 +14091,22 @@ class $$ShopsTableFilterComposer extends Composer<_$AppDatabase, $ShopsTable> {
     return f(composer);
   }
 
-  Expression<bool> loanLedgerEntriesRefs(
-    Expression<bool> Function($$LoanLedgerEntriesTableFilterComposer f) f,
+  Expression<bool> creditLedgerEntriesRefs(
+    Expression<bool> Function($$CreditLedgerEntriesTableFilterComposer f) f,
   ) {
-    final $$LoanLedgerEntriesTableFilterComposer composer = $composerBuilder(
+    final $$CreditLedgerEntriesTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanLedgerEntries,
+      referencedTable: $db.creditLedgerEntries,
       getReferencedColumn: (t) => t.shopId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanLedgerEntriesTableFilterComposer(
+          }) => $$CreditLedgerEntriesTableFilterComposer(
             $db: $db,
-            $table: $db.loanLedgerEntries,
+            $table: $db.creditLedgerEntries,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -14086,22 +14166,22 @@ class $$ShopsTableFilterComposer extends Composer<_$AppDatabase, $ShopsTable> {
     return f(composer);
   }
 
-  Expression<bool> loanResolutionsRefs(
-    Expression<bool> Function($$LoanResolutionsTableFilterComposer f) f,
+  Expression<bool> creditResolutionsRefs(
+    Expression<bool> Function($$CreditResolutionsTableFilterComposer f) f,
   ) {
-    final $$LoanResolutionsTableFilterComposer composer = $composerBuilder(
+    final $$CreditResolutionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanResolutions,
+      referencedTable: $db.creditResolutions,
       getReferencedColumn: (t) => t.shopId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanResolutionsTableFilterComposer(
+          }) => $$CreditResolutionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanResolutions,
+            $table: $db.creditResolutions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -14111,24 +14191,26 @@ class $$ShopsTableFilterComposer extends Composer<_$AppDatabase, $ShopsTable> {
     return f(composer);
   }
 
-  Expression<bool> loanAdministrativeClosuresRefs(
-    Expression<bool> Function($$LoanAdministrativeClosuresTableFilterComposer f)
+  Expression<bool> creditAdministrativeClosuresRefs(
+    Expression<bool> Function(
+      $$CreditAdministrativeClosuresTableFilterComposer f,
+    )
     f,
   ) {
-    final $$LoanAdministrativeClosuresTableFilterComposer composer =
+    final $$CreditAdministrativeClosuresTableFilterComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanAdministrativeClosures,
+          referencedTable: $db.creditAdministrativeClosures,
           getReferencedColumn: (t) => t.shopId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanAdministrativeClosuresTableFilterComposer(
+              }) => $$CreditAdministrativeClosuresTableFilterComposer(
                 $db: $db,
-                $table: $db.loanAdministrativeClosures,
+                $table: $db.creditAdministrativeClosures,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -14165,6 +14247,11 @@ class $$ShopsTableOrderingComposer
 
   ColumnOrderings<String> get timezone => $composableBuilder(
     column: $table.timezone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shopType => $composableBuilder(
+    column: $table.shopType,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -14236,6 +14323,9 @@ class $$ShopsTableAnnotationComposer
 
   GeneratedColumn<String> get timezone =>
       $composableBuilder(column: $table.timezone, builder: (column) => column);
+
+  GeneratedColumn<String> get shopType =>
+      $composableBuilder(column: $table.shopType, builder: (column) => column);
 
   GeneratedColumn<String> get businessAddress => $composableBuilder(
     column: $table.businessAddress,
@@ -14378,22 +14468,22 @@ class $$ShopsTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> loansRefs<T extends Object>(
-    Expression<T> Function($$LoansTableAnnotationComposer a) f,
+  Expression<T> creditsRefs<T extends Object>(
+    Expression<T> Function($$CreditsTableAnnotationComposer a) f,
   ) {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loans,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.shopId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -14534,48 +14624,49 @@ class $$ShopsTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> loanCorrectionsRefs<T extends Object>(
-    Expression<T> Function($$LoanCorrectionsTableAnnotationComposer a) f,
+  Expression<T> creditCorrectionsRefs<T extends Object>(
+    Expression<T> Function($$CreditCorrectionsTableAnnotationComposer a) f,
   ) {
-    final $$LoanCorrectionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
-      getReferencedColumn: (t) => t.shopId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanCorrections,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> loanLedgerEntriesRefs<T extends Object>(
-    Expression<T> Function($$LoanLedgerEntriesTableAnnotationComposer a) f,
-  ) {
-    final $$LoanLedgerEntriesTableAnnotationComposer composer =
+    final $$CreditCorrectionsTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanLedgerEntries,
+          referencedTable: $db.creditCorrections,
           getReferencedColumn: (t) => t.shopId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanLedgerEntriesTableAnnotationComposer(
+              }) => $$CreditCorrectionsTableAnnotationComposer(
                 $db: $db,
-                $table: $db.loanLedgerEntries,
+                $table: $db.creditCorrections,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> creditLedgerEntriesRefs<T extends Object>(
+    Expression<T> Function($$CreditLedgerEntriesTableAnnotationComposer a) f,
+  ) {
+    final $$CreditLedgerEntriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditLedgerEntries,
+          getReferencedColumn: (t) => t.shopId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CreditLedgerEntriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditLedgerEntries,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -14637,51 +14728,52 @@ class $$ShopsTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> loanResolutionsRefs<T extends Object>(
-    Expression<T> Function($$LoanResolutionsTableAnnotationComposer a) f,
+  Expression<T> creditResolutionsRefs<T extends Object>(
+    Expression<T> Function($$CreditResolutionsTableAnnotationComposer a) f,
   ) {
-    final $$LoanResolutionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanResolutions,
-      getReferencedColumn: (t) => t.shopId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanResolutionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanResolutions,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> loanAdministrativeClosuresRefs<T extends Object>(
-    Expression<T> Function(
-      $$LoanAdministrativeClosuresTableAnnotationComposer a,
-    )
-    f,
-  ) {
-    final $$LoanAdministrativeClosuresTableAnnotationComposer composer =
+    final $$CreditResolutionsTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanAdministrativeClosures,
+          referencedTable: $db.creditResolutions,
           getReferencedColumn: (t) => t.shopId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanAdministrativeClosuresTableAnnotationComposer(
+              }) => $$CreditResolutionsTableAnnotationComposer(
                 $db: $db,
-                $table: $db.loanAdministrativeClosures,
+                $table: $db.creditResolutions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> creditAdministrativeClosuresRefs<T extends Object>(
+    Expression<T> Function(
+      $$CreditAdministrativeClosuresTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$CreditAdministrativeClosuresTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditAdministrativeClosures,
+          getReferencedColumn: (t) => t.shopId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CreditAdministrativeClosuresTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditAdministrativeClosures,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -14710,18 +14802,18 @@ class $$ShopsTableTableManager
             bool syncQueueRefs,
             bool customersRefs,
             bool customerPhotoExceptionsRefs,
-            bool loansRefs,
+            bool creditsRefs,
             bool collateralItemsRefs,
             bool collateralPhotoExceptionsRefs,
             bool collateralCustodyEventsRefs,
             bool collateralDiscrepanciesRefs,
             bool paymentsRefs,
-            bool loanCorrectionsRefs,
-            bool loanLedgerEntriesRefs,
+            bool creditCorrectionsRefs,
+            bool creditLedgerEntriesRefs,
             bool dueDateExtensionsRefs,
             bool customerFollowUpsRefs,
-            bool loanResolutionsRefs,
-            bool loanAdministrativeClosuresRefs,
+            bool creditResolutionsRefs,
+            bool creditAdministrativeClosuresRefs,
           })
         > {
   $$ShopsTableTableManager(_$AppDatabase db, $ShopsTable table)
@@ -14741,6 +14833,7 @@ class $$ShopsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> currencyCode = const Value.absent(),
                 Value<String> timezone = const Value.absent(),
+                Value<String?> shopType = const Value.absent(),
                 Value<String?> businessAddress = const Value.absent(),
                 Value<String?> contactPhone = const Value.absent(),
                 Value<String?> contactEmail = const Value.absent(),
@@ -14756,6 +14849,7 @@ class $$ShopsTableTableManager
                 name: name,
                 currencyCode: currencyCode,
                 timezone: timezone,
+                shopType: shopType,
                 businessAddress: businessAddress,
                 contactPhone: contactPhone,
                 contactEmail: contactEmail,
@@ -14773,6 +14867,7 @@ class $$ShopsTableTableManager
                 required String name,
                 Value<String> currencyCode = const Value.absent(),
                 Value<String> timezone = const Value.absent(),
+                Value<String?> shopType = const Value.absent(),
                 Value<String?> businessAddress = const Value.absent(),
                 Value<String?> contactPhone = const Value.absent(),
                 Value<String?> contactEmail = const Value.absent(),
@@ -14788,6 +14883,7 @@ class $$ShopsTableTableManager
                 name: name,
                 currencyCode: currencyCode,
                 timezone: timezone,
+                shopType: shopType,
                 businessAddress: businessAddress,
                 contactPhone: contactPhone,
                 contactEmail: contactEmail,
@@ -14813,18 +14909,18 @@ class $$ShopsTableTableManager
                 syncQueueRefs = false,
                 customersRefs = false,
                 customerPhotoExceptionsRefs = false,
-                loansRefs = false,
+                creditsRefs = false,
                 collateralItemsRefs = false,
                 collateralPhotoExceptionsRefs = false,
                 collateralCustodyEventsRefs = false,
                 collateralDiscrepanciesRefs = false,
                 paymentsRefs = false,
-                loanCorrectionsRefs = false,
-                loanLedgerEntriesRefs = false,
+                creditCorrectionsRefs = false,
+                creditLedgerEntriesRefs = false,
                 dueDateExtensionsRefs = false,
                 customerFollowUpsRefs = false,
-                loanResolutionsRefs = false,
-                loanAdministrativeClosuresRefs = false,
+                creditResolutionsRefs = false,
+                creditAdministrativeClosuresRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -14833,20 +14929,20 @@ class $$ShopsTableTableManager
                     if (syncQueueRefs) db.syncQueue,
                     if (customersRefs) db.customers,
                     if (customerPhotoExceptionsRefs) db.customerPhotoExceptions,
-                    if (loansRefs) db.loans,
+                    if (creditsRefs) db.credits,
                     if (collateralItemsRefs) db.collateralItems,
                     if (collateralPhotoExceptionsRefs)
                       db.collateralPhotoExceptions,
                     if (collateralCustodyEventsRefs) db.collateralCustodyEvents,
                     if (collateralDiscrepanciesRefs) db.collateralDiscrepancies,
                     if (paymentsRefs) db.payments,
-                    if (loanCorrectionsRefs) db.loanCorrections,
-                    if (loanLedgerEntriesRefs) db.loanLedgerEntries,
+                    if (creditCorrectionsRefs) db.creditCorrections,
+                    if (creditLedgerEntriesRefs) db.creditLedgerEntries,
                     if (dueDateExtensionsRefs) db.dueDateExtensions,
                     if (customerFollowUpsRefs) db.customerFollowUps,
-                    if (loanResolutionsRefs) db.loanResolutions,
-                    if (loanAdministrativeClosuresRefs)
-                      db.loanAdministrativeClosures,
+                    if (creditResolutionsRefs) db.creditResolutions,
+                    if (creditAdministrativeClosuresRefs)
+                      db.creditAdministrativeClosures,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -14931,18 +15027,18 @@ class $$ShopsTableTableManager
                           referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
-                      if (loansRefs)
+                      if (creditsRefs)
                         await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanEntry,
-                          $LoansTable
+                          CreditEntry,
+                          $CreditsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
-                              ._loansRefsTable(db),
+                              ._creditsRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$ShopsTableReferences(db, table, p0).loansRefs,
+                              $$ShopsTableReferences(db, table, p0).creditsRefs,
                           currentColumn: 'id',
                           referencedColumn: 'shop_id',
                           typedResults: items,
@@ -15047,42 +15143,42 @@ class $$ShopsTableTableManager
                           referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
-                      if (loanCorrectionsRefs)
+                      if (creditCorrectionsRefs)
                         await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanCorrectionEntry,
-                          $LoanCorrectionsTable
+                          CreditCorrectionEntry,
+                          $CreditCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
-                              ._loanCorrectionsRefsTable(db),
+                              ._creditCorrectionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$ShopsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanCorrectionsRefs,
+                              ).creditCorrectionsRefs,
                           currentColumn: 'id',
                           referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
-                      if (loanLedgerEntriesRefs)
+                      if (creditLedgerEntriesRefs)
                         await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanLedgerEntryEntry,
-                          $LoanLedgerEntriesTable
+                          CreditLedgerEntryEntry,
+                          $CreditLedgerEntriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
-                              ._loanLedgerEntriesRefsTable(db),
+                              ._creditLedgerEntriesRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$ShopsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanLedgerEntriesRefs,
+                              ).creditLedgerEntriesRefs,
                           currentColumn: 'id',
                           referencedColumn: 'shop_id',
                           typedResults: items,
@@ -15127,42 +15223,42 @@ class $$ShopsTableTableManager
                           referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
-                      if (loanResolutionsRefs)
+                      if (creditResolutionsRefs)
                         await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanResolutionEntry,
-                          $LoanResolutionsTable
+                          CreditResolutionEntry,
+                          $CreditResolutionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
-                              ._loanResolutionsRefsTable(db),
+                              ._creditResolutionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$ShopsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanResolutionsRefs,
+                              ).creditResolutionsRefs,
                           currentColumn: 'id',
                           referencedColumn: 'shop_id',
                           typedResults: items,
                         ),
-                      if (loanAdministrativeClosuresRefs)
+                      if (creditAdministrativeClosuresRefs)
                         await $_getPrefetchedDataByColumns<
                           ShopEntry,
                           $ShopsTable,
-                          LoanAdministrativeClosureEntry,
-                          $LoanAdministrativeClosuresTable
+                          CreditAdministrativeClosureEntry,
+                          $CreditAdministrativeClosuresTable
                         >(
                           currentTable: table,
                           referencedTable: $$ShopsTableReferences
-                              ._loanAdministrativeClosuresRefsTable(db),
+                              ._creditAdministrativeClosuresRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$ShopsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanAdministrativeClosuresRefs,
+                              ).creditAdministrativeClosuresRefs,
                           currentColumn: 'id',
                           referencedColumn: 'shop_id',
                           typedResults: items,
@@ -15192,18 +15288,18 @@ typedef $$ShopsTableProcessedTableManager =
         bool syncQueueRefs,
         bool customersRefs,
         bool customerPhotoExceptionsRefs,
-        bool loansRefs,
+        bool creditsRefs,
         bool collateralItemsRefs,
         bool collateralPhotoExceptionsRefs,
         bool collateralCustodyEventsRefs,
         bool collateralDiscrepanciesRefs,
         bool paymentsRefs,
-        bool loanCorrectionsRefs,
-        bool loanLedgerEntriesRefs,
+        bool creditCorrectionsRefs,
+        bool creditLedgerEntriesRefs,
         bool dueDateExtensionsRefs,
         bool customerFollowUpsRefs,
-        bool loanResolutionsRefs,
-        bool loanAdministrativeClosuresRefs,
+        bool creditResolutionsRefs,
+        bool creditAdministrativeClosuresRefs,
       })
     >;
 typedef $$AppUsersTableCreateCompanionBuilder = AppUsersCompanion Function({
@@ -15310,19 +15406,18 @@ final class $$AppUsersTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoansTable, List<LoanEntry>> _loansRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.loans,
-    aliasName: 'app_users__id__loans__disbursed_by_user_id',
+  static MultiTypedResultKey<$CreditsTable, List<CreditEntry>>
+  _creditsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.credits,
+    aliasName: 'app_users__id__credits__disbursed_by_user_id',
   );
 
-  $$LoansTableProcessedTableManager get loansRefs {
-    final manager = $$LoansTableTableManager($_db, $_db.loans).filter(
+  $$CreditsTableProcessedTableManager get creditsRefs {
+    final manager = $$CreditsTableTableManager($_db, $_db.credits).filter(
       (f) => f.disbursedByUserId.id.sqlEquals($_itemColumn<String>('id')!),
     );
 
-    final cache = $_typedResult.readTableOrNull(_loansRefsTable($_db));
+    final cache = $_typedResult.readTableOrNull(_creditsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -15490,15 +15585,21 @@ final class $$AppUsersTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoanCorrectionsTable, List<LoanCorrectionEntry>>
+  static MultiTypedResultKey<
+    $CreditCorrectionsTable,
+    List<CreditCorrectionEntry>
+  >
   _requestedCorrectionsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanCorrections,
-    aliasName: 'app_users__id__loan_corrections__requested_by_user_id',
+    db.creditCorrections,
+    aliasName: 'app_users__id__credit_corrections__requested_by_user_id',
   );
 
-  $$LoanCorrectionsTableProcessedTableManager get requestedCorrections {
+  $$CreditCorrectionsTableProcessedTableManager get requestedCorrections {
     final manager =
-        $$LoanCorrectionsTableTableManager($_db, $_db.loanCorrections).filter(
+        $$CreditCorrectionsTableTableManager(
+          $_db,
+          $_db.creditCorrections,
+        ).filter(
           (f) => f.requestedByUserId.id.sqlEquals($_itemColumn<String>('id')!),
         );
 
@@ -15510,15 +15611,21 @@ final class $$AppUsersTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoanCorrectionsTable, List<LoanCorrectionEntry>>
+  static MultiTypedResultKey<
+    $CreditCorrectionsTable,
+    List<CreditCorrectionEntry>
+  >
   _reviewedCorrectionsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanCorrections,
-    aliasName: 'app_users__id__loan_corrections__reviewed_by_user_id',
+    db.creditCorrections,
+    aliasName: 'app_users__id__credit_corrections__reviewed_by_user_id',
   );
 
-  $$LoanCorrectionsTableProcessedTableManager get reviewedCorrections {
+  $$CreditCorrectionsTableProcessedTableManager get reviewedCorrections {
     final manager =
-        $$LoanCorrectionsTableTableManager($_db, $_db.loanCorrections).filter(
+        $$CreditCorrectionsTableTableManager(
+          $_db,
+          $_db.creditCorrections,
+        ).filter(
           (f) => f.reviewedByUserId.id.sqlEquals($_itemColumn<String>('id')!),
         );
 
@@ -15531,19 +15638,19 @@ final class $$AppUsersTableReferences
   }
 
   static MultiTypedResultKey<
-    $LoanLedgerEntriesTable,
-    List<LoanLedgerEntryEntry>
+    $CreditLedgerEntriesTable,
+    List<CreditLedgerEntryEntry>
   >
   _ledgerEntriesByUserTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanLedgerEntries,
-    aliasName: 'app_users__id__loan_ledger_entries__recorded_by_user_id',
+    db.creditLedgerEntries,
+    aliasName: 'app_users__id__credit_ledger_entries__recorded_by_user_id',
   );
 
-  $$LoanLedgerEntriesTableProcessedTableManager get ledgerEntriesByUser {
+  $$CreditLedgerEntriesTableProcessedTableManager get ledgerEntriesByUser {
     final manager =
-        $$LoanLedgerEntriesTableTableManager(
+        $$CreditLedgerEntriesTableTableManager(
           $_db,
-          $_db.loanLedgerEntries,
+          $_db.creditLedgerEntries,
         ).filter(
           (f) => f.recordedByUserId.id.sqlEquals($_itemColumn<String>('id')!),
         );
@@ -15607,20 +15714,27 @@ final class $$AppUsersTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoanResolutionsTable, List<LoanResolutionEntry>>
-  _loanResolutionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanResolutions,
-    aliasName: 'app_users__id__loan_resolutions__resolved_by_user_id',
-  );
+  static MultiTypedResultKey<
+    $CreditResolutionsTable,
+    List<CreditResolutionEntry>
+  >
+  _creditResolutionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.creditResolutions,
+        aliasName: 'app_users__id__credit_resolutions__resolved_by_user_id',
+      );
 
-  $$LoanResolutionsTableProcessedTableManager get loanResolutionsRefs {
+  $$CreditResolutionsTableProcessedTableManager get creditResolutionsRefs {
     final manager =
-        $$LoanResolutionsTableTableManager($_db, $_db.loanResolutions).filter(
+        $$CreditResolutionsTableTableManager(
+          $_db,
+          $_db.creditResolutions,
+        ).filter(
           (f) => f.resolvedByUserId.id.sqlEquals($_itemColumn<String>('id')!),
         );
 
     final cache = $_typedResult.readTableOrNull(
-      _loanResolutionsRefsTable($_db),
+      _creditResolutionsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -15628,25 +15742,25 @@ final class $$AppUsersTableReferences
   }
 
   static MultiTypedResultKey<
-    $LoanAdministrativeClosuresTable,
-    List<LoanAdministrativeClosureEntry>
+    $CreditAdministrativeClosuresTable,
+    List<CreditAdministrativeClosureEntry>
   >
-  _loanAdministrativeClosuresRefsTable(_$AppDatabase db) =>
+  _creditAdministrativeClosuresRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
-        db.loanAdministrativeClosures,
+        db.creditAdministrativeClosures,
         aliasName:
-            'app_users__id__loan_administrative_closures__closed_by_user_id',
+            'app_users__id__credit_administrative_closures__closed_by_user_id',
       );
 
-  $$LoanAdministrativeClosuresTableProcessedTableManager
-  get loanAdministrativeClosuresRefs {
-    final manager = $$LoanAdministrativeClosuresTableTableManager(
+  $$CreditAdministrativeClosuresTableProcessedTableManager
+  get creditAdministrativeClosuresRefs {
+    final manager = $$CreditAdministrativeClosuresTableTableManager(
       $_db,
-      $_db.loanAdministrativeClosures,
+      $_db.creditAdministrativeClosures,
     ).filter((f) => f.closedByUserId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanAdministrativeClosuresRefsTable($_db),
+      _creditAdministrativeClosuresRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -15798,22 +15912,22 @@ class $$AppUsersTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> loansRefs(
-    Expression<bool> Function($$LoansTableFilterComposer f) f,
+  Expression<bool> creditsRefs(
+    Expression<bool> Function($$CreditsTableFilterComposer f) f,
   ) {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loans,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.disbursedByUserId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -15981,21 +16095,21 @@ class $$AppUsersTableFilterComposer
   }
 
   Expression<bool> requestedCorrections(
-    Expression<bool> Function($$LoanCorrectionsTableFilterComposer f) f,
+    Expression<bool> Function($$CreditCorrectionsTableFilterComposer f) f,
   ) {
-    final $$LoanCorrectionsTableFilterComposer composer = $composerBuilder(
+    final $$CreditCorrectionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
+      referencedTable: $db.creditCorrections,
       getReferencedColumn: (t) => t.requestedByUserId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableFilterComposer(
+          }) => $$CreditCorrectionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanCorrections,
+            $table: $db.creditCorrections,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -16006,21 +16120,21 @@ class $$AppUsersTableFilterComposer
   }
 
   Expression<bool> reviewedCorrections(
-    Expression<bool> Function($$LoanCorrectionsTableFilterComposer f) f,
+    Expression<bool> Function($$CreditCorrectionsTableFilterComposer f) f,
   ) {
-    final $$LoanCorrectionsTableFilterComposer composer = $composerBuilder(
+    final $$CreditCorrectionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
+      referencedTable: $db.creditCorrections,
       getReferencedColumn: (t) => t.reviewedByUserId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableFilterComposer(
+          }) => $$CreditCorrectionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanCorrections,
+            $table: $db.creditCorrections,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -16031,21 +16145,21 @@ class $$AppUsersTableFilterComposer
   }
 
   Expression<bool> ledgerEntriesByUser(
-    Expression<bool> Function($$LoanLedgerEntriesTableFilterComposer f) f,
+    Expression<bool> Function($$CreditLedgerEntriesTableFilterComposer f) f,
   ) {
-    final $$LoanLedgerEntriesTableFilterComposer composer = $composerBuilder(
+    final $$CreditLedgerEntriesTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanLedgerEntries,
+      referencedTable: $db.creditLedgerEntries,
       getReferencedColumn: (t) => t.recordedByUserId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanLedgerEntriesTableFilterComposer(
+          }) => $$CreditLedgerEntriesTableFilterComposer(
             $db: $db,
-            $table: $db.loanLedgerEntries,
+            $table: $db.creditLedgerEntries,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -16105,22 +16219,22 @@ class $$AppUsersTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> loanResolutionsRefs(
-    Expression<bool> Function($$LoanResolutionsTableFilterComposer f) f,
+  Expression<bool> creditResolutionsRefs(
+    Expression<bool> Function($$CreditResolutionsTableFilterComposer f) f,
   ) {
-    final $$LoanResolutionsTableFilterComposer composer = $composerBuilder(
+    final $$CreditResolutionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanResolutions,
+      referencedTable: $db.creditResolutions,
       getReferencedColumn: (t) => t.resolvedByUserId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanResolutionsTableFilterComposer(
+          }) => $$CreditResolutionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanResolutions,
+            $table: $db.creditResolutions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -16130,24 +16244,26 @@ class $$AppUsersTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> loanAdministrativeClosuresRefs(
-    Expression<bool> Function($$LoanAdministrativeClosuresTableFilterComposer f)
+  Expression<bool> creditAdministrativeClosuresRefs(
+    Expression<bool> Function(
+      $$CreditAdministrativeClosuresTableFilterComposer f,
+    )
     f,
   ) {
-    final $$LoanAdministrativeClosuresTableFilterComposer composer =
+    final $$CreditAdministrativeClosuresTableFilterComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanAdministrativeClosures,
+          referencedTable: $db.creditAdministrativeClosures,
           getReferencedColumn: (t) => t.closedByUserId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanAdministrativeClosuresTableFilterComposer(
+              }) => $$CreditAdministrativeClosuresTableFilterComposer(
                 $db: $db,
-                $table: $db.loanAdministrativeClosures,
+                $table: $db.creditAdministrativeClosures,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -16379,22 +16495,22 @@ class $$AppUsersTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> loansRefs<T extends Object>(
-    Expression<T> Function($$LoansTableAnnotationComposer a) f,
+  Expression<T> creditsRefs<T extends Object>(
+    Expression<T> Function($$CreditsTableAnnotationComposer a) f,
   ) {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loans,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.disbursedByUserId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -16565,72 +16681,74 @@ class $$AppUsersTableAnnotationComposer
   }
 
   Expression<T> requestedCorrections<T extends Object>(
-    Expression<T> Function($$LoanCorrectionsTableAnnotationComposer a) f,
+    Expression<T> Function($$CreditCorrectionsTableAnnotationComposer a) f,
   ) {
-    final $$LoanCorrectionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
-      getReferencedColumn: (t) => t.requestedByUserId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanCorrections,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
+    final $$CreditCorrectionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditCorrections,
+          getReferencedColumn: (t) => t.requestedByUserId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-          ),
-    );
+              }) => $$CreditCorrectionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditCorrections,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<T> reviewedCorrections<T extends Object>(
-    Expression<T> Function($$LoanCorrectionsTableAnnotationComposer a) f,
+    Expression<T> Function($$CreditCorrectionsTableAnnotationComposer a) f,
   ) {
-    final $$LoanCorrectionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
-      getReferencedColumn: (t) => t.reviewedByUserId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanCorrections,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
+    final $$CreditCorrectionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditCorrections,
+          getReferencedColumn: (t) => t.reviewedByUserId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-          ),
-    );
+              }) => $$CreditCorrectionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditCorrections,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<T> ledgerEntriesByUser<T extends Object>(
-    Expression<T> Function($$LoanLedgerEntriesTableAnnotationComposer a) f,
+    Expression<T> Function($$CreditLedgerEntriesTableAnnotationComposer a) f,
   ) {
-    final $$LoanLedgerEntriesTableAnnotationComposer composer =
+    final $$CreditLedgerEntriesTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanLedgerEntries,
+          referencedTable: $db.creditLedgerEntries,
           getReferencedColumn: (t) => t.recordedByUserId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanLedgerEntriesTableAnnotationComposer(
+              }) => $$CreditLedgerEntriesTableAnnotationComposer(
                 $db: $db,
-                $table: $db.loanLedgerEntries,
+                $table: $db.creditLedgerEntries,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -16692,51 +16810,52 @@ class $$AppUsersTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> loanResolutionsRefs<T extends Object>(
-    Expression<T> Function($$LoanResolutionsTableAnnotationComposer a) f,
+  Expression<T> creditResolutionsRefs<T extends Object>(
+    Expression<T> Function($$CreditResolutionsTableAnnotationComposer a) f,
   ) {
-    final $$LoanResolutionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanResolutions,
-      getReferencedColumn: (t) => t.resolvedByUserId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanResolutionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanResolutions,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> loanAdministrativeClosuresRefs<T extends Object>(
-    Expression<T> Function(
-      $$LoanAdministrativeClosuresTableAnnotationComposer a,
-    )
-    f,
-  ) {
-    final $$LoanAdministrativeClosuresTableAnnotationComposer composer =
+    final $$CreditResolutionsTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanAdministrativeClosures,
+          referencedTable: $db.creditResolutions,
+          getReferencedColumn: (t) => t.resolvedByUserId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CreditResolutionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditResolutions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> creditAdministrativeClosuresRefs<T extends Object>(
+    Expression<T> Function(
+      $$CreditAdministrativeClosuresTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$CreditAdministrativeClosuresTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditAdministrativeClosures,
           getReferencedColumn: (t) => t.closedByUserId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanAdministrativeClosuresTableAnnotationComposer(
+              }) => $$CreditAdministrativeClosuresTableAnnotationComposer(
                 $db: $db,
-                $table: $db.loanAdministrativeClosures,
+                $table: $db.creditAdministrativeClosures,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -16764,7 +16883,7 @@ class $$AppUsersTableTableManager
             bool shopId,
             bool requestedExceptions,
             bool reviewedExceptions,
-            bool loansRefs,
+            bool creditsRefs,
             bool requestedCollateralPhotoExceptions,
             bool reviewedCollateralPhotoExceptions,
             bool requestedCustodyEvents,
@@ -16776,8 +16895,8 @@ class $$AppUsersTableTableManager
             bool ledgerEntriesByUser,
             bool dueDateExtensionsRefs,
             bool customerFollowUpsRefs,
-            bool loanResolutionsRefs,
-            bool loanAdministrativeClosuresRefs,
+            bool creditResolutionsRefs,
+            bool creditAdministrativeClosuresRefs,
           })
         > {
   $$AppUsersTableTableManager(_$AppDatabase db, $AppUsersTable table)
@@ -16868,7 +16987,7 @@ class $$AppUsersTableTableManager
                 shopId = false,
                 requestedExceptions = false,
                 reviewedExceptions = false,
-                loansRefs = false,
+                creditsRefs = false,
                 requestedCollateralPhotoExceptions = false,
                 reviewedCollateralPhotoExceptions = false,
                 requestedCustodyEvents = false,
@@ -16880,15 +16999,15 @@ class $$AppUsersTableTableManager
                 ledgerEntriesByUser = false,
                 dueDateExtensionsRefs = false,
                 customerFollowUpsRefs = false,
-                loanResolutionsRefs = false,
-                loanAdministrativeClosuresRefs = false,
+                creditResolutionsRefs = false,
+                creditAdministrativeClosuresRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (requestedExceptions) db.customerPhotoExceptions,
                     if (reviewedExceptions) db.customerPhotoExceptions,
-                    if (loansRefs) db.loans,
+                    if (creditsRefs) db.credits,
                     if (requestedCollateralPhotoExceptions)
                       db.collateralPhotoExceptions,
                     if (reviewedCollateralPhotoExceptions)
@@ -16899,14 +17018,14 @@ class $$AppUsersTableTableManager
                     if (resolvedCollateralDiscrepancies)
                       db.collateralDiscrepancies,
                     if (paymentsRefs) db.payments,
-                    if (requestedCorrections) db.loanCorrections,
-                    if (reviewedCorrections) db.loanCorrections,
-                    if (ledgerEntriesByUser) db.loanLedgerEntries,
+                    if (requestedCorrections) db.creditCorrections,
+                    if (reviewedCorrections) db.creditCorrections,
+                    if (ledgerEntriesByUser) db.creditLedgerEntries,
                     if (dueDateExtensionsRefs) db.dueDateExtensions,
                     if (customerFollowUpsRefs) db.customerFollowUps,
-                    if (loanResolutionsRefs) db.loanResolutions,
-                    if (loanAdministrativeClosuresRefs)
-                      db.loanAdministrativeClosures,
+                    if (creditResolutionsRefs) db.creditResolutions,
+                    if (creditAdministrativeClosuresRefs)
+                      db.creditAdministrativeClosures,
                   ],
                   addJoins:
                       <
@@ -16980,22 +17099,22 @@ class $$AppUsersTableTableManager
                           referencedColumn: 'reviewed_by_user_id',
                           typedResults: items,
                         ),
-                      if (loansRefs)
+                      if (creditsRefs)
                         await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanEntry,
-                          $LoansTable
+                          CreditEntry,
+                          $CreditsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
-                              ._loansRefsTable(db),
+                              ._creditsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$AppUsersTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loansRefs,
+                              ).creditsRefs,
                           currentColumn: 'id',
                           referencedColumn: 'disbursed_by_user_id',
                           typedResults: items,
@@ -17124,8 +17243,8 @@ class $$AppUsersTableTableManager
                         await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanCorrectionEntry,
-                          $LoanCorrectionsTable
+                          CreditCorrectionEntry,
+                          $CreditCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17144,8 +17263,8 @@ class $$AppUsersTableTableManager
                         await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanCorrectionEntry,
-                          $LoanCorrectionsTable
+                          CreditCorrectionEntry,
+                          $CreditCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17164,8 +17283,8 @@ class $$AppUsersTableTableManager
                         await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanLedgerEntryEntry,
-                          $LoanLedgerEntriesTable
+                          CreditLedgerEntryEntry,
+                          $CreditLedgerEntriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
@@ -17220,42 +17339,42 @@ class $$AppUsersTableTableManager
                           referencedColumn: 'staff_id',
                           typedResults: items,
                         ),
-                      if (loanResolutionsRefs)
+                      if (creditResolutionsRefs)
                         await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanResolutionEntry,
-                          $LoanResolutionsTable
+                          CreditResolutionEntry,
+                          $CreditResolutionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
-                              ._loanResolutionsRefsTable(db),
+                              ._creditResolutionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$AppUsersTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanResolutionsRefs,
+                              ).creditResolutionsRefs,
                           currentColumn: 'id',
                           referencedColumn: 'resolved_by_user_id',
                           typedResults: items,
                         ),
-                      if (loanAdministrativeClosuresRefs)
+                      if (creditAdministrativeClosuresRefs)
                         await $_getPrefetchedDataByColumns<
                           AppUserEntry,
                           $AppUsersTable,
-                          LoanAdministrativeClosureEntry,
-                          $LoanAdministrativeClosuresTable
+                          CreditAdministrativeClosureEntry,
+                          $CreditAdministrativeClosuresTable
                         >(
                           currentTable: table,
                           referencedTable: $$AppUsersTableReferences
-                              ._loanAdministrativeClosuresRefsTable(db),
+                              ._creditAdministrativeClosuresRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$AppUsersTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanAdministrativeClosuresRefs,
+                              ).creditAdministrativeClosuresRefs,
                           currentColumn: 'id',
                           referencedColumn: 'closed_by_user_id',
                           typedResults: items,
@@ -17284,7 +17403,7 @@ typedef $$AppUsersTableProcessedTableManager =
         bool shopId,
         bool requestedExceptions,
         bool reviewedExceptions,
-        bool loansRefs,
+        bool creditsRefs,
         bool requestedCollateralPhotoExceptions,
         bool reviewedCollateralPhotoExceptions,
         bool requestedCustodyEvents,
@@ -17296,8 +17415,8 @@ typedef $$AppUsersTableProcessedTableManager =
         bool ledgerEntriesByUser,
         bool dueDateExtensionsRefs,
         bool customerFollowUpsRefs,
-        bool loanResolutionsRefs,
-        bool loanAdministrativeClosuresRefs,
+        bool creditResolutionsRefs,
+        bool creditAdministrativeClosuresRefs,
       })
     >;
 typedef $$SyncQueueTableCreateCompanionBuilder = SyncQueueCompanion Function({
@@ -17760,9 +17879,9 @@ typedef $$CustomersTableCreateCompanionBuilder = CustomersCompanion Function({
   Value<int> id,
   required String shopId,
   required String fullName,
-  required String nic,
+  Value<String?> nic,
   required String phone,
-  required String address,
+  Value<String?> address,
   Value<String?> photoUri,
   Value<String?> photoHash,
   required DateTime createdAt,
@@ -17772,9 +17891,9 @@ typedef $$CustomersTableUpdateCompanionBuilder = CustomersCompanion Function({
   Value<int> id,
   Value<String> shopId,
   Value<String> fullName,
-  Value<String> nic,
+  Value<String?> nic,
   Value<String> phone,
-  Value<String> address,
+  Value<String?> address,
   Value<String?> photoUri,
   Value<String?> photoHash,
   Value<DateTime> createdAt,
@@ -17802,20 +17921,19 @@ final class $$CustomersTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoansTable, List<LoanEntry>> _loansRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.loans,
-    aliasName: 'customers__id__loans__customer_id',
+  static MultiTypedResultKey<$CreditsTable, List<CreditEntry>>
+  _creditsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.credits,
+    aliasName: 'customers__id__credits__customer_id',
   );
 
-  $$LoansTableProcessedTableManager get loansRefs {
-    final manager = $$LoansTableTableManager(
+  $$CreditsTableProcessedTableManager get creditsRefs {
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.customerId.id.sqlEquals($_itemColumn<int>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(_loansRefsTable($_db));
+    final cache = $_typedResult.readTableOrNull(_creditsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -17943,22 +18061,22 @@ class $$CustomersTableFilterComposer
     return composer;
   }
 
-  Expression<bool> loansRefs(
-    Expression<bool> Function($$LoansTableFilterComposer f) f,
+  Expression<bool> creditsRefs(
+    Expression<bool> Function($$CreditsTableFilterComposer f) f,
   ) {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loans,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.customerId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -18156,22 +18274,22 @@ class $$CustomersTableAnnotationComposer
     return composer;
   }
 
-  Expression<T> loansRefs<T extends Object>(
-    Expression<T> Function($$LoansTableAnnotationComposer a) f,
+  Expression<T> creditsRefs<T extends Object>(
+    Expression<T> Function($$CreditsTableAnnotationComposer a) f,
   ) {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loans,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.customerId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -18248,7 +18366,7 @@ class $$CustomersTableTableManager
           CustomerEntry,
           PrefetchHooks Function({
             bool shopId,
-            bool loansRefs,
+            bool creditsRefs,
             bool collateralItemsRefs,
             bool customerFollowUpsRefs,
           })
@@ -18269,9 +18387,9 @@ class $$CustomersTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
                 Value<String> fullName = const Value.absent(),
-                Value<String> nic = const Value.absent(),
+                Value<String?> nic = const Value.absent(),
                 Value<String> phone = const Value.absent(),
-                Value<String> address = const Value.absent(),
+                Value<String?> address = const Value.absent(),
                 Value<String?> photoUri = const Value.absent(),
                 Value<String?> photoHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -18293,9 +18411,9 @@ class $$CustomersTableTableManager
                 Value<int> id = const Value.absent(),
                 required String shopId,
                 required String fullName,
-                required String nic,
+                Value<String?> nic = const Value.absent(),
                 required String phone,
-                required String address,
+                Value<String?> address = const Value.absent(),
                 Value<String?> photoUri = const Value.absent(),
                 Value<String?> photoHash = const Value.absent(),
                 required DateTime createdAt,
@@ -18323,14 +18441,14 @@ class $$CustomersTableTableManager
           prefetchHooksCallback:
               ({
                 shopId = false,
-                loansRefs = false,
+                creditsRefs = false,
                 collateralItemsRefs = false,
                 customerFollowUpsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (loansRefs) db.loans,
+                    if (creditsRefs) db.credits,
                     if (collateralItemsRefs) db.collateralItems,
                     if (customerFollowUpsRefs) db.customerFollowUps,
                   ],
@@ -18366,22 +18484,22 @@ class $$CustomersTableTableManager
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (loansRefs)
+                      if (creditsRefs)
                         await $_getPrefetchedDataByColumns<
                           CustomerEntry,
                           $CustomersTable,
-                          LoanEntry,
-                          $LoansTable
+                          CreditEntry,
+                          $CreditsTable
                         >(
                           currentTable: table,
                           referencedTable: $$CustomersTableReferences
-                              ._loansRefsTable(db),
+                              ._creditsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$CustomersTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loansRefs,
+                              ).creditsRefs,
                           currentColumn: 'id',
                           referencedColumn: 'customer_id',
                           typedResults: items,
@@ -18448,7 +18566,7 @@ typedef $$CustomersTableProcessedTableManager =
       CustomerEntry,
       PrefetchHooks Function({
         bool shopId,
-        bool loansRefs,
+        bool creditsRefs,
         bool collateralItemsRefs,
         bool customerFollowUpsRefs,
       })
@@ -19128,7 +19246,7 @@ typedef $$CustomerPhotoExceptionsTableProcessedTableManager =
         bool reviewedByUserId,
       })
     >;
-typedef $$LoansTableCreateCompanionBuilder = LoansCompanion Function({
+typedef $$CreditsTableCreateCompanionBuilder = CreditsCompanion Function({
   required String id,
   required String shopId,
   required int customerId,
@@ -19149,7 +19267,7 @@ typedef $$LoansTableCreateCompanionBuilder = LoansCompanion Function({
   Value<String?> documentSnapshotId,
   Value<int> rowid,
 });
-typedef $$LoansTableUpdateCompanionBuilder = LoansCompanion Function({
+typedef $$CreditsTableUpdateCompanionBuilder = CreditsCompanion Function({
   Value<String> id,
   Value<String> shopId,
   Value<int> customerId,
@@ -19171,12 +19289,12 @@ typedef $$LoansTableUpdateCompanionBuilder = LoansCompanion Function({
   Value<int> rowid,
 });
 
-final class $$LoansTableReferences
-    extends BaseReferences<_$AppDatabase, $LoansTable, LoanEntry> {
-  $$LoansTableReferences(super.$_db, super.$_table, super.$_typedResult);
+final class $$CreditsTableReferences
+    extends BaseReferences<_$AppDatabase, $CreditsTable, CreditEntry> {
+  $$CreditsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $ShopsTable _shopIdTable(_$AppDatabase db) =>
-      db.shops.createAlias('loans__shop_id__shops__id');
+      db.shops.createAlias('credits__shop_id__shops__id');
 
   $$ShopsTableProcessedTableManager get shopId {
     final $_column = $_itemColumn<String>('shop_id')!;
@@ -19193,7 +19311,7 @@ final class $$LoansTableReferences
   }
 
   static $CustomersTable _customerIdTable(_$AppDatabase db) =>
-      db.customers.createAlias('loans__customer_id__customers__id');
+      db.customers.createAlias('credits__customer_id__customers__id');
 
   $$CustomersTableProcessedTableManager get customerId {
     final $_column = $_itemColumn<int>('customer_id')!;
@@ -19210,7 +19328,7 @@ final class $$LoansTableReferences
   }
 
   static $AppUsersTable _disbursedByUserIdTable(_$AppDatabase db) =>
-      db.appUsers.createAlias('loans__disbursed_by_user_id__app_users__id');
+      db.appUsers.createAlias('credits__disbursed_by_user_id__app_users__id');
 
   $$AppUsersTableProcessedTableManager? get disbursedByUserId {
     final $_column = $_itemColumn<String>('disbursed_by_user_id');
@@ -19229,14 +19347,14 @@ final class $$LoansTableReferences
   static MultiTypedResultKey<$CollateralItemsTable, List<CollateralItemEntry>>
   _collateralItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.collateralItems,
-    aliasName: 'loans__id__collateral_items__loan_id',
+    aliasName: 'credits__id__collateral_items__credit_id',
   );
 
   $$CollateralItemsTableProcessedTableManager get collateralItemsRefs {
     final manager = $$CollateralItemsTableTableManager(
       $_db,
       $_db.collateralItems,
-    ).filter((f) => f.loanId.id.sqlEquals($_itemColumn<String>('id')!));
+    ).filter((f) => f.creditId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _collateralItemsRefsTable($_db),
@@ -19249,14 +19367,14 @@ final class $$LoansTableReferences
   static MultiTypedResultKey<$PaymentsTable, List<PaymentEntry>>
   _paymentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.payments,
-    aliasName: 'loans__id__payments__loan_id',
+    aliasName: 'credits__id__payments__credit_id',
   );
 
   $$PaymentsTableProcessedTableManager get paymentsRefs {
     final manager = $$PaymentsTableTableManager(
       $_db,
       $_db.payments,
-    ).filter((f) => f.loanId.id.sqlEquals($_itemColumn<String>('id')!));
+    ).filter((f) => f.creditId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_paymentsRefsTable($_db));
     return ProcessedTableManager(
@@ -19264,20 +19382,24 @@ final class $$LoansTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoanCorrectionsTable, List<LoanCorrectionEntry>>
-  _loanCorrectionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanCorrections,
-    aliasName: 'loans__id__loan_corrections__loan_id',
-  );
+  static MultiTypedResultKey<
+    $CreditCorrectionsTable,
+    List<CreditCorrectionEntry>
+  >
+  _creditCorrectionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.creditCorrections,
+        aliasName: 'credits__id__credit_corrections__credit_id',
+      );
 
-  $$LoanCorrectionsTableProcessedTableManager get loanCorrectionsRefs {
-    final manager = $$LoanCorrectionsTableTableManager(
+  $$CreditCorrectionsTableProcessedTableManager get creditCorrectionsRefs {
+    final manager = $$CreditCorrectionsTableTableManager(
       $_db,
-      $_db.loanCorrections,
-    ).filter((f) => f.loanId.id.sqlEquals($_itemColumn<String>('id')!));
+      $_db.creditCorrections,
+    ).filter((f) => f.creditId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanCorrectionsRefsTable($_db),
+      _creditCorrectionsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -19285,23 +19407,23 @@ final class $$LoansTableReferences
   }
 
   static MultiTypedResultKey<
-    $LoanLedgerEntriesTable,
-    List<LoanLedgerEntryEntry>
+    $CreditLedgerEntriesTable,
+    List<CreditLedgerEntryEntry>
   >
-  _loanLedgerEntriesRefsTable(_$AppDatabase db) =>
+  _creditLedgerEntriesRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
-        db.loanLedgerEntries,
-        aliasName: 'loans__id__loan_ledger_entries__loan_id',
+        db.creditLedgerEntries,
+        aliasName: 'credits__id__credit_ledger_entries__credit_id',
       );
 
-  $$LoanLedgerEntriesTableProcessedTableManager get loanLedgerEntriesRefs {
-    final manager = $$LoanLedgerEntriesTableTableManager(
+  $$CreditLedgerEntriesTableProcessedTableManager get creditLedgerEntriesRefs {
+    final manager = $$CreditLedgerEntriesTableTableManager(
       $_db,
-      $_db.loanLedgerEntries,
-    ).filter((f) => f.loanId.id.sqlEquals($_itemColumn<String>('id')!));
+      $_db.creditLedgerEntries,
+    ).filter((f) => f.creditId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanLedgerEntriesRefsTable($_db),
+      _creditLedgerEntriesRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -19315,14 +19437,14 @@ final class $$LoansTableReferences
   _dueDateExtensionsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.dueDateExtensions,
-        aliasName: 'loans__id__due_date_extensions__loan_id',
+        aliasName: 'credits__id__due_date_extensions__credit_id',
       );
 
   $$DueDateExtensionsTableProcessedTableManager get dueDateExtensionsRefs {
     final manager = $$DueDateExtensionsTableTableManager(
       $_db,
       $_db.dueDateExtensions,
-    ).filter((f) => f.loanId.id.sqlEquals($_itemColumn<String>('id')!));
+    ).filter((f) => f.creditId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _dueDateExtensionsRefsTable($_db),
@@ -19339,14 +19461,14 @@ final class $$LoansTableReferences
   _customerFollowUpsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.customerFollowUps,
-        aliasName: 'loans__id__customer_follow_ups__loan_id',
+        aliasName: 'credits__id__customer_follow_ups__credit_id',
       );
 
   $$CustomerFollowUpsTableProcessedTableManager get customerFollowUpsRefs {
     final manager = $$CustomerFollowUpsTableTableManager(
       $_db,
       $_db.customerFollowUps,
-    ).filter((f) => f.loanId.id.sqlEquals($_itemColumn<String>('id')!));
+    ).filter((f) => f.creditId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _customerFollowUpsRefsTable($_db),
@@ -19356,20 +19478,24 @@ final class $$LoansTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoanResolutionsTable, List<LoanResolutionEntry>>
-  _loanResolutionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanResolutions,
-    aliasName: 'loans__id__loan_resolutions__loan_id',
-  );
+  static MultiTypedResultKey<
+    $CreditResolutionsTable,
+    List<CreditResolutionEntry>
+  >
+  _creditResolutionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.creditResolutions,
+        aliasName: 'credits__id__credit_resolutions__credit_id',
+      );
 
-  $$LoanResolutionsTableProcessedTableManager get loanResolutionsRefs {
-    final manager = $$LoanResolutionsTableTableManager(
+  $$CreditResolutionsTableProcessedTableManager get creditResolutionsRefs {
+    final manager = $$CreditResolutionsTableTableManager(
       $_db,
-      $_db.loanResolutions,
-    ).filter((f) => f.loanId.id.sqlEquals($_itemColumn<String>('id')!));
+      $_db.creditResolutions,
+    ).filter((f) => f.creditId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanResolutionsRefsTable($_db),
+      _creditResolutionsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -19377,24 +19503,24 @@ final class $$LoansTableReferences
   }
 
   static MultiTypedResultKey<
-    $LoanAdministrativeClosuresTable,
-    List<LoanAdministrativeClosureEntry>
+    $CreditAdministrativeClosuresTable,
+    List<CreditAdministrativeClosureEntry>
   >
-  _loanAdministrativeClosuresRefsTable(_$AppDatabase db) =>
+  _creditAdministrativeClosuresRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
-        db.loanAdministrativeClosures,
-        aliasName: 'loans__id__loan_administrative_closures__loan_id',
+        db.creditAdministrativeClosures,
+        aliasName: 'credits__id__credit_administrative_closures__credit_id',
       );
 
-  $$LoanAdministrativeClosuresTableProcessedTableManager
-  get loanAdministrativeClosuresRefs {
-    final manager = $$LoanAdministrativeClosuresTableTableManager(
+  $$CreditAdministrativeClosuresTableProcessedTableManager
+  get creditAdministrativeClosuresRefs {
+    final manager = $$CreditAdministrativeClosuresTableTableManager(
       $_db,
-      $_db.loanAdministrativeClosures,
-    ).filter((f) => f.loanId.id.sqlEquals($_itemColumn<String>('id')!));
+      $_db.creditAdministrativeClosures,
+    ).filter((f) => f.creditId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _loanAdministrativeClosuresRefsTable($_db),
+      _creditAdministrativeClosuresRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -19402,8 +19528,9 @@ final class $$LoansTableReferences
   }
 }
 
-class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
-  $$LoansTableFilterComposer({
+class $$CreditsTableFilterComposer
+    extends Composer<_$AppDatabase, $CreditsTable> {
+  $$CreditsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -19561,7 +19688,7 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.collateralItems,
-      getReferencedColumn: (t) => t.loanId,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
@@ -19586,7 +19713,7 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.payments,
-      getReferencedColumn: (t) => t.loanId,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
@@ -19604,22 +19731,22 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
     return f(composer);
   }
 
-  Expression<bool> loanCorrectionsRefs(
-    Expression<bool> Function($$LoanCorrectionsTableFilterComposer f) f,
+  Expression<bool> creditCorrectionsRefs(
+    Expression<bool> Function($$CreditCorrectionsTableFilterComposer f) f,
   ) {
-    final $$LoanCorrectionsTableFilterComposer composer = $composerBuilder(
+    final $$CreditCorrectionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
-      getReferencedColumn: (t) => t.loanId,
+      referencedTable: $db.creditCorrections,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableFilterComposer(
+          }) => $$CreditCorrectionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanCorrections,
+            $table: $db.creditCorrections,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -19629,22 +19756,22 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
     return f(composer);
   }
 
-  Expression<bool> loanLedgerEntriesRefs(
-    Expression<bool> Function($$LoanLedgerEntriesTableFilterComposer f) f,
+  Expression<bool> creditLedgerEntriesRefs(
+    Expression<bool> Function($$CreditLedgerEntriesTableFilterComposer f) f,
   ) {
-    final $$LoanLedgerEntriesTableFilterComposer composer = $composerBuilder(
+    final $$CreditLedgerEntriesTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanLedgerEntries,
-      getReferencedColumn: (t) => t.loanId,
+      referencedTable: $db.creditLedgerEntries,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanLedgerEntriesTableFilterComposer(
+          }) => $$CreditLedgerEntriesTableFilterComposer(
             $db: $db,
-            $table: $db.loanLedgerEntries,
+            $table: $db.creditLedgerEntries,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -19661,7 +19788,7 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.dueDateExtensions,
-      getReferencedColumn: (t) => t.loanId,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
@@ -19686,7 +19813,7 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.customerFollowUps,
-      getReferencedColumn: (t) => t.loanId,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
@@ -19704,22 +19831,22 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
     return f(composer);
   }
 
-  Expression<bool> loanResolutionsRefs(
-    Expression<bool> Function($$LoanResolutionsTableFilterComposer f) f,
+  Expression<bool> creditResolutionsRefs(
+    Expression<bool> Function($$CreditResolutionsTableFilterComposer f) f,
   ) {
-    final $$LoanResolutionsTableFilterComposer composer = $composerBuilder(
+    final $$CreditResolutionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanResolutions,
-      getReferencedColumn: (t) => t.loanId,
+      referencedTable: $db.creditResolutions,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanResolutionsTableFilterComposer(
+          }) => $$CreditResolutionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanResolutions,
+            $table: $db.creditResolutions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -19729,24 +19856,26 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
     return f(composer);
   }
 
-  Expression<bool> loanAdministrativeClosuresRefs(
-    Expression<bool> Function($$LoanAdministrativeClosuresTableFilterComposer f)
+  Expression<bool> creditAdministrativeClosuresRefs(
+    Expression<bool> Function(
+      $$CreditAdministrativeClosuresTableFilterComposer f,
+    )
     f,
   ) {
-    final $$LoanAdministrativeClosuresTableFilterComposer composer =
+    final $$CreditAdministrativeClosuresTableFilterComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanAdministrativeClosures,
-          getReferencedColumn: (t) => t.loanId,
+          referencedTable: $db.creditAdministrativeClosures,
+          getReferencedColumn: (t) => t.creditId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanAdministrativeClosuresTableFilterComposer(
+              }) => $$CreditAdministrativeClosuresTableFilterComposer(
                 $db: $db,
-                $table: $db.loanAdministrativeClosures,
+                $table: $db.creditAdministrativeClosures,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -19757,9 +19886,9 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
   }
 }
 
-class $$LoansTableOrderingComposer
-    extends Composer<_$AppDatabase, $LoansTable> {
-  $$LoansTableOrderingComposer({
+class $$CreditsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CreditsTable> {
+  $$CreditsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -19911,9 +20040,9 @@ class $$LoansTableOrderingComposer
   }
 }
 
-class $$LoansTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LoansTable> {
-  $$LoansTableAnnotationComposer({
+class $$CreditsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CreditsTable> {
+  $$CreditsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -20061,7 +20190,7 @@ class $$LoansTableAnnotationComposer
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.collateralItems,
-      getReferencedColumn: (t) => t.loanId,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
@@ -20086,7 +20215,7 @@ class $$LoansTableAnnotationComposer
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.payments,
-      getReferencedColumn: (t) => t.loanId,
+      getReferencedColumn: (t) => t.creditId,
       builder:
           (
             joinBuilder, {
@@ -20104,48 +20233,49 @@ class $$LoansTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> loanCorrectionsRefs<T extends Object>(
-    Expression<T> Function($$LoanCorrectionsTableAnnotationComposer a) f,
+  Expression<T> creditCorrectionsRefs<T extends Object>(
+    Expression<T> Function($$CreditCorrectionsTableAnnotationComposer a) f,
   ) {
-    final $$LoanCorrectionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
-      getReferencedColumn: (t) => t.loanId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanCorrections,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> loanLedgerEntriesRefs<T extends Object>(
-    Expression<T> Function($$LoanLedgerEntriesTableAnnotationComposer a) f,
-  ) {
-    final $$LoanLedgerEntriesTableAnnotationComposer composer =
+    final $$CreditCorrectionsTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanLedgerEntries,
-          getReferencedColumn: (t) => t.loanId,
+          referencedTable: $db.creditCorrections,
+          getReferencedColumn: (t) => t.creditId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanLedgerEntriesTableAnnotationComposer(
+              }) => $$CreditCorrectionsTableAnnotationComposer(
                 $db: $db,
-                $table: $db.loanLedgerEntries,
+                $table: $db.creditCorrections,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> creditLedgerEntriesRefs<T extends Object>(
+    Expression<T> Function($$CreditLedgerEntriesTableAnnotationComposer a) f,
+  ) {
+    final $$CreditLedgerEntriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditLedgerEntries,
+          getReferencedColumn: (t) => t.creditId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CreditLedgerEntriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditLedgerEntries,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -20163,7 +20293,7 @@ class $$LoansTableAnnotationComposer
           composer: this,
           getCurrentColumn: (t) => t.id,
           referencedTable: $db.dueDateExtensions,
-          getReferencedColumn: (t) => t.loanId,
+          getReferencedColumn: (t) => t.creditId,
           builder:
               (
                 joinBuilder, {
@@ -20189,7 +20319,7 @@ class $$LoansTableAnnotationComposer
           composer: this,
           getCurrentColumn: (t) => t.id,
           referencedTable: $db.customerFollowUps,
-          getReferencedColumn: (t) => t.loanId,
+          getReferencedColumn: (t) => t.creditId,
           builder:
               (
                 joinBuilder, {
@@ -20207,51 +20337,52 @@ class $$LoansTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> loanResolutionsRefs<T extends Object>(
-    Expression<T> Function($$LoanResolutionsTableAnnotationComposer a) f,
+  Expression<T> creditResolutionsRefs<T extends Object>(
+    Expression<T> Function($$CreditResolutionsTableAnnotationComposer a) f,
   ) {
-    final $$LoanResolutionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanResolutions,
-      getReferencedColumn: (t) => t.loanId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanResolutionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanResolutions,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> loanAdministrativeClosuresRefs<T extends Object>(
-    Expression<T> Function(
-      $$LoanAdministrativeClosuresTableAnnotationComposer a,
-    )
-    f,
-  ) {
-    final $$LoanAdministrativeClosuresTableAnnotationComposer composer =
+    final $$CreditResolutionsTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanAdministrativeClosures,
-          getReferencedColumn: (t) => t.loanId,
+          referencedTable: $db.creditResolutions,
+          getReferencedColumn: (t) => t.creditId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanAdministrativeClosuresTableAnnotationComposer(
+              }) => $$CreditResolutionsTableAnnotationComposer(
                 $db: $db,
-                $table: $db.loanAdministrativeClosures,
+                $table: $db.creditResolutions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> creditAdministrativeClosuresRefs<T extends Object>(
+    Expression<T> Function(
+      $$CreditAdministrativeClosuresTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$CreditAdministrativeClosuresTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditAdministrativeClosures,
+          getReferencedColumn: (t) => t.creditId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CreditAdministrativeClosuresTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditAdministrativeClosures,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -20262,44 +20393,44 @@ class $$LoansTableAnnotationComposer
   }
 }
 
-class $$LoansTableTableManager
+class $$CreditsTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $LoansTable,
-          LoanEntry,
-          $$LoansTableFilterComposer,
-          $$LoansTableOrderingComposer,
-          $$LoansTableAnnotationComposer,
-          $$LoansTableCreateCompanionBuilder,
-          $$LoansTableUpdateCompanionBuilder,
-          (LoanEntry, $$LoansTableReferences),
-          LoanEntry,
+          $CreditsTable,
+          CreditEntry,
+          $$CreditsTableFilterComposer,
+          $$CreditsTableOrderingComposer,
+          $$CreditsTableAnnotationComposer,
+          $$CreditsTableCreateCompanionBuilder,
+          $$CreditsTableUpdateCompanionBuilder,
+          (CreditEntry, $$CreditsTableReferences),
+          CreditEntry,
           PrefetchHooks Function({
             bool shopId,
             bool customerId,
             bool disbursedByUserId,
             bool collateralItemsRefs,
             bool paymentsRefs,
-            bool loanCorrectionsRefs,
-            bool loanLedgerEntriesRefs,
+            bool creditCorrectionsRefs,
+            bool creditLedgerEntriesRefs,
             bool dueDateExtensionsRefs,
             bool customerFollowUpsRefs,
-            bool loanResolutionsRefs,
-            bool loanAdministrativeClosuresRefs,
+            bool creditResolutionsRefs,
+            bool creditAdministrativeClosuresRefs,
           })
         > {
-  $$LoansTableTableManager(_$AppDatabase db, $LoansTable table)
+  $$CreditsTableTableManager(_$AppDatabase db, $CreditsTable table)
     : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$LoansTableFilterComposer($db: db, $table: table),
+              $$CreditsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$LoansTableOrderingComposer($db: db, $table: table),
+              $$CreditsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$LoansTableAnnotationComposer($db: db, $table: table),
+              $$CreditsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -20321,7 +20452,7 @@ class $$LoansTableTableManager
                 Value<bool> correctionPending = const Value.absent(),
                 Value<String?> documentSnapshotId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => LoansCompanion(
+              }) => CreditsCompanion(
                 id: id,
                 shopId: shopId,
                 customerId: customerId,
@@ -20363,7 +20494,7 @@ class $$LoansTableTableManager
                 Value<bool> correctionPending = const Value.absent(),
                 Value<String?> documentSnapshotId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => LoansCompanion.insert(
+              }) => CreditsCompanion.insert(
                 id: id,
                 shopId: shopId,
                 customerId: customerId,
@@ -20387,8 +20518,8 @@ class $$LoansTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$LoansTable, LoanEntry>(table),
-                  $$LoansTableReferences(db, table, e),
+                  e.readTable<$CreditsTable, CreditEntry>(table),
+                  $$CreditsTableReferences(db, table, e),
                 ),
               )
               .toList(),
@@ -20399,25 +20530,25 @@ class $$LoansTableTableManager
                 disbursedByUserId = false,
                 collateralItemsRefs = false,
                 paymentsRefs = false,
-                loanCorrectionsRefs = false,
-                loanLedgerEntriesRefs = false,
+                creditCorrectionsRefs = false,
+                creditLedgerEntriesRefs = false,
                 dueDateExtensionsRefs = false,
                 customerFollowUpsRefs = false,
-                loanResolutionsRefs = false,
-                loanAdministrativeClosuresRefs = false,
+                creditResolutionsRefs = false,
+                creditAdministrativeClosuresRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (collateralItemsRefs) db.collateralItems,
                     if (paymentsRefs) db.payments,
-                    if (loanCorrectionsRefs) db.loanCorrections,
-                    if (loanLedgerEntriesRefs) db.loanLedgerEntries,
+                    if (creditCorrectionsRefs) db.creditCorrections,
+                    if (creditLedgerEntriesRefs) db.creditLedgerEntries,
                     if (dueDateExtensionsRefs) db.dueDateExtensions,
                     if (customerFollowUpsRefs) db.customerFollowUps,
-                    if (loanResolutionsRefs) db.loanResolutions,
-                    if (loanAdministrativeClosuresRefs)
-                      db.loanAdministrativeClosures,
+                    if (creditResolutionsRefs) db.creditResolutions,
+                    if (creditAdministrativeClosuresRefs)
+                      db.creditAdministrativeClosures,
                   ],
                   addJoins:
                       <
@@ -20439,9 +20570,9 @@ class $$LoansTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.shopId,
-                            referencedTable: $$LoansTableReferences
+                            referencedTable: $$CreditsTableReferences
                                 ._shopIdTable(db),
-                            referencedColumn: $$LoansTableReferences
+                            referencedColumn: $$CreditsTableReferences
                                 ._shopIdTable(db)
                                 .id,
                           ) as T;
@@ -20450,9 +20581,9 @@ class $$LoansTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.customerId,
-                            referencedTable: $$LoansTableReferences
+                            referencedTable: $$CreditsTableReferences
                                 ._customerIdTable(db),
-                            referencedColumn: $$LoansTableReferences
+                            referencedColumn: $$CreditsTableReferences
                                 ._customerIdTable(db)
                                 .id,
                           ) as T;
@@ -20461,9 +20592,9 @@ class $$LoansTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.disbursedByUserId,
-                            referencedTable: $$LoansTableReferences
+                            referencedTable: $$CreditsTableReferences
                                 ._disbursedByUserIdTable(db),
-                            referencedColumn: $$LoansTableReferences
+                            referencedColumn: $$CreditsTableReferences
                                 ._disbursedByUserIdTable(db)
                                 .id,
                           ) as T;
@@ -20475,162 +20606,162 @@ class $$LoansTableTableManager
                     return [
                       if (collateralItemsRefs)
                         await $_getPrefetchedDataByColumns<
-                          LoanEntry,
-                          $LoansTable,
+                          CreditEntry,
+                          $CreditsTable,
                           CollateralItemEntry,
                           $CollateralItemsTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoansTableReferences
+                          referencedTable: $$CreditsTableReferences
                               ._collateralItemsRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoansTableReferences(
+                              $$CreditsTableReferences(
                                 db,
                                 table,
                                 p0,
                               ).collateralItemsRefs,
                           currentColumn: 'id',
-                          referencedColumn: 'loan_id',
+                          referencedColumn: 'credit_id',
                           typedResults: items,
                         ),
                       if (paymentsRefs)
                         await $_getPrefetchedDataByColumns<
-                          LoanEntry,
-                          $LoansTable,
+                          CreditEntry,
+                          $CreditsTable,
                           PaymentEntry,
                           $PaymentsTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoansTableReferences
+                          referencedTable: $$CreditsTableReferences
                               ._paymentsRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoansTableReferences(
+                              $$CreditsTableReferences(
                                 db,
                                 table,
                                 p0,
                               ).paymentsRefs,
                           currentColumn: 'id',
-                          referencedColumn: 'loan_id',
+                          referencedColumn: 'credit_id',
                           typedResults: items,
                         ),
-                      if (loanCorrectionsRefs)
+                      if (creditCorrectionsRefs)
                         await $_getPrefetchedDataByColumns<
-                          LoanEntry,
-                          $LoansTable,
-                          LoanCorrectionEntry,
-                          $LoanCorrectionsTable
+                          CreditEntry,
+                          $CreditsTable,
+                          CreditCorrectionEntry,
+                          $CreditCorrectionsTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoansTableReferences
-                              ._loanCorrectionsRefsTable(db),
+                          referencedTable: $$CreditsTableReferences
+                              ._creditCorrectionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoansTableReferences(
+                              $$CreditsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanCorrectionsRefs,
+                              ).creditCorrectionsRefs,
                           currentColumn: 'id',
-                          referencedColumn: 'loan_id',
+                          referencedColumn: 'credit_id',
                           typedResults: items,
                         ),
-                      if (loanLedgerEntriesRefs)
+                      if (creditLedgerEntriesRefs)
                         await $_getPrefetchedDataByColumns<
-                          LoanEntry,
-                          $LoansTable,
-                          LoanLedgerEntryEntry,
-                          $LoanLedgerEntriesTable
+                          CreditEntry,
+                          $CreditsTable,
+                          CreditLedgerEntryEntry,
+                          $CreditLedgerEntriesTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoansTableReferences
-                              ._loanLedgerEntriesRefsTable(db),
+                          referencedTable: $$CreditsTableReferences
+                              ._creditLedgerEntriesRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoansTableReferences(
+                              $$CreditsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanLedgerEntriesRefs,
+                              ).creditLedgerEntriesRefs,
                           currentColumn: 'id',
-                          referencedColumn: 'loan_id',
+                          referencedColumn: 'credit_id',
                           typedResults: items,
                         ),
                       if (dueDateExtensionsRefs)
                         await $_getPrefetchedDataByColumns<
-                          LoanEntry,
-                          $LoansTable,
+                          CreditEntry,
+                          $CreditsTable,
                           DueDateExtensionEntry,
                           $DueDateExtensionsTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoansTableReferences
+                          referencedTable: $$CreditsTableReferences
                               ._dueDateExtensionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoansTableReferences(
+                              $$CreditsTableReferences(
                                 db,
                                 table,
                                 p0,
                               ).dueDateExtensionsRefs,
                           currentColumn: 'id',
-                          referencedColumn: 'loan_id',
+                          referencedColumn: 'credit_id',
                           typedResults: items,
                         ),
                       if (customerFollowUpsRefs)
                         await $_getPrefetchedDataByColumns<
-                          LoanEntry,
-                          $LoansTable,
+                          CreditEntry,
+                          $CreditsTable,
                           CustomerFollowUpEntry,
                           $CustomerFollowUpsTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoansTableReferences
+                          referencedTable: $$CreditsTableReferences
                               ._customerFollowUpsRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoansTableReferences(
+                              $$CreditsTableReferences(
                                 db,
                                 table,
                                 p0,
                               ).customerFollowUpsRefs,
                           currentColumn: 'id',
-                          referencedColumn: 'loan_id',
+                          referencedColumn: 'credit_id',
                           typedResults: items,
                         ),
-                      if (loanResolutionsRefs)
+                      if (creditResolutionsRefs)
                         await $_getPrefetchedDataByColumns<
-                          LoanEntry,
-                          $LoansTable,
-                          LoanResolutionEntry,
-                          $LoanResolutionsTable
+                          CreditEntry,
+                          $CreditsTable,
+                          CreditResolutionEntry,
+                          $CreditResolutionsTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoansTableReferences
-                              ._loanResolutionsRefsTable(db),
+                          referencedTable: $$CreditsTableReferences
+                              ._creditResolutionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoansTableReferences(
+                              $$CreditsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanResolutionsRefs,
+                              ).creditResolutionsRefs,
                           currentColumn: 'id',
-                          referencedColumn: 'loan_id',
+                          referencedColumn: 'credit_id',
                           typedResults: items,
                         ),
-                      if (loanAdministrativeClosuresRefs)
+                      if (creditAdministrativeClosuresRefs)
                         await $_getPrefetchedDataByColumns<
-                          LoanEntry,
-                          $LoansTable,
-                          LoanAdministrativeClosureEntry,
-                          $LoanAdministrativeClosuresTable
+                          CreditEntry,
+                          $CreditsTable,
+                          CreditAdministrativeClosureEntry,
+                          $CreditAdministrativeClosuresTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoansTableReferences
-                              ._loanAdministrativeClosuresRefsTable(db),
+                          referencedTable: $$CreditsTableReferences
+                              ._creditAdministrativeClosuresRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoansTableReferences(
+                              $$CreditsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanAdministrativeClosuresRefs,
+                              ).creditAdministrativeClosuresRefs,
                           currentColumn: 'id',
-                          referencedColumn: 'loan_id',
+                          referencedColumn: 'credit_id',
                           typedResults: items,
                         ),
                     ];
@@ -20641,30 +20772,30 @@ class $$LoansTableTableManager
       );
 }
 
-typedef $$LoansTableProcessedTableManager =
+typedef $$CreditsTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $LoansTable,
-      LoanEntry,
-      $$LoansTableFilterComposer,
-      $$LoansTableOrderingComposer,
-      $$LoansTableAnnotationComposer,
-      $$LoansTableCreateCompanionBuilder,
-      $$LoansTableUpdateCompanionBuilder,
-      (LoanEntry, $$LoansTableReferences),
-      LoanEntry,
+      $CreditsTable,
+      CreditEntry,
+      $$CreditsTableFilterComposer,
+      $$CreditsTableOrderingComposer,
+      $$CreditsTableAnnotationComposer,
+      $$CreditsTableCreateCompanionBuilder,
+      $$CreditsTableUpdateCompanionBuilder,
+      (CreditEntry, $$CreditsTableReferences),
+      CreditEntry,
       PrefetchHooks Function({
         bool shopId,
         bool customerId,
         bool disbursedByUserId,
         bool collateralItemsRefs,
         bool paymentsRefs,
-        bool loanCorrectionsRefs,
-        bool loanLedgerEntriesRefs,
+        bool creditCorrectionsRefs,
+        bool creditLedgerEntriesRefs,
         bool dueDateExtensionsRefs,
         bool customerFollowUpsRefs,
-        bool loanResolutionsRefs,
-        bool loanAdministrativeClosuresRefs,
+        bool creditResolutionsRefs,
+        bool creditAdministrativeClosuresRefs,
       })
     >;
 typedef $$CollateralItemsTableCreateCompanionBuilder =
@@ -20672,7 +20803,7 @@ typedef $$CollateralItemsTableCreateCompanionBuilder =
       required String id,
       required String shopId,
       required int customerId,
-      Value<String?> loanId,
+      Value<String?> creditId,
       required String itemReferenceId,
       required String category,
       required String description,
@@ -20691,7 +20822,7 @@ typedef $$CollateralItemsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> shopId,
       Value<int> customerId,
-      Value<String?> loanId,
+      Value<String?> creditId,
       Value<String> itemReferenceId,
       Value<String> category,
       Value<String> description,
@@ -20753,17 +20884,17 @@ final class $$CollateralItemsTableReferences
     );
   }
 
-  static $LoansTable _loanIdTable(_$AppDatabase db) =>
-      db.loans.createAlias('collateral_items__loan_id__loans__id');
+  static $CreditsTable _creditIdTable(_$AppDatabase db) =>
+      db.credits.createAlias('collateral_items__credit_id__credits__id');
 
-  $$LoansTableProcessedTableManager? get loanId {
-    final $_column = $_itemColumn<String>('loan_id');
+  $$CreditsTableProcessedTableManager? get creditId {
+    final $_column = $_itemColumn<String>('credit_id');
     if ($_column == null) return null;
-    final manager = $$LoansTableTableManager(
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_loanIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_creditIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -20976,20 +21107,20 @@ class $$CollateralItemsTableFilterComposer
     return composer;
   }
 
-  $$LoansTableFilterComposer get loanId {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+  $$CreditsTableFilterComposer get creditId {
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -21194,20 +21325,20 @@ class $$CollateralItemsTableOrderingComposer
     return composer;
   }
 
-  $$LoansTableOrderingComposer get loanId {
-    final $$LoansTableOrderingComposer composer = $composerBuilder(
+  $$CreditsTableOrderingComposer get creditId {
+    final $$CreditsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableOrderingComposer(
+          }) => $$CreditsTableOrderingComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -21321,20 +21452,20 @@ class $$CollateralItemsTableAnnotationComposer
     return composer;
   }
 
-  $$LoansTableAnnotationComposer get loanId {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+  $$CreditsTableAnnotationComposer get creditId {
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -21442,7 +21573,7 @@ class $$CollateralItemsTableTableManager
           PrefetchHooks Function({
             bool shopId,
             bool customerId,
-            bool loanId,
+            bool creditId,
             bool collateralPhotoExceptionsRefs,
             bool collateralCustodyEventsRefs,
             bool collateralDiscrepanciesRefs,
@@ -21466,7 +21597,7 @@ class $$CollateralItemsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
                 Value<int> customerId = const Value.absent(),
-                Value<String?> loanId = const Value.absent(),
+                Value<String?> creditId = const Value.absent(),
                 Value<String> itemReferenceId = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<String> description = const Value.absent(),
@@ -21483,7 +21614,7 @@ class $$CollateralItemsTableTableManager
                 id: id,
                 shopId: shopId,
                 customerId: customerId,
-                loanId: loanId,
+                creditId: creditId,
                 itemReferenceId: itemReferenceId,
                 category: category,
                 description: description,
@@ -21502,7 +21633,7 @@ class $$CollateralItemsTableTableManager
                 required String id,
                 required String shopId,
                 required int customerId,
-                Value<String?> loanId = const Value.absent(),
+                Value<String?> creditId = const Value.absent(),
                 required String itemReferenceId,
                 required String category,
                 required String description,
@@ -21519,7 +21650,7 @@ class $$CollateralItemsTableTableManager
                 id: id,
                 shopId: shopId,
                 customerId: customerId,
-                loanId: loanId,
+                creditId: creditId,
                 itemReferenceId: itemReferenceId,
                 category: category,
                 description: description,
@@ -21547,7 +21678,7 @@ class $$CollateralItemsTableTableManager
               ({
                 shopId = false,
                 customerId = false,
-                loanId = false,
+                creditId = false,
                 collateralPhotoExceptionsRefs = false,
                 collateralCustodyEventsRefs = false,
                 collateralDiscrepanciesRefs = false,
@@ -21598,14 +21729,14 @@ class $$CollateralItemsTableTableManager
                                 .id,
                           ) as T;
                         }
-                        if (loanId) {
+                        if (creditId) {
                           state = state.withJoin(
                             currentTable: table,
-                            currentColumn: table.loanId,
+                            currentColumn: table.creditId,
                             referencedTable: $$CollateralItemsTableReferences
-                                ._loanIdTable(db),
+                                ._creditIdTable(db),
                             referencedColumn: $$CollateralItemsTableReferences
-                                ._loanIdTable(db)
+                                ._creditIdTable(db)
                                 .id,
                           ) as T;
                         }
@@ -21697,7 +21828,7 @@ typedef $$CollateralItemsTableProcessedTableManager =
       PrefetchHooks Function({
         bool shopId,
         bool customerId,
-        bool loanId,
+        bool creditId,
         bool collateralPhotoExceptionsRefs,
         bool collateralCustodyEventsRefs,
         bool collateralDiscrepanciesRefs,
@@ -23786,7 +23917,7 @@ typedef $$CollateralDiscrepanciesTableProcessedTableManager =
 typedef $$PaymentsTableCreateCompanionBuilder = PaymentsCompanion Function({
   required String id,
   required String shopId,
-  required String loanId,
+  required String creditId,
   required String receiptNumber,
   required int amountCents,
   required int preBalanceCents,
@@ -23808,7 +23939,7 @@ typedef $$PaymentsTableCreateCompanionBuilder = PaymentsCompanion Function({
 typedef $$PaymentsTableUpdateCompanionBuilder = PaymentsCompanion Function({
   Value<String> id,
   Value<String> shopId,
-  Value<String> loanId,
+  Value<String> creditId,
   Value<String> receiptNumber,
   Value<int> amountCents,
   Value<int> preBalanceCents,
@@ -23849,17 +23980,17 @@ final class $$PaymentsTableReferences
     );
   }
 
-  static $LoansTable _loanIdTable(_$AppDatabase db) =>
-      db.loans.createAlias('payments__loan_id__loans__id');
+  static $CreditsTable _creditIdTable(_$AppDatabase db) =>
+      db.credits.createAlias('payments__credit_id__credits__id');
 
-  $$LoansTableProcessedTableManager get loanId {
-    final $_column = $_itemColumn<String>('loan_id')!;
+  $$CreditsTableProcessedTableManager get creditId {
+    final $_column = $_itemColumn<String>('credit_id')!;
 
-    final manager = $$LoansTableTableManager(
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_loanIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_creditIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -23883,20 +24014,27 @@ final class $$PaymentsTableReferences
     );
   }
 
-  static MultiTypedResultKey<$LoanCorrectionsTable, List<LoanCorrectionEntry>>
-  _loanCorrectionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.loanCorrections,
-    aliasName: 'payments__id__loan_corrections__original_payment_id',
-  );
+  static MultiTypedResultKey<
+    $CreditCorrectionsTable,
+    List<CreditCorrectionEntry>
+  >
+  _creditCorrectionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.creditCorrections,
+        aliasName: 'payments__id__credit_corrections__original_payment_id',
+      );
 
-  $$LoanCorrectionsTableProcessedTableManager get loanCorrectionsRefs {
+  $$CreditCorrectionsTableProcessedTableManager get creditCorrectionsRefs {
     final manager =
-        $$LoanCorrectionsTableTableManager($_db, $_db.loanCorrections).filter(
+        $$CreditCorrectionsTableTableManager(
+          $_db,
+          $_db.creditCorrections,
+        ).filter(
           (f) => f.originalPaymentId.id.sqlEquals($_itemColumn<String>('id')!),
         );
 
     final cache = $_typedResult.readTableOrNull(
-      _loanCorrectionsRefsTable($_db),
+      _creditCorrectionsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -23904,26 +24042,26 @@ final class $$PaymentsTableReferences
   }
 
   static MultiTypedResultKey<
-    $LoanLedgerEntriesTable,
-    List<LoanLedgerEntryEntry>
+    $CreditLedgerEntriesTable,
+    List<CreditLedgerEntryEntry>
   >
-  _loanLedgerEntriesRefsTable(_$AppDatabase db) =>
+  _creditLedgerEntriesRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
-        db.loanLedgerEntries,
-        aliasName: 'payments__id__loan_ledger_entries__original_payment_id',
+        db.creditLedgerEntries,
+        aliasName: 'payments__id__credit_ledger_entries__original_payment_id',
       );
 
-  $$LoanLedgerEntriesTableProcessedTableManager get loanLedgerEntriesRefs {
+  $$CreditLedgerEntriesTableProcessedTableManager get creditLedgerEntriesRefs {
     final manager =
-        $$LoanLedgerEntriesTableTableManager(
+        $$CreditLedgerEntriesTableTableManager(
           $_db,
-          $_db.loanLedgerEntries,
+          $_db.creditLedgerEntries,
         ).filter(
           (f) => f.originalPaymentId.id.sqlEquals($_itemColumn<String>('id')!),
         );
 
     final cache = $_typedResult.readTableOrNull(
-      _loanLedgerEntriesRefsTable($_db),
+      _creditLedgerEntriesRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -24043,20 +24181,20 @@ class $$PaymentsTableFilterComposer
     return composer;
   }
 
-  $$LoansTableFilterComposer get loanId {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+  $$CreditsTableFilterComposer get creditId {
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -24089,22 +24227,22 @@ class $$PaymentsTableFilterComposer
     return composer;
   }
 
-  Expression<bool> loanCorrectionsRefs(
-    Expression<bool> Function($$LoanCorrectionsTableFilterComposer f) f,
+  Expression<bool> creditCorrectionsRefs(
+    Expression<bool> Function($$CreditCorrectionsTableFilterComposer f) f,
   ) {
-    final $$LoanCorrectionsTableFilterComposer composer = $composerBuilder(
+    final $$CreditCorrectionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
+      referencedTable: $db.creditCorrections,
       getReferencedColumn: (t) => t.originalPaymentId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableFilterComposer(
+          }) => $$CreditCorrectionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanCorrections,
+            $table: $db.creditCorrections,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -24114,22 +24252,22 @@ class $$PaymentsTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> loanLedgerEntriesRefs(
-    Expression<bool> Function($$LoanLedgerEntriesTableFilterComposer f) f,
+  Expression<bool> creditLedgerEntriesRefs(
+    Expression<bool> Function($$CreditLedgerEntriesTableFilterComposer f) f,
   ) {
-    final $$LoanLedgerEntriesTableFilterComposer composer = $composerBuilder(
+    final $$CreditLedgerEntriesTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanLedgerEntries,
+      referencedTable: $db.creditLedgerEntries,
       getReferencedColumn: (t) => t.originalPaymentId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanLedgerEntriesTableFilterComposer(
+          }) => $$CreditLedgerEntriesTableFilterComposer(
             $db: $db,
-            $table: $db.loanLedgerEntries,
+            $table: $db.creditLedgerEntries,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -24252,20 +24390,20 @@ class $$PaymentsTableOrderingComposer
     return composer;
   }
 
-  $$LoansTableOrderingComposer get loanId {
-    final $$LoansTableOrderingComposer composer = $composerBuilder(
+  $$CreditsTableOrderingComposer get creditId {
+    final $$CreditsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableOrderingComposer(
+          }) => $$CreditsTableOrderingComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -24403,20 +24541,20 @@ class $$PaymentsTableAnnotationComposer
     return composer;
   }
 
-  $$LoansTableAnnotationComposer get loanId {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+  $$CreditsTableAnnotationComposer get creditId {
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -24449,48 +24587,49 @@ class $$PaymentsTableAnnotationComposer
     return composer;
   }
 
-  Expression<T> loanCorrectionsRefs<T extends Object>(
-    Expression<T> Function($$LoanCorrectionsTableAnnotationComposer a) f,
+  Expression<T> creditCorrectionsRefs<T extends Object>(
+    Expression<T> Function($$CreditCorrectionsTableAnnotationComposer a) f,
   ) {
-    final $$LoanCorrectionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanCorrections,
-      getReferencedColumn: (t) => t.originalPaymentId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanCorrections,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> loanLedgerEntriesRefs<T extends Object>(
-    Expression<T> Function($$LoanLedgerEntriesTableAnnotationComposer a) f,
-  ) {
-    final $$LoanLedgerEntriesTableAnnotationComposer composer =
+    final $$CreditCorrectionsTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanLedgerEntries,
+          referencedTable: $db.creditCorrections,
           getReferencedColumn: (t) => t.originalPaymentId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanLedgerEntriesTableAnnotationComposer(
+              }) => $$CreditCorrectionsTableAnnotationComposer(
                 $db: $db,
-                $table: $db.loanLedgerEntries,
+                $table: $db.creditCorrections,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> creditLedgerEntriesRefs<T extends Object>(
+    Expression<T> Function($$CreditLedgerEntriesTableAnnotationComposer a) f,
+  ) {
+    final $$CreditLedgerEntriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.creditLedgerEntries,
+          getReferencedColumn: (t) => t.originalPaymentId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CreditLedgerEntriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditLedgerEntries,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -24516,10 +24655,10 @@ class $$PaymentsTableTableManager
           PaymentEntry,
           PrefetchHooks Function({
             bool shopId,
-            bool loanId,
+            bool creditId,
             bool recordedByUserId,
-            bool loanCorrectionsRefs,
-            bool loanLedgerEntriesRefs,
+            bool creditCorrectionsRefs,
+            bool creditLedgerEntriesRefs,
           })
         > {
   $$PaymentsTableTableManager(_$AppDatabase db, $PaymentsTable table)
@@ -24537,7 +24676,7 @@ class $$PaymentsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> loanId = const Value.absent(),
+                Value<String> creditId = const Value.absent(),
                 Value<String> receiptNumber = const Value.absent(),
                 Value<int> amountCents = const Value.absent(),
                 Value<int> preBalanceCents = const Value.absent(),
@@ -24558,7 +24697,7 @@ class $$PaymentsTableTableManager
               }) => PaymentsCompanion(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 receiptNumber: receiptNumber,
                 amountCents: amountCents,
                 preBalanceCents: preBalanceCents,
@@ -24581,7 +24720,7 @@ class $$PaymentsTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String loanId,
+                required String creditId,
                 required String receiptNumber,
                 required int amountCents,
                 required int preBalanceCents,
@@ -24602,7 +24741,7 @@ class $$PaymentsTableTableManager
               }) => PaymentsCompanion.insert(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 receiptNumber: receiptNumber,
                 amountCents: amountCents,
                 preBalanceCents: preBalanceCents,
@@ -24632,16 +24771,16 @@ class $$PaymentsTableTableManager
           prefetchHooksCallback:
               ({
                 shopId = false,
-                loanId = false,
+                creditId = false,
                 recordedByUserId = false,
-                loanCorrectionsRefs = false,
-                loanLedgerEntriesRefs = false,
+                creditCorrectionsRefs = false,
+                creditLedgerEntriesRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (loanCorrectionsRefs) db.loanCorrections,
-                    if (loanLedgerEntriesRefs) db.loanLedgerEntries,
+                    if (creditCorrectionsRefs) db.creditCorrections,
+                    if (creditLedgerEntriesRefs) db.creditLedgerEntries,
                   ],
                   addJoins:
                       <
@@ -24670,14 +24809,14 @@ class $$PaymentsTableTableManager
                                 .id,
                           ) as T;
                         }
-                        if (loanId) {
+                        if (creditId) {
                           state = state.withJoin(
                             currentTable: table,
-                            currentColumn: table.loanId,
+                            currentColumn: table.creditId,
                             referencedTable: $$PaymentsTableReferences
-                                ._loanIdTable(db),
+                                ._creditIdTable(db),
                             referencedColumn: $$PaymentsTableReferences
-                                ._loanIdTable(db)
+                                ._creditIdTable(db)
                                 .id,
                           ) as T;
                         }
@@ -24697,42 +24836,42 @@ class $$PaymentsTableTableManager
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (loanCorrectionsRefs)
+                      if (creditCorrectionsRefs)
                         await $_getPrefetchedDataByColumns<
                           PaymentEntry,
                           $PaymentsTable,
-                          LoanCorrectionEntry,
-                          $LoanCorrectionsTable
+                          CreditCorrectionEntry,
+                          $CreditCorrectionsTable
                         >(
                           currentTable: table,
                           referencedTable: $$PaymentsTableReferences
-                              ._loanCorrectionsRefsTable(db),
+                              ._creditCorrectionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$PaymentsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanCorrectionsRefs,
+                              ).creditCorrectionsRefs,
                           currentColumn: 'id',
                           referencedColumn: 'original_payment_id',
                           typedResults: items,
                         ),
-                      if (loanLedgerEntriesRefs)
+                      if (creditLedgerEntriesRefs)
                         await $_getPrefetchedDataByColumns<
                           PaymentEntry,
                           $PaymentsTable,
-                          LoanLedgerEntryEntry,
-                          $LoanLedgerEntriesTable
+                          CreditLedgerEntryEntry,
+                          $CreditLedgerEntriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$PaymentsTableReferences
-                              ._loanLedgerEntriesRefsTable(db),
+                              ._creditLedgerEntriesRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$PaymentsTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).loanLedgerEntriesRefs,
+                              ).creditLedgerEntriesRefs,
                           currentColumn: 'id',
                           referencedColumn: 'original_payment_id',
                           typedResults: items,
@@ -24759,17 +24898,17 @@ typedef $$PaymentsTableProcessedTableManager =
       PaymentEntry,
       PrefetchHooks Function({
         bool shopId,
-        bool loanId,
+        bool creditId,
         bool recordedByUserId,
-        bool loanCorrectionsRefs,
-        bool loanLedgerEntriesRefs,
+        bool creditCorrectionsRefs,
+        bool creditLedgerEntriesRefs,
       })
     >;
-typedef $$LoanCorrectionsTableCreateCompanionBuilder =
-    LoanCorrectionsCompanion Function({
+typedef $$CreditCorrectionsTableCreateCompanionBuilder =
+    CreditCorrectionsCompanion Function({
       required String id,
       required String shopId,
-      required String loanId,
+      required String creditId,
       Value<String?> originalPaymentId,
       required String requestedByUserId,
       required int correctionAmountCents,
@@ -24783,11 +24922,11 @@ typedef $$LoanCorrectionsTableCreateCompanionBuilder =
       required DateTime updatedAt,
       Value<int> rowid,
     });
-typedef $$LoanCorrectionsTableUpdateCompanionBuilder =
-    LoanCorrectionsCompanion Function({
+typedef $$CreditCorrectionsTableUpdateCompanionBuilder =
+    CreditCorrectionsCompanion Function({
       Value<String> id,
       Value<String> shopId,
-      Value<String> loanId,
+      Value<String> creditId,
       Value<String?> originalPaymentId,
       Value<String> requestedByUserId,
       Value<int> correctionAmountCents,
@@ -24802,21 +24941,21 @@ typedef $$LoanCorrectionsTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
-final class $$LoanCorrectionsTableReferences
+final class $$CreditCorrectionsTableReferences
     extends
         BaseReferences<
           _$AppDatabase,
-          $LoanCorrectionsTable,
-          LoanCorrectionEntry
+          $CreditCorrectionsTable,
+          CreditCorrectionEntry
         > {
-  $$LoanCorrectionsTableReferences(
+  $$CreditCorrectionsTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
   static $ShopsTable _shopIdTable(_$AppDatabase db) =>
-      db.shops.createAlias('loan_corrections__shop_id__shops__id');
+      db.shops.createAlias('credit_corrections__shop_id__shops__id');
 
   $$ShopsTableProcessedTableManager get shopId {
     final $_column = $_itemColumn<String>('shop_id')!;
@@ -24832,17 +24971,17 @@ final class $$LoanCorrectionsTableReferences
     );
   }
 
-  static $LoansTable _loanIdTable(_$AppDatabase db) =>
-      db.loans.createAlias('loan_corrections__loan_id__loans__id');
+  static $CreditsTable _creditIdTable(_$AppDatabase db) =>
+      db.credits.createAlias('credit_corrections__credit_id__credits__id');
 
-  $$LoansTableProcessedTableManager get loanId {
-    final $_column = $_itemColumn<String>('loan_id')!;
+  $$CreditsTableProcessedTableManager get creditId {
+    final $_column = $_itemColumn<String>('credit_id')!;
 
-    final manager = $$LoansTableTableManager(
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_loanIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_creditIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -24850,7 +24989,7 @@ final class $$LoanCorrectionsTableReferences
   }
 
   static $PaymentsTable _originalPaymentIdTable(_$AppDatabase db) => db.payments
-      .createAlias('loan_corrections__original_payment_id__payments__id');
+      .createAlias('credit_corrections__original_payment_id__payments__id');
 
   $$PaymentsTableProcessedTableManager? get originalPaymentId {
     final $_column = $_itemColumn<String>('original_payment_id');
@@ -24867,7 +25006,7 @@ final class $$LoanCorrectionsTableReferences
   }
 
   static $AppUsersTable _requestedByUserIdTable(_$AppDatabase db) => db.appUsers
-      .createAlias('loan_corrections__requested_by_user_id__app_users__id');
+      .createAlias('credit_corrections__requested_by_user_id__app_users__id');
 
   $$AppUsersTableProcessedTableManager get requestedByUserId {
     final $_column = $_itemColumn<String>('requested_by_user_id')!;
@@ -24884,7 +25023,7 @@ final class $$LoanCorrectionsTableReferences
   }
 
   static $AppUsersTable _reviewedByUserIdTable(_$AppDatabase db) => db.appUsers
-      .createAlias('loan_corrections__reviewed_by_user_id__app_users__id');
+      .createAlias('credit_corrections__reviewed_by_user_id__app_users__id');
 
   $$AppUsersTableProcessedTableManager? get reviewedByUserId {
     final $_column = $_itemColumn<String>('reviewed_by_user_id');
@@ -24901,19 +25040,21 @@ final class $$LoanCorrectionsTableReferences
   }
 
   static MultiTypedResultKey<
-    $LoanLedgerEntriesTable,
-    List<LoanLedgerEntryEntry>
+    $CreditLedgerEntriesTable,
+    List<CreditLedgerEntryEntry>
   >
   _ledgerEntriesForCorrectionTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
-        db.loanLedgerEntries,
-        aliasName: 'loan_corrections__id__loan_ledger_entries__correction_id',
+        db.creditLedgerEntries,
+        aliasName:
+            'credit_corrections__id__credit_ledger_entries__correction_id',
       );
 
-  $$LoanLedgerEntriesTableProcessedTableManager get ledgerEntriesForCorrection {
-    final manager = $$LoanLedgerEntriesTableTableManager(
+  $$CreditLedgerEntriesTableProcessedTableManager
+  get ledgerEntriesForCorrection {
+    final manager = $$CreditLedgerEntriesTableTableManager(
       $_db,
-      $_db.loanLedgerEntries,
+      $_db.creditLedgerEntries,
     ).filter((f) => f.correctionId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
@@ -24925,9 +25066,9 @@ final class $$LoanCorrectionsTableReferences
   }
 }
 
-class $$LoanCorrectionsTableFilterComposer
-    extends Composer<_$AppDatabase, $LoanCorrectionsTable> {
-  $$LoanCorrectionsTableFilterComposer({
+class $$CreditCorrectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $CreditCorrectionsTable> {
+  $$CreditCorrectionsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -25002,20 +25143,20 @@ class $$LoanCorrectionsTableFilterComposer
     return composer;
   }
 
-  $$LoansTableFilterComposer get loanId {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+  $$CreditsTableFilterComposer get creditId {
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -25095,21 +25236,21 @@ class $$LoanCorrectionsTableFilterComposer
   }
 
   Expression<bool> ledgerEntriesForCorrection(
-    Expression<bool> Function($$LoanLedgerEntriesTableFilterComposer f) f,
+    Expression<bool> Function($$CreditLedgerEntriesTableFilterComposer f) f,
   ) {
-    final $$LoanLedgerEntriesTableFilterComposer composer = $composerBuilder(
+    final $$CreditLedgerEntriesTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.loanLedgerEntries,
+      referencedTable: $db.creditLedgerEntries,
       getReferencedColumn: (t) => t.correctionId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanLedgerEntriesTableFilterComposer(
+          }) => $$CreditLedgerEntriesTableFilterComposer(
             $db: $db,
-            $table: $db.loanLedgerEntries,
+            $table: $db.creditLedgerEntries,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -25120,9 +25261,9 @@ class $$LoanCorrectionsTableFilterComposer
   }
 }
 
-class $$LoanCorrectionsTableOrderingComposer
-    extends Composer<_$AppDatabase, $LoanCorrectionsTable> {
-  $$LoanCorrectionsTableOrderingComposer({
+class $$CreditCorrectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CreditCorrectionsTable> {
+  $$CreditCorrectionsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -25197,20 +25338,20 @@ class $$LoanCorrectionsTableOrderingComposer
     return composer;
   }
 
-  $$LoansTableOrderingComposer get loanId {
-    final $$LoansTableOrderingComposer composer = $composerBuilder(
+  $$CreditsTableOrderingComposer get creditId {
+    final $$CreditsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableOrderingComposer(
+          }) => $$CreditsTableOrderingComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -25290,9 +25431,9 @@ class $$LoanCorrectionsTableOrderingComposer
   }
 }
 
-class $$LoanCorrectionsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LoanCorrectionsTable> {
-  $$LoanCorrectionsTableAnnotationComposer({
+class $$CreditCorrectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CreditCorrectionsTable> {
+  $$CreditCorrectionsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -25357,20 +25498,20 @@ class $$LoanCorrectionsTableAnnotationComposer
     return composer;
   }
 
-  $$LoansTableAnnotationComposer get loanId {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+  $$CreditsTableAnnotationComposer get creditId {
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -25450,22 +25591,22 @@ class $$LoanCorrectionsTableAnnotationComposer
   }
 
   Expression<T> ledgerEntriesForCorrection<T extends Object>(
-    Expression<T> Function($$LoanLedgerEntriesTableAnnotationComposer a) f,
+    Expression<T> Function($$CreditLedgerEntriesTableAnnotationComposer a) f,
   ) {
-    final $$LoanLedgerEntriesTableAnnotationComposer composer =
+    final $$CreditLedgerEntriesTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.loanLedgerEntries,
+          referencedTable: $db.creditLedgerEntries,
           getReferencedColumn: (t) => t.correctionId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$LoanLedgerEntriesTableAnnotationComposer(
+              }) => $$CreditLedgerEntriesTableAnnotationComposer(
                 $db: $db,
-                $table: $db.loanLedgerEntries,
+                $table: $db.creditLedgerEntries,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -25476,46 +25617,49 @@ class $$LoanCorrectionsTableAnnotationComposer
   }
 }
 
-class $$LoanCorrectionsTableTableManager
+class $$CreditCorrectionsTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $LoanCorrectionsTable,
-          LoanCorrectionEntry,
-          $$LoanCorrectionsTableFilterComposer,
-          $$LoanCorrectionsTableOrderingComposer,
-          $$LoanCorrectionsTableAnnotationComposer,
-          $$LoanCorrectionsTableCreateCompanionBuilder,
-          $$LoanCorrectionsTableUpdateCompanionBuilder,
-          (LoanCorrectionEntry, $$LoanCorrectionsTableReferences),
-          LoanCorrectionEntry,
+          $CreditCorrectionsTable,
+          CreditCorrectionEntry,
+          $$CreditCorrectionsTableFilterComposer,
+          $$CreditCorrectionsTableOrderingComposer,
+          $$CreditCorrectionsTableAnnotationComposer,
+          $$CreditCorrectionsTableCreateCompanionBuilder,
+          $$CreditCorrectionsTableUpdateCompanionBuilder,
+          (CreditCorrectionEntry, $$CreditCorrectionsTableReferences),
+          CreditCorrectionEntry,
           PrefetchHooks Function({
             bool shopId,
-            bool loanId,
+            bool creditId,
             bool originalPaymentId,
             bool requestedByUserId,
             bool reviewedByUserId,
             bool ledgerEntriesForCorrection,
           })
         > {
-  $$LoanCorrectionsTableTableManager(
+  $$CreditCorrectionsTableTableManager(
     _$AppDatabase db,
-    $LoanCorrectionsTable table,
+    $CreditCorrectionsTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$LoanCorrectionsTableFilterComposer($db: db, $table: table),
+              $$CreditCorrectionsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$LoanCorrectionsTableOrderingComposer($db: db, $table: table),
+              $$CreditCorrectionsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$LoanCorrectionsTableAnnotationComposer($db: db, $table: table),
+              $$CreditCorrectionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> loanId = const Value.absent(),
+                Value<String> creditId = const Value.absent(),
                 Value<String?> originalPaymentId = const Value.absent(),
                 Value<String> requestedByUserId = const Value.absent(),
                 Value<int> correctionAmountCents = const Value.absent(),
@@ -25528,10 +25672,10 @@ class $$LoanCorrectionsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => LoanCorrectionsCompanion(
+              }) => CreditCorrectionsCompanion(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 originalPaymentId: originalPaymentId,
                 requestedByUserId: requestedByUserId,
                 correctionAmountCents: correctionAmountCents,
@@ -25549,7 +25693,7 @@ class $$LoanCorrectionsTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String loanId,
+                required String creditId,
                 Value<String?> originalPaymentId = const Value.absent(),
                 required String requestedByUserId,
                 required int correctionAmountCents,
@@ -25562,10 +25706,10 @@ class $$LoanCorrectionsTableTableManager
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
-              }) => LoanCorrectionsCompanion.insert(
+              }) => CreditCorrectionsCompanion.insert(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 originalPaymentId: originalPaymentId,
                 requestedByUserId: requestedByUserId,
                 correctionAmountCents: correctionAmountCents,
@@ -25582,17 +25726,17 @@ class $$LoanCorrectionsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$LoanCorrectionsTable, LoanCorrectionEntry>(
+                  e.readTable<$CreditCorrectionsTable, CreditCorrectionEntry>(
                     table,
                   ),
-                  $$LoanCorrectionsTableReferences(db, table, e),
+                  $$CreditCorrectionsTableReferences(db, table, e),
                 ),
               )
               .toList(),
           prefetchHooksCallback:
               ({
                 shopId = false,
-                loanId = false,
+                creditId = false,
                 originalPaymentId = false,
                 requestedByUserId = false,
                 reviewedByUserId = false,
@@ -25601,7 +25745,7 @@ class $$LoanCorrectionsTableTableManager
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (ledgerEntriesForCorrection) db.loanLedgerEntries,
+                    if (ledgerEntriesForCorrection) db.creditLedgerEntries,
                   ],
                   addJoins:
                       <
@@ -25623,21 +25767,21 @@ class $$LoanCorrectionsTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.shopId,
-                            referencedTable: $$LoanCorrectionsTableReferences
+                            referencedTable: $$CreditCorrectionsTableReferences
                                 ._shopIdTable(db),
-                            referencedColumn: $$LoanCorrectionsTableReferences
+                            referencedColumn: $$CreditCorrectionsTableReferences
                                 ._shopIdTable(db)
                                 .id,
                           ) as T;
                         }
-                        if (loanId) {
+                        if (creditId) {
                           state = state.withJoin(
                             currentTable: table,
-                            currentColumn: table.loanId,
-                            referencedTable: $$LoanCorrectionsTableReferences
-                                ._loanIdTable(db),
-                            referencedColumn: $$LoanCorrectionsTableReferences
-                                ._loanIdTable(db)
+                            currentColumn: table.creditId,
+                            referencedTable: $$CreditCorrectionsTableReferences
+                                ._creditIdTable(db),
+                            referencedColumn: $$CreditCorrectionsTableReferences
+                                ._creditIdTable(db)
                                 .id,
                           ) as T;
                         }
@@ -25645,9 +25789,9 @@ class $$LoanCorrectionsTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.originalPaymentId,
-                            referencedTable: $$LoanCorrectionsTableReferences
+                            referencedTable: $$CreditCorrectionsTableReferences
                                 ._originalPaymentIdTable(db),
-                            referencedColumn: $$LoanCorrectionsTableReferences
+                            referencedColumn: $$CreditCorrectionsTableReferences
                                 ._originalPaymentIdTable(db)
                                 .id,
                           ) as T;
@@ -25656,9 +25800,9 @@ class $$LoanCorrectionsTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.requestedByUserId,
-                            referencedTable: $$LoanCorrectionsTableReferences
+                            referencedTable: $$CreditCorrectionsTableReferences
                                 ._requestedByUserIdTable(db),
-                            referencedColumn: $$LoanCorrectionsTableReferences
+                            referencedColumn: $$CreditCorrectionsTableReferences
                                 ._requestedByUserIdTable(db)
                                 .id,
                           ) as T;
@@ -25667,9 +25811,9 @@ class $$LoanCorrectionsTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.reviewedByUserId,
-                            referencedTable: $$LoanCorrectionsTableReferences
+                            referencedTable: $$CreditCorrectionsTableReferences
                                 ._reviewedByUserIdTable(db),
-                            referencedColumn: $$LoanCorrectionsTableReferences
+                            referencedColumn: $$CreditCorrectionsTableReferences
                                 ._reviewedByUserIdTable(db)
                                 .id,
                           ) as T;
@@ -25681,16 +25825,16 @@ class $$LoanCorrectionsTableTableManager
                     return [
                       if (ledgerEntriesForCorrection)
                         await $_getPrefetchedDataByColumns<
-                          LoanCorrectionEntry,
-                          $LoanCorrectionsTable,
-                          LoanLedgerEntryEntry,
-                          $LoanLedgerEntriesTable
+                          CreditCorrectionEntry,
+                          $CreditCorrectionsTable,
+                          CreditLedgerEntryEntry,
+                          $CreditLedgerEntriesTable
                         >(
                           currentTable: table,
-                          referencedTable: $$LoanCorrectionsTableReferences
+                          referencedTable: $$CreditCorrectionsTableReferences
                               ._ledgerEntriesForCorrectionTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$LoanCorrectionsTableReferences(
+                              $$CreditCorrectionsTableReferences(
                                 db,
                                 table,
                                 p0,
@@ -25707,32 +25851,32 @@ class $$LoanCorrectionsTableTableManager
       );
 }
 
-typedef $$LoanCorrectionsTableProcessedTableManager =
+typedef $$CreditCorrectionsTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $LoanCorrectionsTable,
-      LoanCorrectionEntry,
-      $$LoanCorrectionsTableFilterComposer,
-      $$LoanCorrectionsTableOrderingComposer,
-      $$LoanCorrectionsTableAnnotationComposer,
-      $$LoanCorrectionsTableCreateCompanionBuilder,
-      $$LoanCorrectionsTableUpdateCompanionBuilder,
-      (LoanCorrectionEntry, $$LoanCorrectionsTableReferences),
-      LoanCorrectionEntry,
+      $CreditCorrectionsTable,
+      CreditCorrectionEntry,
+      $$CreditCorrectionsTableFilterComposer,
+      $$CreditCorrectionsTableOrderingComposer,
+      $$CreditCorrectionsTableAnnotationComposer,
+      $$CreditCorrectionsTableCreateCompanionBuilder,
+      $$CreditCorrectionsTableUpdateCompanionBuilder,
+      (CreditCorrectionEntry, $$CreditCorrectionsTableReferences),
+      CreditCorrectionEntry,
       PrefetchHooks Function({
         bool shopId,
-        bool loanId,
+        bool creditId,
         bool originalPaymentId,
         bool requestedByUserId,
         bool reviewedByUserId,
         bool ledgerEntriesForCorrection,
       })
     >;
-typedef $$LoanLedgerEntriesTableCreateCompanionBuilder =
-    LoanLedgerEntriesCompanion Function({
+typedef $$CreditLedgerEntriesTableCreateCompanionBuilder =
+    CreditLedgerEntriesCompanion Function({
       required String id,
       required String shopId,
-      required String loanId,
+      required String creditId,
       Value<String?> originalPaymentId,
       Value<String?> correctionId,
       required String entryType,
@@ -25745,11 +25889,11 @@ typedef $$LoanLedgerEntriesTableCreateCompanionBuilder =
       required DateTime createdAt,
       Value<int> rowid,
     });
-typedef $$LoanLedgerEntriesTableUpdateCompanionBuilder =
-    LoanLedgerEntriesCompanion Function({
+typedef $$CreditLedgerEntriesTableUpdateCompanionBuilder =
+    CreditLedgerEntriesCompanion Function({
       Value<String> id,
       Value<String> shopId,
-      Value<String> loanId,
+      Value<String> creditId,
       Value<String?> originalPaymentId,
       Value<String?> correctionId,
       Value<String> entryType,
@@ -25763,21 +25907,21 @@ typedef $$LoanLedgerEntriesTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
-final class $$LoanLedgerEntriesTableReferences
+final class $$CreditLedgerEntriesTableReferences
     extends
         BaseReferences<
           _$AppDatabase,
-          $LoanLedgerEntriesTable,
-          LoanLedgerEntryEntry
+          $CreditLedgerEntriesTable,
+          CreditLedgerEntryEntry
         > {
-  $$LoanLedgerEntriesTableReferences(
+  $$CreditLedgerEntriesTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
   static $ShopsTable _shopIdTable(_$AppDatabase db) =>
-      db.shops.createAlias('loan_ledger_entries__shop_id__shops__id');
+      db.shops.createAlias('credit_ledger_entries__shop_id__shops__id');
 
   $$ShopsTableProcessedTableManager get shopId {
     final $_column = $_itemColumn<String>('shop_id')!;
@@ -25793,17 +25937,17 @@ final class $$LoanLedgerEntriesTableReferences
     );
   }
 
-  static $LoansTable _loanIdTable(_$AppDatabase db) =>
-      db.loans.createAlias('loan_ledger_entries__loan_id__loans__id');
+  static $CreditsTable _creditIdTable(_$AppDatabase db) =>
+      db.credits.createAlias('credit_ledger_entries__credit_id__credits__id');
 
-  $$LoansTableProcessedTableManager get loanId {
-    final $_column = $_itemColumn<String>('loan_id')!;
+  $$CreditsTableProcessedTableManager get creditId {
+    final $_column = $_itemColumn<String>('credit_id')!;
 
-    final manager = $$LoansTableTableManager(
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_loanIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_creditIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -25811,7 +25955,7 @@ final class $$LoanLedgerEntriesTableReferences
   }
 
   static $PaymentsTable _originalPaymentIdTable(_$AppDatabase db) => db.payments
-      .createAlias('loan_ledger_entries__original_payment_id__payments__id');
+      .createAlias('credit_ledger_entries__original_payment_id__payments__id');
 
   $$PaymentsTableProcessedTableManager? get originalPaymentId {
     final $_column = $_itemColumn<String>('original_payment_id');
@@ -25827,16 +25971,17 @@ final class $$LoanLedgerEntriesTableReferences
     );
   }
 
-  static $LoanCorrectionsTable _correctionIdTable(_$AppDatabase db) => db
-      .loanCorrections
-      .createAlias('loan_ledger_entries__correction_id__loan_corrections__id');
+  static $CreditCorrectionsTable _correctionIdTable(_$AppDatabase db) =>
+      db.creditCorrections.createAlias(
+        'credit_ledger_entries__correction_id__credit_corrections__id',
+      );
 
-  $$LoanCorrectionsTableProcessedTableManager? get correctionId {
+  $$CreditCorrectionsTableProcessedTableManager? get correctionId {
     final $_column = $_itemColumn<String>('correction_id');
     if ($_column == null) return null;
-    final manager = $$LoanCorrectionsTableTableManager(
+    final manager = $$CreditCorrectionsTableTableManager(
       $_db,
-      $_db.loanCorrections,
+      $_db.creditCorrections,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_correctionIdTable($_db));
     if (item == null) return manager;
@@ -25846,7 +25991,7 @@ final class $$LoanLedgerEntriesTableReferences
   }
 
   static $AppUsersTable _recordedByUserIdTable(_$AppDatabase db) => db.appUsers
-      .createAlias('loan_ledger_entries__recorded_by_user_id__app_users__id');
+      .createAlias('credit_ledger_entries__recorded_by_user_id__app_users__id');
 
   $$AppUsersTableProcessedTableManager get recordedByUserId {
     final $_column = $_itemColumn<String>('recorded_by_user_id')!;
@@ -25863,9 +26008,9 @@ final class $$LoanLedgerEntriesTableReferences
   }
 }
 
-class $$LoanLedgerEntriesTableFilterComposer
-    extends Composer<_$AppDatabase, $LoanLedgerEntriesTable> {
-  $$LoanLedgerEntriesTableFilterComposer({
+class $$CreditLedgerEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CreditLedgerEntriesTable> {
+  $$CreditLedgerEntriesTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -25935,20 +26080,20 @@ class $$LoanLedgerEntriesTableFilterComposer
     return composer;
   }
 
-  $$LoansTableFilterComposer get loanId {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+  $$CreditsTableFilterComposer get creditId {
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -25981,20 +26126,20 @@ class $$LoanLedgerEntriesTableFilterComposer
     return composer;
   }
 
-  $$LoanCorrectionsTableFilterComposer get correctionId {
-    final $$LoanCorrectionsTableFilterComposer composer = $composerBuilder(
+  $$CreditCorrectionsTableFilterComposer get correctionId {
+    final $$CreditCorrectionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.correctionId,
-      referencedTable: $db.loanCorrections,
+      referencedTable: $db.creditCorrections,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableFilterComposer(
+          }) => $$CreditCorrectionsTableFilterComposer(
             $db: $db,
-            $table: $db.loanCorrections,
+            $table: $db.creditCorrections,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -26028,9 +26173,9 @@ class $$LoanLedgerEntriesTableFilterComposer
   }
 }
 
-class $$LoanLedgerEntriesTableOrderingComposer
-    extends Composer<_$AppDatabase, $LoanLedgerEntriesTable> {
-  $$LoanLedgerEntriesTableOrderingComposer({
+class $$CreditLedgerEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CreditLedgerEntriesTable> {
+  $$CreditLedgerEntriesTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -26100,20 +26245,20 @@ class $$LoanLedgerEntriesTableOrderingComposer
     return composer;
   }
 
-  $$LoansTableOrderingComposer get loanId {
-    final $$LoansTableOrderingComposer composer = $composerBuilder(
+  $$CreditsTableOrderingComposer get creditId {
+    final $$CreditsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableOrderingComposer(
+          }) => $$CreditsTableOrderingComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -26146,20 +26291,20 @@ class $$LoanLedgerEntriesTableOrderingComposer
     return composer;
   }
 
-  $$LoanCorrectionsTableOrderingComposer get correctionId {
-    final $$LoanCorrectionsTableOrderingComposer composer = $composerBuilder(
+  $$CreditCorrectionsTableOrderingComposer get correctionId {
+    final $$CreditCorrectionsTableOrderingComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.correctionId,
-      referencedTable: $db.loanCorrections,
+      referencedTable: $db.creditCorrections,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableOrderingComposer(
+          }) => $$CreditCorrectionsTableOrderingComposer(
             $db: $db,
-            $table: $db.loanCorrections,
+            $table: $db.creditCorrections,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -26193,9 +26338,9 @@ class $$LoanLedgerEntriesTableOrderingComposer
   }
 }
 
-class $$LoanLedgerEntriesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LoanLedgerEntriesTable> {
-  $$LoanLedgerEntriesTableAnnotationComposer({
+class $$CreditLedgerEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CreditLedgerEntriesTable> {
+  $$CreditLedgerEntriesTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -26257,20 +26402,20 @@ class $$LoanLedgerEntriesTableAnnotationComposer
     return composer;
   }
 
-  $$LoansTableAnnotationComposer get loanId {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+  $$CreditsTableAnnotationComposer get creditId {
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -26303,26 +26448,27 @@ class $$LoanLedgerEntriesTableAnnotationComposer
     return composer;
   }
 
-  $$LoanCorrectionsTableAnnotationComposer get correctionId {
-    final $$LoanCorrectionsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.correctionId,
-      referencedTable: $db.loanCorrections,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$LoanCorrectionsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.loanCorrections,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
+  $$CreditCorrectionsTableAnnotationComposer get correctionId {
+    final $$CreditCorrectionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.correctionId,
+          referencedTable: $db.creditCorrections,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-          ),
-    );
+              }) => $$CreditCorrectionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.creditCorrections,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return composer;
   }
 
@@ -26350,40 +26496,43 @@ class $$LoanLedgerEntriesTableAnnotationComposer
   }
 }
 
-class $$LoanLedgerEntriesTableTableManager
+class $$CreditLedgerEntriesTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $LoanLedgerEntriesTable,
-          LoanLedgerEntryEntry,
-          $$LoanLedgerEntriesTableFilterComposer,
-          $$LoanLedgerEntriesTableOrderingComposer,
-          $$LoanLedgerEntriesTableAnnotationComposer,
-          $$LoanLedgerEntriesTableCreateCompanionBuilder,
-          $$LoanLedgerEntriesTableUpdateCompanionBuilder,
-          (LoanLedgerEntryEntry, $$LoanLedgerEntriesTableReferences),
-          LoanLedgerEntryEntry,
+          $CreditLedgerEntriesTable,
+          CreditLedgerEntryEntry,
+          $$CreditLedgerEntriesTableFilterComposer,
+          $$CreditLedgerEntriesTableOrderingComposer,
+          $$CreditLedgerEntriesTableAnnotationComposer,
+          $$CreditLedgerEntriesTableCreateCompanionBuilder,
+          $$CreditLedgerEntriesTableUpdateCompanionBuilder,
+          (CreditLedgerEntryEntry, $$CreditLedgerEntriesTableReferences),
+          CreditLedgerEntryEntry,
           PrefetchHooks Function({
             bool shopId,
-            bool loanId,
+            bool creditId,
             bool originalPaymentId,
             bool correctionId,
             bool recordedByUserId,
           })
         > {
-  $$LoanLedgerEntriesTableTableManager(
+  $$CreditLedgerEntriesTableTableManager(
     _$AppDatabase db,
-    $LoanLedgerEntriesTable table,
+    $CreditLedgerEntriesTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$LoanLedgerEntriesTableFilterComposer($db: db, $table: table),
+              $$CreditLedgerEntriesTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$LoanLedgerEntriesTableOrderingComposer($db: db, $table: table),
+              $$CreditLedgerEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
           createComputedFieldComposer: () =>
-              $$LoanLedgerEntriesTableAnnotationComposer(
+              $$CreditLedgerEntriesTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -26391,7 +26540,7 @@ class $$LoanLedgerEntriesTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> loanId = const Value.absent(),
+                Value<String> creditId = const Value.absent(),
                 Value<String?> originalPaymentId = const Value.absent(),
                 Value<String?> correctionId = const Value.absent(),
                 Value<String> entryType = const Value.absent(),
@@ -26403,10 +26552,10 @@ class $$LoanLedgerEntriesTableTableManager
                 Value<DateTime> recordedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => LoanLedgerEntriesCompanion(
+              }) => CreditLedgerEntriesCompanion(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 originalPaymentId: originalPaymentId,
                 correctionId: correctionId,
                 entryType: entryType,
@@ -26423,7 +26572,7 @@ class $$LoanLedgerEntriesTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String loanId,
+                required String creditId,
                 Value<String?> originalPaymentId = const Value.absent(),
                 Value<String?> correctionId = const Value.absent(),
                 required String entryType,
@@ -26435,10 +26584,10 @@ class $$LoanLedgerEntriesTableTableManager
                 required DateTime recordedAt,
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
-              }) => LoanLedgerEntriesCompanion.insert(
+              }) => CreditLedgerEntriesCompanion.insert(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 originalPaymentId: originalPaymentId,
                 correctionId: correctionId,
                 entryType: entryType,
@@ -26454,17 +26603,18 @@ class $$LoanLedgerEntriesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$LoanLedgerEntriesTable, LoanLedgerEntryEntry>(
-                    table,
-                  ),
-                  $$LoanLedgerEntriesTableReferences(db, table, e),
+                  e.readTable<
+                    $CreditLedgerEntriesTable,
+                    CreditLedgerEntryEntry
+                  >(table),
+                  $$CreditLedgerEntriesTableReferences(db, table, e),
                 ),
               )
               .toList(),
           prefetchHooksCallback:
               ({
                 shopId = false,
-                loanId = false,
+                creditId = false,
                 originalPaymentId = false,
                 correctionId = false,
                 recordedByUserId = false,
@@ -26492,55 +26642,65 @@ class $$LoanLedgerEntriesTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.shopId,
-                            referencedTable: $$LoanLedgerEntriesTableReferences
-                                ._shopIdTable(db),
-                            referencedColumn: $$LoanLedgerEntriesTableReferences
-                                ._shopIdTable(db)
-                                .id,
+                            referencedTable:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._shopIdTable(db),
+                            referencedColumn:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._shopIdTable(db)
+                                    .id,
                           ) as T;
                         }
-                        if (loanId) {
+                        if (creditId) {
                           state = state.withJoin(
                             currentTable: table,
-                            currentColumn: table.loanId,
-                            referencedTable: $$LoanLedgerEntriesTableReferences
-                                ._loanIdTable(db),
-                            referencedColumn: $$LoanLedgerEntriesTableReferences
-                                ._loanIdTable(db)
-                                .id,
+                            currentColumn: table.creditId,
+                            referencedTable:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._creditIdTable(db),
+                            referencedColumn:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._creditIdTable(db)
+                                    .id,
                           ) as T;
                         }
                         if (originalPaymentId) {
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.originalPaymentId,
-                            referencedTable: $$LoanLedgerEntriesTableReferences
-                                ._originalPaymentIdTable(db),
-                            referencedColumn: $$LoanLedgerEntriesTableReferences
-                                ._originalPaymentIdTable(db)
-                                .id,
+                            referencedTable:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._originalPaymentIdTable(db),
+                            referencedColumn:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._originalPaymentIdTable(db)
+                                    .id,
                           ) as T;
                         }
                         if (correctionId) {
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.correctionId,
-                            referencedTable: $$LoanLedgerEntriesTableReferences
-                                ._correctionIdTable(db),
-                            referencedColumn: $$LoanLedgerEntriesTableReferences
-                                ._correctionIdTable(db)
-                                .id,
+                            referencedTable:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._correctionIdTable(db),
+                            referencedColumn:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._correctionIdTable(db)
+                                    .id,
                           ) as T;
                         }
                         if (recordedByUserId) {
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.recordedByUserId,
-                            referencedTable: $$LoanLedgerEntriesTableReferences
-                                ._recordedByUserIdTable(db),
-                            referencedColumn: $$LoanLedgerEntriesTableReferences
-                                ._recordedByUserIdTable(db)
-                                .id,
+                            referencedTable:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._recordedByUserIdTable(db),
+                            referencedColumn:
+                                $$CreditLedgerEntriesTableReferences
+                                    ._recordedByUserIdTable(db)
+                                    .id,
                           ) as T;
                         }
 
@@ -26555,21 +26715,21 @@ class $$LoanLedgerEntriesTableTableManager
       );
 }
 
-typedef $$LoanLedgerEntriesTableProcessedTableManager =
+typedef $$CreditLedgerEntriesTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $LoanLedgerEntriesTable,
-      LoanLedgerEntryEntry,
-      $$LoanLedgerEntriesTableFilterComposer,
-      $$LoanLedgerEntriesTableOrderingComposer,
-      $$LoanLedgerEntriesTableAnnotationComposer,
-      $$LoanLedgerEntriesTableCreateCompanionBuilder,
-      $$LoanLedgerEntriesTableUpdateCompanionBuilder,
-      (LoanLedgerEntryEntry, $$LoanLedgerEntriesTableReferences),
-      LoanLedgerEntryEntry,
+      $CreditLedgerEntriesTable,
+      CreditLedgerEntryEntry,
+      $$CreditLedgerEntriesTableFilterComposer,
+      $$CreditLedgerEntriesTableOrderingComposer,
+      $$CreditLedgerEntriesTableAnnotationComposer,
+      $$CreditLedgerEntriesTableCreateCompanionBuilder,
+      $$CreditLedgerEntriesTableUpdateCompanionBuilder,
+      (CreditLedgerEntryEntry, $$CreditLedgerEntriesTableReferences),
+      CreditLedgerEntryEntry,
       PrefetchHooks Function({
         bool shopId,
-        bool loanId,
+        bool creditId,
         bool originalPaymentId,
         bool correctionId,
         bool recordedByUserId,
@@ -26579,7 +26739,7 @@ typedef $$DueDateExtensionsTableCreateCompanionBuilder =
     DueDateExtensionsCompanion Function({
       required String id,
       required String shopId,
-      required String loanId,
+      required String creditId,
       required DateTime previousDueDate,
       required DateTime newDueDate,
       required String reason,
@@ -26591,7 +26751,7 @@ typedef $$DueDateExtensionsTableUpdateCompanionBuilder =
     DueDateExtensionsCompanion Function({
       Value<String> id,
       Value<String> shopId,
-      Value<String> loanId,
+      Value<String> creditId,
       Value<DateTime> previousDueDate,
       Value<DateTime> newDueDate,
       Value<String> reason,
@@ -26630,17 +26790,17 @@ final class $$DueDateExtensionsTableReferences
     );
   }
 
-  static $LoansTable _loanIdTable(_$AppDatabase db) =>
-      db.loans.createAlias('due_date_extensions__loan_id__loans__id');
+  static $CreditsTable _creditIdTable(_$AppDatabase db) =>
+      db.credits.createAlias('due_date_extensions__credit_id__credits__id');
 
-  $$LoansTableProcessedTableManager get loanId {
-    final $_column = $_itemColumn<String>('loan_id')!;
+  $$CreditsTableProcessedTableManager get creditId {
+    final $_column = $_itemColumn<String>('credit_id')!;
 
-    final manager = $$LoansTableTableManager(
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_loanIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_creditIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -26722,20 +26882,20 @@ class $$DueDateExtensionsTableFilterComposer
     return composer;
   }
 
-  $$LoansTableFilterComposer get loanId {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+  $$CreditsTableFilterComposer get creditId {
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -26826,20 +26986,20 @@ class $$DueDateExtensionsTableOrderingComposer
     return composer;
   }
 
-  $$LoansTableOrderingComposer get loanId {
-    final $$LoansTableOrderingComposer composer = $composerBuilder(
+  $$CreditsTableOrderingComposer get creditId {
+    final $$CreditsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableOrderingComposer(
+          }) => $$CreditsTableOrderingComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -26924,20 +27084,20 @@ class $$DueDateExtensionsTableAnnotationComposer
     return composer;
   }
 
-  $$LoansTableAnnotationComposer get loanId {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+  $$CreditsTableAnnotationComposer get creditId {
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -26986,7 +27146,7 @@ class $$DueDateExtensionsTableTableManager
           DueDateExtensionEntry,
           PrefetchHooks Function({
             bool shopId,
-            bool loanId,
+            bool creditId,
             bool grantedByUserId,
           })
         > {
@@ -27010,7 +27170,7 @@ class $$DueDateExtensionsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> loanId = const Value.absent(),
+                Value<String> creditId = const Value.absent(),
                 Value<DateTime> previousDueDate = const Value.absent(),
                 Value<DateTime> newDueDate = const Value.absent(),
                 Value<String> reason = const Value.absent(),
@@ -27020,7 +27180,7 @@ class $$DueDateExtensionsTableTableManager
               }) => DueDateExtensionsCompanion(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 previousDueDate: previousDueDate,
                 newDueDate: newDueDate,
                 reason: reason,
@@ -27032,7 +27192,7 @@ class $$DueDateExtensionsTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String loanId,
+                required String creditId,
                 required DateTime previousDueDate,
                 required DateTime newDueDate,
                 required String reason,
@@ -27042,7 +27202,7 @@ class $$DueDateExtensionsTableTableManager
               }) => DueDateExtensionsCompanion.insert(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 previousDueDate: previousDueDate,
                 newDueDate: newDueDate,
                 reason: reason,
@@ -27061,7 +27221,7 @@ class $$DueDateExtensionsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({shopId = false, loanId = false, grantedByUserId = false}) {
+              ({shopId = false, creditId = false, grantedByUserId = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [],
@@ -27092,14 +27252,14 @@ class $$DueDateExtensionsTableTableManager
                                 .id,
                           ) as T;
                         }
-                        if (loanId) {
+                        if (creditId) {
                           state = state.withJoin(
                             currentTable: table,
-                            currentColumn: table.loanId,
+                            currentColumn: table.creditId,
                             referencedTable: $$DueDateExtensionsTableReferences
-                                ._loanIdTable(db),
+                                ._creditIdTable(db),
                             referencedColumn: $$DueDateExtensionsTableReferences
-                                ._loanIdTable(db)
+                                ._creditIdTable(db)
                                 .id,
                           ) as T;
                         }
@@ -27138,13 +27298,13 @@ typedef $$DueDateExtensionsTableProcessedTableManager =
       $$DueDateExtensionsTableUpdateCompanionBuilder,
       (DueDateExtensionEntry, $$DueDateExtensionsTableReferences),
       DueDateExtensionEntry,
-      PrefetchHooks Function({bool shopId, bool loanId, bool grantedByUserId})
+      PrefetchHooks Function({bool shopId, bool creditId, bool grantedByUserId})
     >;
 typedef $$CustomerFollowUpsTableCreateCompanionBuilder =
     CustomerFollowUpsCompanion Function({
       required String id,
       required String shopId,
-      required String loanId,
+      required String creditId,
       required int customerId,
       required String staffId,
       required String channel,
@@ -27157,7 +27317,7 @@ typedef $$CustomerFollowUpsTableUpdateCompanionBuilder =
     CustomerFollowUpsCompanion Function({
       Value<String> id,
       Value<String> shopId,
-      Value<String> loanId,
+      Value<String> creditId,
       Value<int> customerId,
       Value<String> staffId,
       Value<String> channel,
@@ -27197,17 +27357,17 @@ final class $$CustomerFollowUpsTableReferences
     );
   }
 
-  static $LoansTable _loanIdTable(_$AppDatabase db) =>
-      db.loans.createAlias('customer_follow_ups__loan_id__loans__id');
+  static $CreditsTable _creditIdTable(_$AppDatabase db) =>
+      db.credits.createAlias('customer_follow_ups__credit_id__credits__id');
 
-  $$LoansTableProcessedTableManager get loanId {
-    final $_column = $_itemColumn<String>('loan_id')!;
+  $$CreditsTableProcessedTableManager get creditId {
+    final $_column = $_itemColumn<String>('credit_id')!;
 
-    final manager = $$LoansTableTableManager(
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_loanIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_creditIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -27306,20 +27466,20 @@ class $$CustomerFollowUpsTableFilterComposer
     return composer;
   }
 
-  $$LoansTableFilterComposer get loanId {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+  $$CreditsTableFilterComposer get creditId {
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -27433,20 +27593,20 @@ class $$CustomerFollowUpsTableOrderingComposer
     return composer;
   }
 
-  $$LoansTableOrderingComposer get loanId {
-    final $$LoansTableOrderingComposer composer = $composerBuilder(
+  $$CreditsTableOrderingComposer get creditId {
+    final $$CreditsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableOrderingComposer(
+          }) => $$CreditsTableOrderingComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -27552,20 +27712,20 @@ class $$CustomerFollowUpsTableAnnotationComposer
     return composer;
   }
 
-  $$LoansTableAnnotationComposer get loanId {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+  $$CreditsTableAnnotationComposer get creditId {
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -27637,7 +27797,7 @@ class $$CustomerFollowUpsTableTableManager
           CustomerFollowUpEntry,
           PrefetchHooks Function({
             bool shopId,
-            bool loanId,
+            bool creditId,
             bool customerId,
             bool staffId,
           })
@@ -27662,7 +27822,7 @@ class $$CustomerFollowUpsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> loanId = const Value.absent(),
+                Value<String> creditId = const Value.absent(),
                 Value<int> customerId = const Value.absent(),
                 Value<String> staffId = const Value.absent(),
                 Value<String> channel = const Value.absent(),
@@ -27673,7 +27833,7 @@ class $$CustomerFollowUpsTableTableManager
               }) => CustomerFollowUpsCompanion(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 customerId: customerId,
                 staffId: staffId,
                 channel: channel,
@@ -27686,7 +27846,7 @@ class $$CustomerFollowUpsTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String loanId,
+                required String creditId,
                 required int customerId,
                 required String staffId,
                 required String channel,
@@ -27697,7 +27857,7 @@ class $$CustomerFollowUpsTableTableManager
               }) => CustomerFollowUpsCompanion.insert(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 customerId: customerId,
                 staffId: staffId,
                 channel: channel,
@@ -27719,7 +27879,7 @@ class $$CustomerFollowUpsTableTableManager
           prefetchHooksCallback:
               ({
                 shopId = false,
-                loanId = false,
+                creditId = false,
                 customerId = false,
                 staffId = false,
               }) {
@@ -27753,14 +27913,14 @@ class $$CustomerFollowUpsTableTableManager
                                 .id,
                           ) as T;
                         }
-                        if (loanId) {
+                        if (creditId) {
                           state = state.withJoin(
                             currentTable: table,
-                            currentColumn: table.loanId,
+                            currentColumn: table.creditId,
                             referencedTable: $$CustomerFollowUpsTableReferences
-                                ._loanIdTable(db),
+                                ._creditIdTable(db),
                             referencedColumn: $$CustomerFollowUpsTableReferences
-                                ._loanIdTable(db)
+                                ._creditIdTable(db)
                                 .id,
                           ) as T;
                         }
@@ -27812,27 +27972,27 @@ typedef $$CustomerFollowUpsTableProcessedTableManager =
       CustomerFollowUpEntry,
       PrefetchHooks Function({
         bool shopId,
-        bool loanId,
+        bool creditId,
         bool customerId,
         bool staffId,
       })
     >;
-typedef $$LoanResolutionsTableCreateCompanionBuilder =
-    LoanResolutionsCompanion Function({
+typedef $$CreditResolutionsTableCreateCompanionBuilder =
+    CreditResolutionsCompanion Function({
       required String id,
       required String shopId,
-      required String loanId,
+      required String creditId,
       required String resolutionType,
       required String reason,
       required String resolvedByUserId,
       required DateTime createdAt,
       Value<int> rowid,
     });
-typedef $$LoanResolutionsTableUpdateCompanionBuilder =
-    LoanResolutionsCompanion Function({
+typedef $$CreditResolutionsTableUpdateCompanionBuilder =
+    CreditResolutionsCompanion Function({
       Value<String> id,
       Value<String> shopId,
-      Value<String> loanId,
+      Value<String> creditId,
       Value<String> resolutionType,
       Value<String> reason,
       Value<String> resolvedByUserId,
@@ -27840,21 +28000,21 @@ typedef $$LoanResolutionsTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
-final class $$LoanResolutionsTableReferences
+final class $$CreditResolutionsTableReferences
     extends
         BaseReferences<
           _$AppDatabase,
-          $LoanResolutionsTable,
-          LoanResolutionEntry
+          $CreditResolutionsTable,
+          CreditResolutionEntry
         > {
-  $$LoanResolutionsTableReferences(
+  $$CreditResolutionsTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
   static $ShopsTable _shopIdTable(_$AppDatabase db) =>
-      db.shops.createAlias('loan_resolutions__shop_id__shops__id');
+      db.shops.createAlias('credit_resolutions__shop_id__shops__id');
 
   $$ShopsTableProcessedTableManager get shopId {
     final $_column = $_itemColumn<String>('shop_id')!;
@@ -27870,17 +28030,17 @@ final class $$LoanResolutionsTableReferences
     );
   }
 
-  static $LoansTable _loanIdTable(_$AppDatabase db) =>
-      db.loans.createAlias('loan_resolutions__loan_id__loans__id');
+  static $CreditsTable _creditIdTable(_$AppDatabase db) =>
+      db.credits.createAlias('credit_resolutions__credit_id__credits__id');
 
-  $$LoansTableProcessedTableManager get loanId {
-    final $_column = $_itemColumn<String>('loan_id')!;
+  $$CreditsTableProcessedTableManager get creditId {
+    final $_column = $_itemColumn<String>('credit_id')!;
 
-    final manager = $$LoansTableTableManager(
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_loanIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_creditIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -27888,7 +28048,7 @@ final class $$LoanResolutionsTableReferences
   }
 
   static $AppUsersTable _resolvedByUserIdTable(_$AppDatabase db) => db.appUsers
-      .createAlias('loan_resolutions__resolved_by_user_id__app_users__id');
+      .createAlias('credit_resolutions__resolved_by_user_id__app_users__id');
 
   $$AppUsersTableProcessedTableManager get resolvedByUserId {
     final $_column = $_itemColumn<String>('resolved_by_user_id')!;
@@ -27905,9 +28065,9 @@ final class $$LoanResolutionsTableReferences
   }
 }
 
-class $$LoanResolutionsTableFilterComposer
-    extends Composer<_$AppDatabase, $LoanResolutionsTable> {
-  $$LoanResolutionsTableFilterComposer({
+class $$CreditResolutionsTableFilterComposer
+    extends Composer<_$AppDatabase, $CreditResolutionsTable> {
+  $$CreditResolutionsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -27957,20 +28117,20 @@ class $$LoanResolutionsTableFilterComposer
     return composer;
   }
 
-  $$LoansTableFilterComposer get loanId {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+  $$CreditsTableFilterComposer get creditId {
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -28004,9 +28164,9 @@ class $$LoanResolutionsTableFilterComposer
   }
 }
 
-class $$LoanResolutionsTableOrderingComposer
-    extends Composer<_$AppDatabase, $LoanResolutionsTable> {
-  $$LoanResolutionsTableOrderingComposer({
+class $$CreditResolutionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CreditResolutionsTable> {
+  $$CreditResolutionsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -28056,20 +28216,20 @@ class $$LoanResolutionsTableOrderingComposer
     return composer;
   }
 
-  $$LoansTableOrderingComposer get loanId {
-    final $$LoansTableOrderingComposer composer = $composerBuilder(
+  $$CreditsTableOrderingComposer get creditId {
+    final $$CreditsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableOrderingComposer(
+          }) => $$CreditsTableOrderingComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -28103,9 +28263,9 @@ class $$LoanResolutionsTableOrderingComposer
   }
 }
 
-class $$LoanResolutionsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LoanResolutionsTable> {
-  $$LoanResolutionsTableAnnotationComposer({
+class $$CreditResolutionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CreditResolutionsTable> {
+  $$CreditResolutionsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -28149,20 +28309,20 @@ class $$LoanResolutionsTableAnnotationComposer
     return composer;
   }
 
-  $$LoansTableAnnotationComposer get loanId {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+  $$CreditsTableAnnotationComposer get creditId {
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -28196,52 +28356,55 @@ class $$LoanResolutionsTableAnnotationComposer
   }
 }
 
-class $$LoanResolutionsTableTableManager
+class $$CreditResolutionsTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $LoanResolutionsTable,
-          LoanResolutionEntry,
-          $$LoanResolutionsTableFilterComposer,
-          $$LoanResolutionsTableOrderingComposer,
-          $$LoanResolutionsTableAnnotationComposer,
-          $$LoanResolutionsTableCreateCompanionBuilder,
-          $$LoanResolutionsTableUpdateCompanionBuilder,
-          (LoanResolutionEntry, $$LoanResolutionsTableReferences),
-          LoanResolutionEntry,
+          $CreditResolutionsTable,
+          CreditResolutionEntry,
+          $$CreditResolutionsTableFilterComposer,
+          $$CreditResolutionsTableOrderingComposer,
+          $$CreditResolutionsTableAnnotationComposer,
+          $$CreditResolutionsTableCreateCompanionBuilder,
+          $$CreditResolutionsTableUpdateCompanionBuilder,
+          (CreditResolutionEntry, $$CreditResolutionsTableReferences),
+          CreditResolutionEntry,
           PrefetchHooks Function({
             bool shopId,
-            bool loanId,
+            bool creditId,
             bool resolvedByUserId,
           })
         > {
-  $$LoanResolutionsTableTableManager(
+  $$CreditResolutionsTableTableManager(
     _$AppDatabase db,
-    $LoanResolutionsTable table,
+    $CreditResolutionsTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$LoanResolutionsTableFilterComposer($db: db, $table: table),
+              $$CreditResolutionsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$LoanResolutionsTableOrderingComposer($db: db, $table: table),
+              $$CreditResolutionsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$LoanResolutionsTableAnnotationComposer($db: db, $table: table),
+              $$CreditResolutionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> loanId = const Value.absent(),
+                Value<String> creditId = const Value.absent(),
                 Value<String> resolutionType = const Value.absent(),
                 Value<String> reason = const Value.absent(),
                 Value<String> resolvedByUserId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => LoanResolutionsCompanion(
+              }) => CreditResolutionsCompanion(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 resolutionType: resolutionType,
                 reason: reason,
                 resolvedByUserId: resolvedByUserId,
@@ -28252,16 +28415,16 @@ class $$LoanResolutionsTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String loanId,
+                required String creditId,
                 required String resolutionType,
                 required String reason,
                 required String resolvedByUserId,
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
-              }) => LoanResolutionsCompanion.insert(
+              }) => CreditResolutionsCompanion.insert(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 resolutionType: resolutionType,
                 reason: reason,
                 resolvedByUserId: resolvedByUserId,
@@ -28271,15 +28434,15 @@ class $$LoanResolutionsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$LoanResolutionsTable, LoanResolutionEntry>(
+                  e.readTable<$CreditResolutionsTable, CreditResolutionEntry>(
                     table,
                   ),
-                  $$LoanResolutionsTableReferences(db, table, e),
+                  $$CreditResolutionsTableReferences(db, table, e),
                 ),
               )
               .toList(),
           prefetchHooksCallback:
-              ({shopId = false, loanId = false, resolvedByUserId = false}) {
+              ({shopId = false, creditId = false, resolvedByUserId = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [],
@@ -28303,21 +28466,21 @@ class $$LoanResolutionsTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.shopId,
-                            referencedTable: $$LoanResolutionsTableReferences
+                            referencedTable: $$CreditResolutionsTableReferences
                                 ._shopIdTable(db),
-                            referencedColumn: $$LoanResolutionsTableReferences
+                            referencedColumn: $$CreditResolutionsTableReferences
                                 ._shopIdTable(db)
                                 .id,
                           ) as T;
                         }
-                        if (loanId) {
+                        if (creditId) {
                           state = state.withJoin(
                             currentTable: table,
-                            currentColumn: table.loanId,
-                            referencedTable: $$LoanResolutionsTableReferences
-                                ._loanIdTable(db),
-                            referencedColumn: $$LoanResolutionsTableReferences
-                                ._loanIdTable(db)
+                            currentColumn: table.creditId,
+                            referencedTable: $$CreditResolutionsTableReferences
+                                ._creditIdTable(db),
+                            referencedColumn: $$CreditResolutionsTableReferences
+                                ._creditIdTable(db)
                                 .id,
                           ) as T;
                         }
@@ -28325,9 +28488,9 @@ class $$LoanResolutionsTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.resolvedByUserId,
-                            referencedTable: $$LoanResolutionsTableReferences
+                            referencedTable: $$CreditResolutionsTableReferences
                                 ._resolvedByUserIdTable(db),
-                            referencedColumn: $$LoanResolutionsTableReferences
+                            referencedColumn: $$CreditResolutionsTableReferences
                                 ._resolvedByUserIdTable(db)
                                 .id,
                           ) as T;
@@ -28344,36 +28507,40 @@ class $$LoanResolutionsTableTableManager
       );
 }
 
-typedef $$LoanResolutionsTableProcessedTableManager =
+typedef $$CreditResolutionsTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $LoanResolutionsTable,
-      LoanResolutionEntry,
-      $$LoanResolutionsTableFilterComposer,
-      $$LoanResolutionsTableOrderingComposer,
-      $$LoanResolutionsTableAnnotationComposer,
-      $$LoanResolutionsTableCreateCompanionBuilder,
-      $$LoanResolutionsTableUpdateCompanionBuilder,
-      (LoanResolutionEntry, $$LoanResolutionsTableReferences),
-      LoanResolutionEntry,
-      PrefetchHooks Function({bool shopId, bool loanId, bool resolvedByUserId})
+      $CreditResolutionsTable,
+      CreditResolutionEntry,
+      $$CreditResolutionsTableFilterComposer,
+      $$CreditResolutionsTableOrderingComposer,
+      $$CreditResolutionsTableAnnotationComposer,
+      $$CreditResolutionsTableCreateCompanionBuilder,
+      $$CreditResolutionsTableUpdateCompanionBuilder,
+      (CreditResolutionEntry, $$CreditResolutionsTableReferences),
+      CreditResolutionEntry,
+      PrefetchHooks Function({
+        bool shopId,
+        bool creditId,
+        bool resolvedByUserId,
+      })
     >;
-typedef $$LoanAdministrativeClosuresTableCreateCompanionBuilder =
-    LoanAdministrativeClosuresCompanion Function({
+typedef $$CreditAdministrativeClosuresTableCreateCompanionBuilder =
+    CreditAdministrativeClosuresCompanion Function({
       required String id,
       required String shopId,
-      required String loanId,
+      required String creditId,
       required String reason,
       required String closedByUserId,
       required String itemIdsJson,
       required DateTime createdAt,
       Value<int> rowid,
     });
-typedef $$LoanAdministrativeClosuresTableUpdateCompanionBuilder =
-    LoanAdministrativeClosuresCompanion Function({
+typedef $$CreditAdministrativeClosuresTableUpdateCompanionBuilder =
+    CreditAdministrativeClosuresCompanion Function({
       Value<String> id,
       Value<String> shopId,
-      Value<String> loanId,
+      Value<String> creditId,
       Value<String> reason,
       Value<String> closedByUserId,
       Value<String> itemIdsJson,
@@ -28381,21 +28548,22 @@ typedef $$LoanAdministrativeClosuresTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
-final class $$LoanAdministrativeClosuresTableReferences
+final class $$CreditAdministrativeClosuresTableReferences
     extends
         BaseReferences<
           _$AppDatabase,
-          $LoanAdministrativeClosuresTable,
-          LoanAdministrativeClosureEntry
+          $CreditAdministrativeClosuresTable,
+          CreditAdministrativeClosureEntry
         > {
-  $$LoanAdministrativeClosuresTableReferences(
+  $$CreditAdministrativeClosuresTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $ShopsTable _shopIdTable(_$AppDatabase db) =>
-      db.shops.createAlias('loan_administrative_closures__shop_id__shops__id');
+  static $ShopsTable _shopIdTable(_$AppDatabase db) => db.shops.createAlias(
+    'credit_administrative_closures__shop_id__shops__id',
+  );
 
   $$ShopsTableProcessedTableManager get shopId {
     final $_column = $_itemColumn<String>('shop_id')!;
@@ -28411,17 +28579,17 @@ final class $$LoanAdministrativeClosuresTableReferences
     );
   }
 
-  static $LoansTable _loanIdTable(_$AppDatabase db) =>
-      db.loans.createAlias('loan_administrative_closures__loan_id__loans__id');
+  static $CreditsTable _creditIdTable(_$AppDatabase db) => db.credits
+      .createAlias('credit_administrative_closures__credit_id__credits__id');
 
-  $$LoansTableProcessedTableManager get loanId {
-    final $_column = $_itemColumn<String>('loan_id')!;
+  $$CreditsTableProcessedTableManager get creditId {
+    final $_column = $_itemColumn<String>('credit_id')!;
 
-    final manager = $$LoansTableTableManager(
+    final manager = $$CreditsTableTableManager(
       $_db,
-      $_db.loans,
+      $_db.credits,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_loanIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_creditIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -28430,7 +28598,7 @@ final class $$LoanAdministrativeClosuresTableReferences
 
   static $AppUsersTable _closedByUserIdTable(_$AppDatabase db) =>
       db.appUsers.createAlias(
-        'loan_administrative_closures__closed_by_user_id__app_users__id',
+        'credit_administrative_closures__closed_by_user_id__app_users__id',
       );
 
   $$AppUsersTableProcessedTableManager get closedByUserId {
@@ -28448,9 +28616,9 @@ final class $$LoanAdministrativeClosuresTableReferences
   }
 }
 
-class $$LoanAdministrativeClosuresTableFilterComposer
-    extends Composer<_$AppDatabase, $LoanAdministrativeClosuresTable> {
-  $$LoanAdministrativeClosuresTableFilterComposer({
+class $$CreditAdministrativeClosuresTableFilterComposer
+    extends Composer<_$AppDatabase, $CreditAdministrativeClosuresTable> {
+  $$CreditAdministrativeClosuresTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -28500,20 +28668,20 @@ class $$LoanAdministrativeClosuresTableFilterComposer
     return composer;
   }
 
-  $$LoansTableFilterComposer get loanId {
-    final $$LoansTableFilterComposer composer = $composerBuilder(
+  $$CreditsTableFilterComposer get creditId {
+    final $$CreditsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableFilterComposer(
+          }) => $$CreditsTableFilterComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -28547,9 +28715,9 @@ class $$LoanAdministrativeClosuresTableFilterComposer
   }
 }
 
-class $$LoanAdministrativeClosuresTableOrderingComposer
-    extends Composer<_$AppDatabase, $LoanAdministrativeClosuresTable> {
-  $$LoanAdministrativeClosuresTableOrderingComposer({
+class $$CreditAdministrativeClosuresTableOrderingComposer
+    extends Composer<_$AppDatabase, $CreditAdministrativeClosuresTable> {
+  $$CreditAdministrativeClosuresTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -28599,20 +28767,20 @@ class $$LoanAdministrativeClosuresTableOrderingComposer
     return composer;
   }
 
-  $$LoansTableOrderingComposer get loanId {
-    final $$LoansTableOrderingComposer composer = $composerBuilder(
+  $$CreditsTableOrderingComposer get creditId {
+    final $$CreditsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableOrderingComposer(
+          }) => $$CreditsTableOrderingComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -28646,9 +28814,9 @@ class $$LoanAdministrativeClosuresTableOrderingComposer
   }
 }
 
-class $$LoanAdministrativeClosuresTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LoanAdministrativeClosuresTable> {
-  $$LoanAdministrativeClosuresTableAnnotationComposer({
+class $$CreditAdministrativeClosuresTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CreditAdministrativeClosuresTable> {
+  $$CreditAdministrativeClosuresTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -28692,20 +28860,20 @@ class $$LoanAdministrativeClosuresTableAnnotationComposer
     return composer;
   }
 
-  $$LoansTableAnnotationComposer get loanId {
-    final $$LoansTableAnnotationComposer composer = $composerBuilder(
+  $$CreditsTableAnnotationComposer get creditId {
+    final $$CreditsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.loanId,
-      referencedTable: $db.loans,
+      getCurrentColumn: (t) => t.creditId,
+      referencedTable: $db.credits,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$LoansTableAnnotationComposer(
+          }) => $$CreditsTableAnnotationComposer(
             $db: $db,
-            $table: $db.loans,
+            $table: $db.credits,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -28739,47 +28907,47 @@ class $$LoanAdministrativeClosuresTableAnnotationComposer
   }
 }
 
-class $$LoanAdministrativeClosuresTableTableManager
+class $$CreditAdministrativeClosuresTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $LoanAdministrativeClosuresTable,
-          LoanAdministrativeClosureEntry,
-          $$LoanAdministrativeClosuresTableFilterComposer,
-          $$LoanAdministrativeClosuresTableOrderingComposer,
-          $$LoanAdministrativeClosuresTableAnnotationComposer,
-          $$LoanAdministrativeClosuresTableCreateCompanionBuilder,
-          $$LoanAdministrativeClosuresTableUpdateCompanionBuilder,
+          $CreditAdministrativeClosuresTable,
+          CreditAdministrativeClosureEntry,
+          $$CreditAdministrativeClosuresTableFilterComposer,
+          $$CreditAdministrativeClosuresTableOrderingComposer,
+          $$CreditAdministrativeClosuresTableAnnotationComposer,
+          $$CreditAdministrativeClosuresTableCreateCompanionBuilder,
+          $$CreditAdministrativeClosuresTableUpdateCompanionBuilder,
           (
-            LoanAdministrativeClosureEntry,
-            $$LoanAdministrativeClosuresTableReferences,
+            CreditAdministrativeClosureEntry,
+            $$CreditAdministrativeClosuresTableReferences,
           ),
-          LoanAdministrativeClosureEntry,
+          CreditAdministrativeClosureEntry,
           PrefetchHooks Function({
             bool shopId,
-            bool loanId,
+            bool creditId,
             bool closedByUserId,
           })
         > {
-  $$LoanAdministrativeClosuresTableTableManager(
+  $$CreditAdministrativeClosuresTableTableManager(
     _$AppDatabase db,
-    $LoanAdministrativeClosuresTable table,
+    $CreditAdministrativeClosuresTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$LoanAdministrativeClosuresTableFilterComposer(
+              $$CreditAdministrativeClosuresTableFilterComposer(
                 $db: db,
                 $table: table,
               ),
           createOrderingComposer: () =>
-              $$LoanAdministrativeClosuresTableOrderingComposer(
+              $$CreditAdministrativeClosuresTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
           createComputedFieldComposer: () =>
-              $$LoanAdministrativeClosuresTableAnnotationComposer(
+              $$CreditAdministrativeClosuresTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -28787,16 +28955,16 @@ class $$LoanAdministrativeClosuresTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> shopId = const Value.absent(),
-                Value<String> loanId = const Value.absent(),
+                Value<String> creditId = const Value.absent(),
                 Value<String> reason = const Value.absent(),
                 Value<String> closedByUserId = const Value.absent(),
                 Value<String> itemIdsJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => LoanAdministrativeClosuresCompanion(
+              }) => CreditAdministrativeClosuresCompanion(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 reason: reason,
                 closedByUserId: closedByUserId,
                 itemIdsJson: itemIdsJson,
@@ -28807,16 +28975,16 @@ class $$LoanAdministrativeClosuresTableTableManager
               ({
                 required String id,
                 required String shopId,
-                required String loanId,
+                required String creditId,
                 required String reason,
                 required String closedByUserId,
                 required String itemIdsJson,
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
-              }) => LoanAdministrativeClosuresCompanion.insert(
+              }) => CreditAdministrativeClosuresCompanion.insert(
                 id: id,
                 shopId: shopId,
-                loanId: loanId,
+                creditId: creditId,
                 reason: reason,
                 closedByUserId: closedByUserId,
                 itemIdsJson: itemIdsJson,
@@ -28827,15 +28995,15 @@ class $$LoanAdministrativeClosuresTableTableManager
               .map(
                 (e) => (
                   e.readTable<
-                    $LoanAdministrativeClosuresTable,
-                    LoanAdministrativeClosureEntry
+                    $CreditAdministrativeClosuresTable,
+                    CreditAdministrativeClosureEntry
                   >(table),
-                  $$LoanAdministrativeClosuresTableReferences(db, table, e),
+                  $$CreditAdministrativeClosuresTableReferences(db, table, e),
                 ),
               )
               .toList(),
           prefetchHooksCallback:
-              ({shopId = false, loanId = false, closedByUserId = false}) {
+              ({shopId = false, creditId = false, closedByUserId = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [],
@@ -28860,24 +29028,24 @@ class $$LoanAdministrativeClosuresTableTableManager
                             currentTable: table,
                             currentColumn: table.shopId,
                             referencedTable:
-                                $$LoanAdministrativeClosuresTableReferences
+                                $$CreditAdministrativeClosuresTableReferences
                                     ._shopIdTable(db),
                             referencedColumn:
-                                $$LoanAdministrativeClosuresTableReferences
+                                $$CreditAdministrativeClosuresTableReferences
                                     ._shopIdTable(db)
                                     .id,
                           ) as T;
                         }
-                        if (loanId) {
+                        if (creditId) {
                           state = state.withJoin(
                             currentTable: table,
-                            currentColumn: table.loanId,
+                            currentColumn: table.creditId,
                             referencedTable:
-                                $$LoanAdministrativeClosuresTableReferences
-                                    ._loanIdTable(db),
+                                $$CreditAdministrativeClosuresTableReferences
+                                    ._creditIdTable(db),
                             referencedColumn:
-                                $$LoanAdministrativeClosuresTableReferences
-                                    ._loanIdTable(db)
+                                $$CreditAdministrativeClosuresTableReferences
+                                    ._creditIdTable(db)
                                     .id,
                           ) as T;
                         }
@@ -28886,10 +29054,10 @@ class $$LoanAdministrativeClosuresTableTableManager
                             currentTable: table,
                             currentColumn: table.closedByUserId,
                             referencedTable:
-                                $$LoanAdministrativeClosuresTableReferences
+                                $$CreditAdministrativeClosuresTableReferences
                                     ._closedByUserIdTable(db),
                             referencedColumn:
-                                $$LoanAdministrativeClosuresTableReferences
+                                $$CreditAdministrativeClosuresTableReferences
                                     ._closedByUserIdTable(db)
                                     .id,
                           ) as T;
@@ -28906,22 +29074,22 @@ class $$LoanAdministrativeClosuresTableTableManager
       );
 }
 
-typedef $$LoanAdministrativeClosuresTableProcessedTableManager =
+typedef $$CreditAdministrativeClosuresTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $LoanAdministrativeClosuresTable,
-      LoanAdministrativeClosureEntry,
-      $$LoanAdministrativeClosuresTableFilterComposer,
-      $$LoanAdministrativeClosuresTableOrderingComposer,
-      $$LoanAdministrativeClosuresTableAnnotationComposer,
-      $$LoanAdministrativeClosuresTableCreateCompanionBuilder,
-      $$LoanAdministrativeClosuresTableUpdateCompanionBuilder,
+      $CreditAdministrativeClosuresTable,
+      CreditAdministrativeClosureEntry,
+      $$CreditAdministrativeClosuresTableFilterComposer,
+      $$CreditAdministrativeClosuresTableOrderingComposer,
+      $$CreditAdministrativeClosuresTableAnnotationComposer,
+      $$CreditAdministrativeClosuresTableCreateCompanionBuilder,
+      $$CreditAdministrativeClosuresTableUpdateCompanionBuilder,
       (
-        LoanAdministrativeClosureEntry,
-        $$LoanAdministrativeClosuresTableReferences,
+        CreditAdministrativeClosureEntry,
+        $$CreditAdministrativeClosuresTableReferences,
       ),
-      LoanAdministrativeClosureEntry,
-      PrefetchHooks Function({bool shopId, bool loanId, bool closedByUserId})
+      CreditAdministrativeClosureEntry,
+      PrefetchHooks Function({bool shopId, bool creditId, bool closedByUserId})
     >;
 
 class $AppDatabaseManager {
@@ -28940,8 +29108,8 @@ class $AppDatabaseManager {
         _db,
         _db.customerPhotoExceptions,
       );
-  $$LoansTableTableManager get loans =>
-      $$LoansTableTableManager(_db, _db.loans);
+  $$CreditsTableTableManager get credits =>
+      $$CreditsTableTableManager(_db, _db.credits);
   $$CollateralItemsTableTableManager get collateralItems =>
       $$CollateralItemsTableTableManager(_db, _db.collateralItems);
   $$CollateralPhotoExceptionsTableTableManager get collateralPhotoExceptions =>
@@ -28961,20 +29129,20 @@ class $AppDatabaseManager {
       );
   $$PaymentsTableTableManager get payments =>
       $$PaymentsTableTableManager(_db, _db.payments);
-  $$LoanCorrectionsTableTableManager get loanCorrections =>
-      $$LoanCorrectionsTableTableManager(_db, _db.loanCorrections);
-  $$LoanLedgerEntriesTableTableManager get loanLedgerEntries =>
-      $$LoanLedgerEntriesTableTableManager(_db, _db.loanLedgerEntries);
+  $$CreditCorrectionsTableTableManager get creditCorrections =>
+      $$CreditCorrectionsTableTableManager(_db, _db.creditCorrections);
+  $$CreditLedgerEntriesTableTableManager get creditLedgerEntries =>
+      $$CreditLedgerEntriesTableTableManager(_db, _db.creditLedgerEntries);
   $$DueDateExtensionsTableTableManager get dueDateExtensions =>
       $$DueDateExtensionsTableTableManager(_db, _db.dueDateExtensions);
   $$CustomerFollowUpsTableTableManager get customerFollowUps =>
       $$CustomerFollowUpsTableTableManager(_db, _db.customerFollowUps);
-  $$LoanResolutionsTableTableManager get loanResolutions =>
-      $$LoanResolutionsTableTableManager(_db, _db.loanResolutions);
-  $$LoanAdministrativeClosuresTableTableManager
-  get loanAdministrativeClosures =>
-      $$LoanAdministrativeClosuresTableTableManager(
+  $$CreditResolutionsTableTableManager get creditResolutions =>
+      $$CreditResolutionsTableTableManager(_db, _db.creditResolutions);
+  $$CreditAdministrativeClosuresTableTableManager
+  get creditAdministrativeClosures =>
+      $$CreditAdministrativeClosuresTableTableManager(
         _db,
-        _db.loanAdministrativeClosures,
+        _db.creditAdministrativeClosures,
       );
 }

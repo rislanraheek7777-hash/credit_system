@@ -19,7 +19,7 @@ class AuditEventRecord {
   /// UUID of the authenticated actor who performed the action.
   final String actorId;
 
-  /// Target entity type (e.g. 'customer', 'loan', 'payment', 'collateral_item').
+  /// Target entity type (e.g. 'customer', 'credit', 'payment', 'collateral_item').
   final String targetEntityType;
 
   /// Target entity UUID.
@@ -62,7 +62,7 @@ class AuditEventRecord {
   /// The official 14 mandatory audit event category descriptions (FR-31 / Story 7.3).
   static const Map<int, String> categoryTitles = {
     1: 'Customer creation and profile edits',
-    2: 'Loan agreement origination and cancellation',
+    2: 'Credit agreement origination and cancellation',
     3: 'Collateral registration and item detail edits',
     4: 'Confirmed cash disbursement',
     5: 'Payment recording (partial and full settlement)',
@@ -70,7 +70,7 @@ class AuditEventRecord {
     7: 'Financial correction approvals or rejections',
     8: 'Due date extensions',
     9: 'Customer follow-up notes and promises to pay',
-    10: 'Owner decisions on overdue loans and collateral disposition',
+    10: 'Owner decisions on overdue credits and collateral disposition',
     11: 'Collateral physical return confirmations and exception closures',
     12: 'Staff account creation, deactivation, and permission modifications',
     13: 'Receipt reprints',
@@ -166,3 +166,4 @@ class AuditEventRecord {
         'serverTimestamp': serverTimestamp.toIso8601String(),
       };
 }
+

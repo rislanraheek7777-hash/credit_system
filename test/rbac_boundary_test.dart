@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:credit_system/core/auth/rbac_service.dart';
 
 const permissions = [
-  'view_shop', 'edit_shop', 'manage_staff', 'view_loans', 'create_loan',
-  'approve_loan', 'disburse_loan', 'view_payments', 'record_payment',
+  'view_shop', 'edit_shop', 'manage_staff', 'view_credits', 'create_credit',
+  'approve_credit', 'disburse_credit', 'view_payments', 'record_payment',
   'reverse_payment', 'view_reports', 'export_data', 'manage_settings', 'audit_view',
 ];
 
@@ -21,8 +21,8 @@ void main() {
     }
   });
 
-  test('staff cannot approve_loan', () {
-    expect(rbac.hasPermission('staff', 'approve_loan'), isFalse);
+  test('staff cannot approve_credit', () {
+    expect(rbac.hasPermission('staff', 'approve_credit'), isFalse);
   });
 
   test('cross-tenant access denied', () {

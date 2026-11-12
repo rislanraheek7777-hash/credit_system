@@ -6,15 +6,15 @@ import 'package:credit_system/core/money/money.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/core/permissions/authorization_guard.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:credit_system/features/customers/data/daos/overdue_dao.dart';
 import 'package:credit_system/features/customers/domain/models/customer_follow_up.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
-import 'package:credit_system/features/customers/domain/models/loan_resolution.dart';
-import 'package:credit_system/features/customers/domain/models/loan_term.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
+import 'package:credit_system/features/customers/domain/models/credit_resolution.dart';
+import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 import 'package:credit_system/features/customers/domain/services/overdue_service.dart';
 
-/// Screen for viewing overdue loans and managing delinquency governance
+/// Screen for viewing overdue credits and managing delinquency governance
 /// (Stories 6.1, 6.2, 6.3, 6.4; PRD FR-25, FR-26, FR-27, FR-28).
 ///
 /// Supports:
@@ -23,12 +23,12 @@ import 'package:credit_system/features/customers/domain/services/overdue_service
 /// - Delinquency customer follow-up notes and promise-to-pay logging (Story 6.3)
 /// - Structured Shop Owner case resolutions without automated forfeiture (Story 6.4)
 ///
-/// Requires `viewOverdueLoans` permission.
+/// Requires `viewOverdueCredits` permission.
 class OverdueScreen extends StatefulWidget {
   /// The active shop tenant UUID.
   final String shopId;
 
-  /// The authenticated actor viewing overdue loans.
+  /// The authenticated actor viewing overdue credits.
   final AppUser currentUser;
 
   /// Optional injected [AppDatabase] for testing.
@@ -46,14 +46,14 @@ class OverdueScreen extends StatefulWidget {
 }
 
 class _OverdueScreenState extends State<OverdueScreen> {
-  late final LoanDao _loanDao;
+  late final CreditDao _creditDao;
   late final OverdueDao _overdueDao;
   late final OverdueService _overdueService;
 
-  List<Loan> _loans = [];
-  List<Loan> _overdueLoans = [];
+  List<Credit> _credits = [];
+  List<Credit> _overdueCredits = [];
   Map<String, CustomerFollowUp?> _latestFollowUps = {};
-  Map<String, LoanResolution?> _latestResolutions = {};
+  Map<String, CreditResolution?> _latestResolutions = {};
   ShopTimeZone? _shopTimeZone;
   bool _isLoading = true;
   String? _error;
@@ -63,7 +63,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
   void initState() {
     super.initState();
     final db = widget.database ?? AppDatabase();
-    _loanDao = LoanDao(db);
+    _creditDao = CreditDao(db);
     _overdueDao = OverdueDao(db);
     _overdueService = OverdueService();
     _load();
@@ -76,30 +76,30 @@ class _OverdueScreenState extends State<OverdueScreen> {
     });
 
     try {
-      // Authorization: require viewOverdueLoans permission
+      // Authorization: require viewOverdueCredits permission
       AuthorizationGuard.checkPermission(
         isActive: widget.currentUser.isActive,
         effectivePermissions: widget.currentUser.effectivePermissions,
-        permission: AppPermission.viewOverdueLoans,
-        actionDescription: 'view overdue loans',
+        permission: AppPermission.viewOverdueCredits,
+        actionDescription: 'view overdue credits',
       );
 
-      final allLoans = await _loanDao.getLoansByShopId(widget.shopId);
-      _shopTimeZone = await _loanDao.resolveShopTimeZone(widget.shopId);
+      final allCredits = await _creditDao.getCreditsByShopId(widget.shopId);
+      _shopTimeZone = await _creditDao.resolveShopTimeZone(widget.shopId);
 
-      // Evaluate which loans are overdue
-      final overdueCandidates = _overdueService.evaluateOverdueLoans(
-        allLoans,
+      // Evaluate which credits are overdue
+      final overdueCandidates = _overdueService.evaluateOverdueCredits(
+        allCredits,
         _shopTimeZone!,
       );
 
-      // Transition eligible loans to overdue status
-      final transitioned = <Loan>[];
-      for (final loan in overdueCandidates) {
-        final updated = loan.applyOverdue(shopTimeZone: _shopTimeZone!);
-        await _loanDao.updateLoanStatus(
+      // Transition eligible credits to overdue status
+      final transitioned = <Credit>[];
+      for (final credit in overdueCandidates) {
+        final updated = credit.applyOverdue(shopTimeZone: _shopTimeZone!);
+        await _creditDao.updateCreditStatus(
           shopId: widget.shopId,
-          loanId: loan.id,
+          creditId: credit.id,
           status: updated.status,
           workflowStatus: updated.workflowStatus,
         );
@@ -107,35 +107,35 @@ class _OverdueScreenState extends State<OverdueScreen> {
       }
 
       // Reload to get current state
-      final finalLoans = await _loanDao.getLoansByShopId(widget.shopId);
-      final finalOverdue = finalLoans.where((l) => l.status == LoanStatus.overdue).toList();
+      final finalCredits = await _creditDao.getCreditsByShopId(widget.shopId);
+      final finalOverdue = finalCredits.where((l) => l.status == CreditStatus.overdue).toList();
 
-      // Load follow-ups & resolutions for overdue loans
+      // Load follow-ups & resolutions for overdue credits
       final followUpsMap = <String, CustomerFollowUp?>{};
-      final resolutionsMap = <String, LoanResolution?>{};
-      for (final loan in finalOverdue) {
+      final resolutionsMap = <String, CreditResolution?>{};
+      for (final credit in finalOverdue) {
         final followUps = await _overdueDao.getFollowUps(
           shopId: widget.shopId,
-          loanId: loan.id,
+          creditId: credit.id,
         );
-        followUpsMap[loan.id] = followUps.isNotEmpty ? followUps.first : null;
+        followUpsMap[credit.id] = followUps.isNotEmpty ? followUps.first : null;
 
         final res = await _overdueDao.getLatestResolution(
           shopId: widget.shopId,
-          loanId: loan.id,
+          creditId: credit.id,
         );
-        resolutionsMap[loan.id] = res;
+        resolutionsMap[credit.id] = res;
       }
 
       if (!mounted) return;
       setState(() {
-        _loans = finalLoans;
-        _overdueLoans = finalOverdue;
+        _credits = finalCredits;
+        _overdueCredits = finalOverdue;
         _latestFollowUps = followUpsMap;
         _latestResolutions = resolutionsMap;
         _isLoading = false;
         if (transitioned.isNotEmpty) {
-          _successMessage = '${transitioned.length} loan(s) transitioned to overdue.';
+          _successMessage = '${transitioned.length} credit(s) transitioned to overdue.';
         }
       });
     } on PermissionDeniedException catch (e) {
@@ -148,15 +148,15 @@ class _OverdueScreenState extends State<OverdueScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load overdue loans: $e';
+        _error = 'Failed to load overdue credits: $e';
       });
     }
   }
 
-  int _daysOverdue(Loan loan) {
+  int _daysOverdue(Credit credit) {
     if (_shopTimeZone == null) return 0;
     final today = _shopTimeZone!.localDateOf(DateTime.now().toUtc());
-    final due = _shopTimeZone!.localDateOf(loan.dueDate);
+    final due = _shopTimeZone!.localDateOf(credit.dueDate);
     return _daysBetween(due, today);
   }
 
@@ -172,7 +172,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
   }
 
   // --- Story 6.2: Due Date Extension Dialog ---
-  Future<void> _showExtensionDialog(Loan loan) async {
+  Future<void> _showExtensionDialog(Credit credit) async {
     final formKey = GlobalKey<FormState>();
     final reasonController = TextEditingController();
     DateTime? selectedDate = DateTime.now().add(const Duration(days: 14));
@@ -184,7 +184,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Grant Due Date Extension (${loan.id.substring(0, 8)}...)'),
+              title: Text('Grant Due Date Extension (${credit.id.substring(0, 8)}...)'),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -201,7 +201,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
                           ),
                         ),
                       Text(
-                        'Current Due Date: ${loan.dueDateAsCalendarDate(_shopTimeZone!)}',
+                        'Current Due Date: ${credit.dueDateAsCalendarDate(_shopTimeZone!)}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
@@ -275,14 +275,14 @@ class _OverdueScreenState extends State<OverdueScreen> {
                       await _overdueDao.grantDueDateExtension(
                         actor: widget.currentUser,
                         idempotencyKey: const Uuid().v4(),
-                        loanId: loan.id,
+                        creditId: credit.id,
                         newDueDate: selectedDate!,
                         reason: reasonController.text.trim(),
                       );
                       if (context.mounted) {
                         Navigator.pop(ctx);
                         setState(() {
-                          _successMessage = 'Due date extension granted for Loan ${loan.id.substring(0, 8)}...';
+                          _successMessage = 'Due date extension granted for Credit ${credit.id.substring(0, 8)}...';
                         });
                         _load();
                       }
@@ -303,7 +303,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
   }
 
   // --- Story 6.3: Customer Follow-Up Dialog ---
-  Future<void> _showFollowUpDialog(Loan loan) async {
+  Future<void> _showFollowUpDialog(Credit credit) async {
     final formKey = GlobalKey<FormState>();
     final notesController = TextEditingController();
     FollowUpChannel channel = FollowUpChannel.phoneCall;
@@ -316,7 +316,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Log Customer Follow-Up (${loan.id.substring(0, 8)}...)'),
+              title: Text('Log Customer Follow-Up (${credit.id.substring(0, 8)}...)'),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -428,8 +428,8 @@ class _OverdueScreenState extends State<OverdueScreen> {
                     try {
                       await _overdueDao.recordFollowUp(
                         actor: widget.currentUser,
-                        loanId: loan.id,
-                        customerId: loan.customerId,
+                        creditId: credit.id,
+                        customerId: credit.customerId,
                         channel: channel,
                         notes: notesController.text.trim(),
                         promisedPaymentDate: promisedDate,
@@ -437,7 +437,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
                       if (context.mounted) {
                         Navigator.pop(ctx);
                         setState(() {
-                          _successMessage = 'Follow-up logged for Loan ${loan.id.substring(0, 8)}...';
+                          _successMessage = 'Follow-up logged for Credit ${credit.id.substring(0, 8)}...';
                         });
                         _load();
                       }
@@ -458,10 +458,10 @@ class _OverdueScreenState extends State<OverdueScreen> {
   }
 
   // --- Story 6.4: Case Resolution Dialog ---
-  Future<void> _showResolutionDialog(Loan loan) async {
+  Future<void> _showResolutionDialog(Credit credit) async {
     final formKey = GlobalKey<FormState>();
     final reasonController = TextEditingController();
-    LoanResolutionType resType = LoanResolutionType.underReview;
+    CreditResolutionType resType = CreditResolutionType.underReview;
     String? dialogError;
 
     await showDialog(
@@ -470,7 +470,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Owner Case Resolution (${loan.id.substring(0, 8)}...)'),
+              title: Text('Owner Case Resolution (${credit.id.substring(0, 8)}...)'),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -486,14 +486,14 @@ class _OverdueScreenState extends State<OverdueScreen> {
                             style: const TextStyle(color: Colors.red),
                           ),
                         ),
-                      DropdownButtonFormField<LoanResolutionType>(
+                      DropdownButtonFormField<CreditResolutionType>(
                         key: const Key('resolution_type_dropdown'),
                         initialValue: resType,
                         decoration: const InputDecoration(
                           labelText: 'Resolution Decision',
                           border: OutlineInputBorder(),
                         ),
-                        items: LoanResolutionType.values.map((t) {
+                        items: CreditResolutionType.values.map((t) {
                           return DropdownMenuItem(
                             value: t,
                             child: Text(t.displayName),
@@ -545,14 +545,14 @@ class _OverdueScreenState extends State<OverdueScreen> {
                     try {
                       await _overdueDao.recordResolution(
                         actor: widget.currentUser,
-                        loanId: loan.id,
+                        creditId: credit.id,
                         resolutionType: resType,
                         reason: reasonController.text.trim(),
                       );
                       if (context.mounted) {
                         Navigator.pop(ctx);
                         setState(() {
-                          _successMessage = 'Resolution "${resType.displayName}" recorded for Loan ${loan.id.substring(0, 8)}...';
+                          _successMessage = 'Resolution "${resType.displayName}" recorded for Credit ${credit.id.substring(0, 8)}...';
                         });
                         _load();
                       }
@@ -573,18 +573,18 @@ class _OverdueScreenState extends State<OverdueScreen> {
   }
 
   // --- History & Audit Review Dialog ---
-  Future<void> _showLoanHistoryDialog(Loan loan) async {
+  Future<void> _showCreditHistoryDialog(Credit credit) async {
     final extensions = await _overdueDao.getExtensionHistory(
       shopId: widget.shopId,
-      loanId: loan.id,
+      creditId: credit.id,
     );
     final followUps = await _overdueDao.getFollowUps(
       shopId: widget.shopId,
-      loanId: loan.id,
+      creditId: credit.id,
     );
     final resolutions = await _overdueDao.getResolutions(
       shopId: widget.shopId,
-      loanId: loan.id,
+      creditId: credit.id,
     );
 
     if (!mounted) return;
@@ -593,7 +593,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: Text('Governance History (${loan.id.substring(0, 8)}...)'),
+          title: Text('Governance History (${credit.id.substring(0, 8)}...)'),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
@@ -654,7 +654,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Overdue Loans')),
+        appBar: AppBar(title: const Text('Overdue Credits')),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -674,7 +674,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
     final isOwner = widget.currentUser.role == AppRole.shopOwner;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Overdue Loans')),
+      appBar: AppBar(title: const Text('Overdue Credits')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -688,20 +688,20 @@ class _OverdueScreenState extends State<OverdueScreen> {
               const SizedBox(height: 16),
             ],
             Text(
-              'Overdue Loans (${_overdueLoans.length})',
+              'Overdue Credits (${_overdueCredits.length})',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            if (_overdueLoans.isEmpty) ...[
+            if (_overdueCredits.isEmpty) ...[
               const Text(
-                'No overdue loans.',
+                'No overdue credits.',
                 style: TextStyle(color: Colors.grey),
               ),
             ] else
-              ..._overdueLoans.map((loan) {
-                final daysOverdue = _daysOverdue(loan);
-                final latestFollowUp = _latestFollowUps[loan.id];
-                final latestRes = _latestResolutions[loan.id];
+              ..._overdueCredits.map((credit) {
+                final daysOverdue = _daysOverdue(credit);
+                final latestFollowUp = _latestFollowUps[credit.id];
+                final latestRes = _latestResolutions[credit.id];
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -725,11 +725,11 @@ class _OverdueScreenState extends State<OverdueScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Loan ${loan.id.substring(0, 8)}...',
+                                    'Credit ${credit.id.substring(0, 8)}...',
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
-                                  Text('Customer: ${loan.customerId}'),
-                                  Text('Due: ${loan.dueDateAsCalendarDate(_shopTimeZone!)}'),
+                                  Text('Customer: ${credit.customerId}'),
+                                  Text('Due: ${credit.dueDateAsCalendarDate(_shopTimeZone!)}'),
                                   Text(
                                     'Days Overdue: $daysOverdue',
                                     style: const TextStyle(
@@ -737,7 +737,7 @@ class _OverdueScreenState extends State<OverdueScreen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  Text('Balance: ${Money(loan.balanceCents).format()}'),
+                                  Text('Balance: ${Money(credit.balanceCents).format()}'),
                                 ],
                               ),
                             ),
@@ -802,29 +802,29 @@ class _OverdueScreenState extends State<OverdueScreen> {
                           children: [
                             if (isOwner)
                               OutlinedButton.icon(
-                                key: Key('extend_due_date_button_${loan.id}'),
+                                key: Key('extend_due_date_button_${credit.id}'),
                                 icon: const Icon(Icons.calendar_today, size: 16),
                                 label: const Text('Extend Due Date'),
-                                onPressed: () => _showExtensionDialog(loan),
+                                onPressed: () => _showExtensionDialog(credit),
                               ),
                             OutlinedButton.icon(
-                              key: Key('log_follow_up_button_${loan.id}'),
+                              key: Key('log_follow_up_button_${credit.id}'),
                               icon: const Icon(Icons.note_add, size: 16),
                               label: const Text('Log Follow-Up'),
-                              onPressed: () => _showFollowUpDialog(loan),
+                              onPressed: () => _showFollowUpDialog(credit),
                             ),
                             if (isOwner)
                               OutlinedButton.icon(
-                                key: Key('resolve_case_button_${loan.id}'),
+                                key: Key('resolve_case_button_${credit.id}'),
                                 icon: const Icon(Icons.gavel, size: 16),
                                 label: const Text('Resolve Case'),
-                                onPressed: () => _showResolutionDialog(loan),
+                                onPressed: () => _showResolutionDialog(credit),
                               ),
                             TextButton.icon(
-                              key: Key('view_history_button_${loan.id}'),
+                              key: Key('view_history_button_${credit.id}'),
                               icon: const Icon(Icons.history, size: 16),
                               label: const Text('History'),
-                              onPressed: () => _showLoanHistoryDialog(loan),
+                              onPressed: () => _showCreditHistoryDialog(credit),
                             ),
                           ],
                         ),
@@ -835,41 +835,41 @@ class _OverdueScreenState extends State<OverdueScreen> {
               }),
             const SizedBox(height: 24),
             Text(
-              'All Loans (${_loans.length})',
+              'All Credits (${_credits.length})',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            if (_loans.isEmpty)
-              const Text('No loans found.')
+            if (_credits.isEmpty)
+              const Text('No credits found.')
             else
-              ..._loans.map((loan) {
-                final statusColor = loan.status == LoanStatus.overdue
+              ..._credits.map((credit) {
+                final statusColor = credit.status == CreditStatus.overdue
                     ? Colors.red
-                    : loan.status == LoanStatus.settled
+                    : credit.status == CreditStatus.settled
                         ? Colors.grey
                         : Colors.green;
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     title: Text(
-                      'Loan ${loan.id.substring(0, 8)}...',
+                      'Credit ${credit.id.substring(0, 8)}...',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Status: ${loan.status.value.toUpperCase()}',
+                          'Status: ${credit.status.value.toUpperCase()}',
                           style: TextStyle(color: statusColor),
                         ),
                         Text(
-                          'Balance: ${Money(loan.balanceCents).format()}',
+                          'Balance: ${Money(credit.balanceCents).format()}',
                         ),
-                        if (loan.status == LoanStatus.active &&
-                            loan.balanceCents > 0 &&
+                        if (credit.status == CreditStatus.active &&
+                            credit.balanceCents > 0 &&
                             _shopTimeZone != null)
                           Text(
-                            'Due: ${loan.dueDateAsCalendarDate(_shopTimeZone!)}',
+                            'Due: ${credit.dueDateAsCalendarDate(_shopTimeZone!)}',
                           ),
                       ],
                     ),
@@ -882,3 +882,4 @@ class _OverdueScreenState extends State<OverdueScreen> {
     );
   }
 }
+

@@ -50,10 +50,10 @@ void main() {
       id: 'audit-002',
       shopId: testShopId,
       eventCategory: 2,
-      actionType: 'loan_agreement_origination',
+      actionType: 'credit_agreement_origination',
       actorId: 'user-cashier-01',
-      targetEntityType: 'loan',
-      targetEntityId: 'loan-201',
+      targetEntityType: 'credit',
+      targetEntityId: 'credit-201',
       postStateJson: {'principalCents': 5000000, 'balanceCents': 5000000},
       serverTimestamp: now.subtract(const Duration(minutes: 25)),
     ),
@@ -61,10 +61,10 @@ void main() {
       id: 'audit-003',
       shopId: testShopId,
       eventCategory: 2,
-      actionType: 'cancel_loan_agreement',
+      actionType: 'cancel_credit_agreement',
       actorId: 'user-owner-01',
-      targetEntityType: 'loan',
-      targetEntityId: 'loan-202',
+      targetEntityType: 'credit',
+      targetEntityId: 'credit-202',
       reason: 'Customer withdrew agreement before disbursement',
       serverTimestamp: now.subtract(const Duration(minutes: 20)),
     ),
@@ -72,10 +72,10 @@ void main() {
       id: 'audit-004',
       shopId: testShopId,
       eventCategory: 2,
-      actionType: 'loan_term_reagreed',
+      actionType: 'credit_term_reagreed',
       actorId: 'user-owner-01',
-      targetEntityType: 'loan',
-      targetEntityId: 'loan-203',
+      targetEntityType: 'credit',
+      targetEntityId: 'credit-203',
       reason: 'Customer negotiated term extension before disbursement',
       serverTimestamp: now.subtract(const Duration(minutes: 15)),
     ),
@@ -153,7 +153,7 @@ void main() {
     });
 
     test('Filtering by category returns only matching category records', () async {
-      // Category 2: Loan agreement actions
+      // Category 2: Credit agreement actions
       final cat2Records = await service.getAuditEvents(
         shopId: testShopId,
         actor: ownerUser,
@@ -164,9 +164,9 @@ void main() {
       expect(
         cat2Records.map((e) => e.actionType).toSet(),
         containsAll([
-          'loan_agreement_origination',
-          'cancel_loan_agreement',
-          'loan_term_reagreed',
+          'credit_agreement_origination',
+          'cancel_credit_agreement',
+          'credit_term_reagreed',
         ]),
       );
 
@@ -207,3 +207,4 @@ void main() {
     });
   });
 }
+

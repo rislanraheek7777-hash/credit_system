@@ -237,3 +237,4 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
     );
   }
 }
+

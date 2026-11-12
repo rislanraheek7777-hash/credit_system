@@ -21,13 +21,15 @@ class Customers extends Table {
   TextColumn get fullName => text().withLength(min: 1, max: 255)();
 
   /// National Identity Card (NIC) number, normalized to uppercase.
-  TextColumn get nic => text().withLength(min: 1, max: 50)();
+  /// Optional: nullable to allow multiple customers without NIC.
+  TextColumn get nic => text().withLength(max: 50).nullable()();
 
   /// Primary contact telephone number.
   TextColumn get phone => text().withLength(min: 1, max: 50)();
 
   /// Residential street address.
-  TextColumn get address => text().withLength(min: 1)();
+  /// Optional: nullable to allow customers without an address.
+  TextColumn get address => text().nullable()();
 
   /// Local file URI or sandboxed path to compressed customer KYC photo.
   TextColumn get photoUri => text().nullable()();
@@ -46,3 +48,4 @@ class Customers extends Table {
     {shopId, nic},
   ];
 }
+

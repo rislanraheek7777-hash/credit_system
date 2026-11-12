@@ -9,8 +9,8 @@ import 'package:credit_system/core/permissions/authorization_guard.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/overdue_dao.dart';
 import 'package:credit_system/features/customers/domain/models/customer_follow_up.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
-import 'package:credit_system/features/customers/domain/models/loan_resolution.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
+import 'package:credit_system/features/customers/domain/models/credit_resolution.dart';
 
 void main() {
   late AppDatabase db;
@@ -20,7 +20,7 @@ void main() {
   const ownerId = 'owner-gov-001';
   const cashierId = 'cashier-gov-001';
   const customerId = 1;
-  const loanId = 'loan-gov-001';
+  const creditId = 'credit-gov-001';
 
   final ownerUser = AppUser(
     id: ownerId,
@@ -109,9 +109,9 @@ void main() {
       ),
     );
 
-    await db.into(db.loans).insert(
-      LoansCompanion.insert(
-        id: loanId,
+    await db.into(db.credits).insert(
+      CreditsCompanion.insert(
+        id: creditId,
         shopId: shopId,
         customerId: customerId,
         principalCents: 1000000,
@@ -134,17 +134,17 @@ void main() {
       final updated = await overdueDao.grantDueDateExtension(
         actor: ownerUser,
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         newDueDate: newDueDate,
         reason: 'Customer requested 2-week extension due to family emergency',
       );
 
-      expect(updated.status, equals(LoanStatus.active));
-      expect(updated.workflowStatus, equals(LoanWorkflowStatus.disbursed));
+      expect(updated.status, equals(CreditStatus.active));
+      expect(updated.workflowStatus, equals(CreditWorkflowStatus.disbursed));
 
       final history = await overdueDao.getExtensionHistory(
         shopId: shopId,
-        loanId: loanId,
+        creditId: creditId,
       );
       expect(history.length, equals(1));
       expect(history.first.reason, contains('family emergency'));
@@ -163,7 +163,7 @@ void main() {
         () => overdueDao.grantDueDateExtension(
           actor: cashierUser,
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           newDueDate: newDueDate,
           reason: 'Cashier attempt',
         ),
@@ -177,7 +177,7 @@ void main() {
         () => overdueDao.grantDueDateExtension(
           actor: ownerUser,
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           newDueDate: pastDate,
           reason: 'Invalid past date',
         ),
@@ -191,7 +191,7 @@ void main() {
         () => overdueDao.grantDueDateExtension(
           actor: ownerUser,
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           newDueDate: newDueDate,
           reason: '   ',
         ),
@@ -205,7 +205,7 @@ void main() {
       final promisedDate = DateTime.now().add(const Duration(days: 5));
       final followUp = await overdueDao.recordFollowUp(
         actor: cashierWithNotes,
-        loanId: loanId,
+        creditId: creditId,
         customerId: customerId,
         channel: FollowUpChannel.phoneCall,
         notes: 'Contacted borrower; agreed to pay partial amount next Friday.',
@@ -218,7 +218,7 @@ void main() {
 
       final followUps = await overdueDao.getFollowUps(
         shopId: shopId,
-        loanId: loanId,
+        creditId: creditId,
       );
       expect(followUps.length, equals(1));
       expect(followUps.first.id, equals(followUp.id));
@@ -244,7 +244,7 @@ void main() {
       expect(
         () => overdueDao.recordFollowUp(
           actor: userWithoutNotes,
-          loanId: loanId,
+          creditId: creditId,
           customerId: customerId,
           channel: FollowUpChannel.phoneCall,
           notes: 'No permission note',
@@ -257,7 +257,7 @@ void main() {
       expect(
         () => overdueDao.recordFollowUp(
           actor: cashierWithNotes,
-          loanId: loanId,
+          creditId: creditId,
           customerId: customerId,
           channel: FollowUpChannel.inPerson,
           notes: '   ',
@@ -271,25 +271,25 @@ void main() {
     test('recordResolution saves structured administrative resolution', () async {
       final resolution = await overdueDao.recordResolution(
         actor: ownerUser,
-        loanId: loanId,
-        resolutionType: LoanResolutionType.collateralRetained,
+        creditId: creditId,
+        resolutionType: CreditResolutionType.collateralRetained,
         reason: 'Borrower untraceable after formal notices; collateral held for legal determination.',
       );
 
-      expect(resolution.resolutionType, equals(LoanResolutionType.collateralRetained));
+      expect(resolution.resolutionType, equals(CreditResolutionType.collateralRetained));
       expect(resolution.reason, contains('untraceable'));
       expect(resolution.resolvedByUserId, equals(ownerId));
 
       final latest = await overdueDao.getLatestResolution(
         shopId: shopId,
-        loanId: loanId,
+        creditId: creditId,
       );
       expect(latest, isNotNull);
       expect(latest!.id, equals(resolution.id));
 
       // Verify audit event category 10 in SyncQueue
       final syncQueueRows = await db.select(db.syncQueue).get();
-      final resEvents = syncQueueRows.where((r) => r.actionType == 'record_loan_resolution');
+      final resEvents = syncQueueRows.where((r) => r.actionType == 'record_credit_resolution');
       expect(resEvents, isNotEmpty);
       expect(resEvents.first.payloadJson, contains('"auditCategory":10'));
     });
@@ -298,8 +298,8 @@ void main() {
       expect(
         () => overdueDao.recordResolution(
           actor: cashierUser,
-          loanId: loanId,
-          resolutionType: LoanResolutionType.underReview,
+          creditId: creditId,
+          resolutionType: CreditResolutionType.underReview,
           reason: 'Cashier trying to resolve',
         ),
         throwsA(isA<PermissionDeniedException>()),
@@ -310,8 +310,8 @@ void main() {
       expect(
         () => overdueDao.recordResolution(
           actor: ownerUser,
-          loanId: loanId,
-          resolutionType: LoanResolutionType.ownerSettledWrittenOff,
+          creditId: creditId,
+          resolutionType: CreditResolutionType.ownerSettledWrittenOff,
           reason: '   ',
         ),
         throwsA(isA<ArgumentError>()),
@@ -319,3 +319,4 @@ void main() {
     });
   });
 }
+

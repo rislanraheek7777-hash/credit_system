@@ -1,12 +1,12 @@
 import 'package:drift/drift.dart';
 import 'customers_table.dart';
-import 'loans_table.dart';
+import 'credits_table.dart';
 import 'shops_table.dart';
 
 /// Local SQLite schema for multi-item collateral (Story 3.1, FR-13/FR-14/FR-16).
 ///
 /// Stores pledged collateral items scoped to a shop tenant, linked to a customer
-/// borrower and optionally to a loan (nullable until Epic 4 enforces binding).
+/// borrower and optionally to a credit (nullable until Epic 4 enforces binding).
 ///
 /// Custody state is stored as text and enforced by a CHECK constraint.
 /// Weight is stored as integer milligrams to avoid floating-point precision loss.
@@ -16,7 +16,7 @@ import 'shops_table.dart';
 @DataClassName('CollateralItemEntry')
 @TableIndex(name: 'idx_collateral_shop_id', columns: {#shopId})
 @TableIndex(name: 'idx_collateral_shop_customer', columns: {#shopId, #customerId})
-@TableIndex(name: 'idx_collateral_shop_loan', columns: {#shopId, #loanId})
+@TableIndex(name: 'idx_collateral_shop_credit', columns: {#shopId, #creditId})
 @TableIndex(name: 'idx_collateral_shop_custody', columns: {#shopId, #custodyStatus})
 @TableIndex(name: 'idx_collateral_shop_category', columns: {#shopId, #category})
 class CollateralItems extends Table {
@@ -31,9 +31,9 @@ class CollateralItems extends Table {
   IntColumn get customerId =>
       integer().references(Customers, #id, onDelete: KeyAction.restrict)();
 
-  /// Optional associated loan (nullable until Epic 4 enforces loan-collateral binding).
-  TextColumn get loanId =>
-      text().references(Loans, #id, onDelete: KeyAction.restrict).nullable()();
+  /// Optional associated credit (nullable until Epic 4 enforces credit-collateral binding).
+  TextColumn get creditId =>
+      text().references(Credits, #id, onDelete: KeyAction.restrict).nullable()();
 
   /// Unique item reference within the shop (e.g., "COLL-001").
   TextColumn get itemReferenceId => text().withLength(min: 1, max: 100)();
@@ -89,3 +89,4 @@ class CollateralItems extends Table {
     "CHECK (custody_status IN ('in_custody', 'handover_requested', 'handover_reported', 'returned', 'exception_held', 'discrepancy'))",
   ];
 }
+

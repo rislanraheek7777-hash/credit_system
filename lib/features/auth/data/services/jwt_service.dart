@@ -86,6 +86,57 @@ class JwtService {
     return '$headerB64.$payloadB64.$signatureB64';
   }
 
+  /// Creates a signed JWT refresh token with the given claims.
+  ///
+  /// Refresh tokens are longer-lived than access tokens (7 days) and carry
+  /// a `typ` claim of `refresh` so they cannot be used as access tokens.
+  String signRefreshToken({
+    required String userId,
+    required String shopId,
+    required int sessionVersion,
+    required String role,
+  }) {
+    final now = DateTime.now().toUtc();
+    final exp = now.add(const Duration(days: 7));
+
+    final header = {
+      'alg': 'HS256',
+      'typ': 'JWT',
+    };
+
+    final payload = {
+      'iss': 'credit-system',
+      'sub': userId,
+      'aud': 'credit-system-client',
+      'iat': now.millisecondsSinceEpoch ~/ 1000,
+      'exp': exp.millisecondsSinceEpoch ~/ 1000,
+      'shop_id': shopId,
+      'session_version': sessionVersion,
+      'role': role,
+      'typ': 'refresh',
+    };
+
+    final headerB64 = _base64UrlEncode(utf8.encode(jsonEncode(header)));
+    final payloadB64 = _base64UrlEncode(utf8.encode(jsonEncode(payload)));
+    final signingInput = '$headerB64.$payloadB64';
+    final signature = _hmacSha256(signingInput);
+    final signatureB64 = _base64UrlEncode(signature);
+
+    return '$headerB64.$payloadB64.$signatureB64';
+  }
+
+  /// Verifies a JWT refresh token and returns its claims.
+  ///
+  /// Throws [JwtException] if the token is invalid, expired, has an invalid
+  /// signature, or is not a refresh token.
+  Map<String, dynamic> verifyRefreshToken(String token) {
+    final claims = verifyToken(token);
+    if (claims['typ'] != 'refresh') {
+      throw JwtException('Invalid JWT type');
+    }
+    return claims;
+  }
+
   /// Verifies a JWT access token and returns its claims.
   ///
   /// Throws [JwtException] if the token is invalid, expired, or has an

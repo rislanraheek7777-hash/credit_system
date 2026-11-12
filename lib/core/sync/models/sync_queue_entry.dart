@@ -80,13 +80,13 @@ class SyncQueueEntry {
   /// Client-generated UUIDv4 idempotency key to prevent duplicate processing.
   final String idempotencyKey;
 
-  /// Target entity category (e.g. 'loan', 'payment', 'customer', 'collateral').
+  /// Target entity category (e.g. 'credit', 'payment', 'customer', 'collateral').
   final String entityType;
 
   /// Canonical UUIDv4 identifier of the target domain entity.
   final String entityId;
 
-  /// Operation verb (e.g. 'create_loan', 'disburse_loan', 'record_payment').
+  /// Operation verb (e.g. 'create_credit', 'disburse_credit', 'record_payment').
   final String actionType;
 
   /// Unmodifiable operational mutation parameters.
@@ -345,3 +345,4 @@ class SyncQueueEntry {
     }
   }
 }
+

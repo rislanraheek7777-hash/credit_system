@@ -58,14 +58,24 @@ class AppDatabaseConnection {
   ///
   /// Does not write files to disk. Automatically wiped when closed.
   /// Explicitly activates SQLite foreign-key enforcement via `PRAGMA foreign_keys = ON;`.
+  ///
+  /// Set [closeStreamsSynchronously] to stop drift query streams immediately
+  /// when their last listener detaches instead of after an event-loop
+  /// iteration. Flutter widget tests need this: the deferred cleanup uses a
+  /// timer that is still pending when the fake-async test zone ends, which
+  /// fails the test.
   static QueryExecutor openInMemoryConnection({
     bool logStatements = false,
+    bool closeStreamsSynchronously = false,
   }) {
-    return NativeDatabase.memory(
-      logStatements: logStatements,
-      setup: (database) {
-        database.execute('PRAGMA foreign_keys = ON;');
-      },
+    return DatabaseConnection(
+      NativeDatabase.memory(
+        logStatements: logStatements,
+        setup: (database) {
+          database.execute('PRAGMA foreign_keys = ON;');
+        },
+      ),
+      closeStreamsSynchronously: closeStreamsSynchronously,
     );
   }
 
@@ -89,3 +99,4 @@ class AppDatabaseConnection {
     );
   }
 }
+

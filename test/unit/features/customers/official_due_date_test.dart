@@ -5,9 +5,9 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
-import 'package:credit_system/features/customers/domain/models/loan_term.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
+import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Coverage for the official calendar due date of Story 4.3 AC-2 / PRD FR-19.
@@ -28,7 +28,7 @@ void main() {
   const itemId = 'coll-due-1';
 
   late AppDatabase db;
-  late LoanDao loanDao;
+  late CreditDao creditDao;
   late String shopTimeZoneIdentifier;
 
   /// 2026-10-15 06:00Z is 2026-10-15 11:30 in Asia/Colombo.
@@ -46,7 +46,7 @@ void main() {
   setUp(() async {
     final inMemoryExecutor = AppDatabaseConnection.openInMemoryConnection();
     db = AppDatabase.forTesting(inMemoryExecutor);
-    loanDao = LoanDao(db);
+    creditDao = CreditDao(db);
     shopTimeZoneIdentifier = 'Asia/Colombo';
 
     final now = DateTime.now().toUtc();
@@ -102,13 +102,13 @@ void main() {
   /// disbursement at [disbursedAt].
   ///
   /// Returns the reloaded agreement.
-  Future<Loan> disburse({
+  Future<Credit> disburse({
     required int termPresetDays,
     required DateTime disbursedAt,
     String idempotencyKey = 'due-key',
   }) async {
     final shopZone = zone();
-    final created = await loanDao.createLoanAgreement(
+    final created = await creditDao.createCreditAgreement(
       actor: manager(),
       idempotencyKey: 'orig-$idempotencyKey',
       customerId: customerId,
@@ -121,16 +121,16 @@ void main() {
       termPresetDays: termPresetDays,
     );
 
-    await loanDao.confirmLoanDisbursement(
+    await creditDao.confirmCreditDisbursement(
       actor: manager(),
       idempotencyKey: idempotencyKey,
-      loanId: created.id,
+      creditId: created.id,
       disbursedAt: disbursedAt,
     );
 
     // Reload the agreement from the database so the assertions below see the
     // persisted value, not the in-memory one.
-    final reloaded = await loanDao.getLoanById(shopId, created.id);
+    final reloaded = await creditDao.getCreditById(shopId, created.id);
     expect(reloaded, isNotNull);
     return reloaded!;
   }
@@ -138,35 +138,35 @@ void main() {
   group('Story 4.3 AC-2 — the approved preset examples', () {
     test('a 30-day preset disbursed on October 15 produces November 14',
         () async {
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: disbursedOnOctober15,
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
-      expect(loan.dueDate.toUtc(), equals(DateTime.utc(2026, 11, 13, 18, 30)),
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
+      expect(credit.dueDate.toUtc(), equals(DateTime.utc(2026, 11, 13, 18, 30)),
           reason: 'The persisted instant is shop-local midnight of 2026-11-14.');
     });
 
     test('a 60-day preset disbursed on October 15 produces December 14',
         () async {
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 60,
         disbursedAt: disbursedOnOctober15,
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2026-12-14'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2026-12-14'));
     });
 
     test(
         'a 90-day preset disbursed on October 15 produces January 13 of the '
         'following year', () async {
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 90,
         disbursedAt: disbursedOnOctober15,
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2027-01-13'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2027-01-13'));
     });
   });
 
@@ -174,35 +174,35 @@ void main() {
     test('a month boundary is crossed by calendar days, not elapsed hours',
         () async {
       // 2026-01-31 + 30 calendar days = 2026-03-02 (2026 is not a leap year).
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: DateTime.utc(2026, 1, 31, 6),
         idempotencyKey: 'month-boundary',
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2026-03-02'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2026-03-02'));
     });
 
     test('a year boundary is crossed into the following year', () async {
       // 2026-12-20 + 30 calendar days = 2027-01-19.
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: DateTime.utc(2026, 12, 20, 6),
         idempotencyKey: 'year-boundary',
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2027-01-19'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2027-01-19'));
     });
 
     test('a leap-year February is handled by calendar arithmetic', () async {
       // 2028-02-01 + 30 calendar days = 2028-03-02 (February 2028 has 29 days).
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: DateTime.utc(2028, 2, 1, 6),
         idempotencyKey: 'leap-year',
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2028-03-02'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2028-03-02'));
     });
 
     test('a daylight-saving transition does not shift the calendar date',
@@ -219,13 +219,13 @@ void main() {
       ));
 
       // 2026-03-01 12:00 in New York; daylight saving starts on 2026-03-08.
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: DateTime.utc(2026, 3, 1, 17),
         idempotencyKey: 'dst',
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2026-03-31'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2026-03-31'));
     });
   });
 
@@ -235,15 +235,15 @@ void main() {
         () async {
       // Asia/Colombo is UTC+05:30, so shop-local midnight is 18:30 UTC on the
       // previous day.
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: disbursedOnOctober15,
         idempotencyKey: 'east',
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
       expect(
-        loan.dueDate.toUtc().toIso8601String().substring(0, 10),
+        credit.dueDate.toUtc().toIso8601String().substring(0, 10),
         equals('2026-11-13'),
         reason: 'The UTC calendar date of the stored instant differs from the '
             'agreed calendar date, which is exactly why it must never be '
@@ -263,13 +263,13 @@ void main() {
         updatedAt: DateTime.now().toUtc(),
       ));
 
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: DateTime.utc(2026, 10, 15, 14),
         idempotencyKey: 'west',
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
     });
 
     test('a shop in UTC keeps its agreed calendar date', () async {
@@ -283,14 +283,14 @@ void main() {
         updatedAt: DateTime.now().toUtc(),
       ));
 
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: DateTime.utc(2026, 10, 15, 6),
         idempotencyKey: 'utc',
       );
 
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
-      expect(loan.dueDate.toUtc(), equals(DateTime.utc(2026, 11, 14)));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
+      expect(credit.dueDate.toUtc(), equals(DateTime.utc(2026, 11, 14)));
     });
 
     test('an unresolvable shop zone falls back to the approved default',
@@ -304,7 +304,7 @@ void main() {
         updatedAt: DateTime.now().toUtc(),
       ));
 
-      final resolved = await loanDao.resolveShopTimeZone(shopId);
+      final resolved = await creditDao.resolveShopTimeZone(shopId);
       expect(resolved.identifier, equals(ShopTimeZone.defaultIdentifier));
     });
   });
@@ -312,15 +312,15 @@ void main() {
   group('persistence and reload', () {
     test('the persisted and reloaded due date is the agreed calendar date',
         () async {
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: disbursedOnOctober15,
         idempotencyKey: 'reload',
       );
 
       // The value read straight from the database row.
-      final row = await (db.select(db.loans)
-            ..where((l) => l.id.equals(loan.id)))
+      final row = await (db.select(db.credits)
+            ..where((l) => l.id.equals(credit.id)))
           .getSingle();
       expect(zone().localDateOf(row.dueDate).isoDate, equals('2026-11-14'));
       expect(
@@ -330,12 +330,12 @@ void main() {
       );
 
       // ... and the domain rendering of the reloaded agreement agrees.
-      expect(loan.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
+      expect(credit.dueDateAsCalendarDate(zone()), equals('2026-11-14'));
     });
 
     test('the disbursement event record carries the agreed calendar date',
         () async {
-      final loan = await disburse(
+      final credit = await disburse(
         termPresetDays: 30,
         disbursedAt: disbursedOnOctober15,
         idempotencyKey: 'event',
@@ -343,7 +343,7 @@ void main() {
 
       final rows = await db.select(db.syncQueue).get();
       final event = rows.firstWhere(
-        (r) => r.actionType == LoanDao.confirmLoanDisbursementActionType,
+        (r) => r.actionType == CreditDao.confirmCreditDisbursementActionType,
       );
 
       final payload =
@@ -351,7 +351,8 @@ void main() {
       expect(payload, contains('2026-11-14'),
           reason: 'The event payload records the official due date as the '
               'shop-local calendar date.');
-      expect(payload, contains(loan.id));
+      expect(payload, contains(credit.id));
     });
   });
 }
+

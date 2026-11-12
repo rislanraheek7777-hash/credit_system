@@ -64,7 +64,7 @@ void main() {
       expect(items.every((i) => i.shopId == 'shop-v10'), isTrue);
     });
 
-    test('preserves every collateral item and its loan binding', () async {
+    test('preserves every collateral item and its credit binding', () async {
       seedV10Database(dbFile);
 
       final db = openWithDeviceSemantics(dbFile);
@@ -73,9 +73,9 @@ void main() {
       final items = await db.select(db.collateralItems).get();
       expect(items, hasLength(3));
 
-      final bound = items.where((i) => i.loanId != null).toList();
+      final bound = items.where((i) => i.creditId != null).toList();
       expect(bound, hasLength(2));
-      expect(bound.every((i) => i.loanId == 'loan-v10'), isTrue,
+      expect(bound.every((i) => i.creditId == 'credit-v10'), isTrue,
           reason: 'The pledged items must still reference their agreement.');
 
       final gold = await (db.select(db.collateralItems)
@@ -118,7 +118,7 @@ void main() {
       expect(first.requestedByUserId, equals('user-v10'));
     });
 
-    test('preserves customer, loan and audit/sync records', () async {
+    test('preserves customer, credit and audit/sync records', () async {
       seedV10Database(dbFile);
 
       final db = openWithDeviceSemantics(dbFile);
@@ -132,21 +132,21 @@ void main() {
       expect(customer.fullName, equals('V10 Customer'));
       expect(customer.nic, equals('198512345678'));
 
-      final loan = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v10')))
+      final credit = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v10')))
           .getSingle();
-      expect(loan.principalCents, equals(500000));
-      expect(loan.balanceCents, equals(500000));
-      expect(loan.status, equals('active'));
-      expect(loan.workflowStatus, equals('disbursed'),
-          reason: 'Loans that predate the disbursement workflow are backfilled '
+      expect(credit.principalCents, equals(500000));
+      expect(credit.balanceCents, equals(500000));
+      expect(credit.status, equals('active'));
+      expect(credit.workflowStatus, equals('disbursed'),
+          reason: 'Credits that predate the disbursement workflow are backfilled '
               'to "disbursed" by the schema version 12 step.');
 
       final syncRows = await db.select(db.syncQueue).get();
       expect(syncRows, hasLength(2));
       expect(
         syncRows.map((r) => r.actionType),
-        containsAll(<String>['create_customer', 'create_loan']),
+        containsAll(<String>['create_customer', 'create_credit']),
       );
     });
 
@@ -189,16 +189,16 @@ void main() {
       await first.select(first.collateralItems).get();
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(20));
+      expect(readUserVersion(dbFile), equals(22));
 
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(20));
+      expect(second.schemaVersion, equals(22));
       final item = await (second.select(second.collateralItems)
             ..where((c) => c.id.equals('coll-v10-a')))
           .getSingle();
-      expect(item.loanId, equals('loan-v10'),
+      expect(item.creditId, equals('credit-v10'),
           reason: 'The child reference must survive a full close/reopen cycle.');
 
       final exception = await (second.select(second.collateralPhotoExceptions)
@@ -215,7 +215,7 @@ void main() {
       expect(await first.select(first.collateralItems).get(), hasLength(3));
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(20),
+      expect(readUserVersion(dbFile), equals(22),
           reason: 'Drift must record the new schema version after the '
               'migration committed.');
 
@@ -226,7 +226,7 @@ void main() {
       expect(
           await second.select(second.collateralPhotoExceptions).get(),
           hasLength(2));
-      expect(readUserVersion(dbFile), equals(20));
+      expect(readUserVersion(dbFile), equals(22));
     });
 
     test('repairs a database left half-migrated by a failed attempt',
@@ -359,7 +359,7 @@ Future<List<String>> _describeTable(AppDatabase db, String tableName) async {
 
 /// Creates a faithful version 10 database on disk, exactly as a device would
 /// hold it after Stories 3.1 and 3.2 shipped: the real foreign keys, the
-/// pre-v11 custody state vocabulary, a loan with pledged collateral bound to
+/// pre-v11 custody state vocabulary, a credit with pledged collateral bound to
 /// it, populated collateral photo exceptions referencing that collateral, and
 /// local audit/sync records.
 void seedV10Database(File file, {bool withOrphanStagingTable = false}) {
@@ -435,7 +435,7 @@ void seedV10Database(File file, {bool withOrphanStagingTable = false}) {
       "created_at" INTEGER NOT NULL,
       "updated_at" INTEGER NOT NULL
     );
-    CREATE TABLE "loans" (
+    CREATE TABLE "credits" (
       "id" TEXT NOT NULL PRIMARY KEY,
       "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
       "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -450,7 +450,7 @@ void seedV10Database(File file, {bool withOrphanStagingTable = false}) {
       "id" TEXT NOT NULL PRIMARY KEY,
       "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
       "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
-      "loan_id" TEXT REFERENCES "loans" ("id") ON DELETE RESTRICT,
+      "credit_id" TEXT REFERENCES "credits" ("id") ON DELETE RESTRICT,
       "item_reference_id" TEXT NOT NULL,
       "category" TEXT NOT NULL,
       "description" TEXT NOT NULL,
@@ -503,19 +503,19 @@ void seedV10Database(File file, {bool withOrphanStagingTable = false}) {
     VALUES ('cpe-cust-v10', 'shop-v10', 'cust-v10', '198512345678', 'user-v10', 'Customer photo missing', 'pending_owner_approval', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "due_date", "created_at")
-    VALUES ('loan-v10', 'shop-v10', 'cust-v10', 500000, 500000, 'active', $now, $now);
+    INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "due_date", "created_at")
+    VALUES ('credit-v10', 'shop-v10', 'cust-v10', 500000, 500000, 'active', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "photo_uri", "photo_hash", "custody_status", "created_at", "updated_at")
-    VALUES ('coll-v10-a', 'shop-v10', 'cust-v10', 'loan-v10', 'COLL-V10-A', 'gold', '22K gold necklace', 'Good', 5500, 1500000, '/photos/coll-a.jpg', 'hash-coll-a', 'in_custody', $now, $now);
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "photo_uri", "photo_hash", "custody_status", "created_at", "updated_at")
+    VALUES ('coll-v10-a', 'shop-v10', 'cust-v10', 'credit-v10', 'COLL-V10-A', 'gold', '22K gold necklace', 'Good', 5500, 1500000, '/photos/coll-a.jpg', 'hash-coll-a', 'in_custody', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "photo_uri", "photo_hash", "custody_status", "created_at", "updated_at")
-    VALUES ('coll-v10-b', 'shop-v10', 'cust-v10', 'loan-v10', 'COLL-V10-B', 'electronics', 'Laptop', 'Fair', 1200, 400000, NULL, NULL, 'in_custody', $now, $now);
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "photo_uri", "photo_hash", "custody_status", "created_at", "updated_at")
+    VALUES ('coll-v10-b', 'shop-v10', 'cust-v10', 'credit-v10', 'COLL-V10-B', 'electronics', 'Laptop', 'Fair', 1200, 400000, NULL, NULL, 'in_custody', $now, $now);
   ''');
   db.execute('''
-    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "photo_uri", "photo_hash", "custody_status", "created_at", "updated_at")
+    INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "photo_uri", "photo_hash", "custody_status", "created_at", "updated_at")
     VALUES ('coll-v10-c', 'shop-v10', 'cust-v10', NULL, 'COLL-V10-C', 'valuables', 'Watch', 'Like New', 300, 900000, NULL, NULL, 'exception_held', $now, $now);
   ''');
   // The populated child rows that trip the ON DELETE RESTRICT action.
@@ -533,7 +533,7 @@ void seedV10Database(File file, {bool withOrphanStagingTable = false}) {
   ''');
   db.execute('''
     INSERT INTO "sync_queue" ("id", "shop_id", "idempotency_key", "entity_type", "entity_id", "action_type", "payload_json", "status", "retry_count", "created_at")
-    VALUES ('sync-v10-b', 'shop-v10', '00000000-0000-4000-8000-000000000012', 'loan', 'loan-v10', 'create_loan', '{"auditCategory":2}', 'pending_server_ack', 0, $now);
+    VALUES ('sync-v10-b', 'shop-v10', '00000000-0000-4000-8000-000000000012', 'credit', 'credit-v10', 'create_credit', '{"auditCategory":2}', 'pending_server_ack', 0, $now);
   ''');
 
   if (withOrphanStagingTable) {
@@ -545,7 +545,7 @@ void seedV10Database(File file, {bool withOrphanStagingTable = false}) {
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
         "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
-        "loan_id" TEXT REFERENCES "loans" ("id") ON DELETE RESTRICT,
+        "credit_id" TEXT REFERENCES "credits" ("id") ON DELETE RESTRICT,
         "item_reference_id" TEXT NOT NULL,
         "category" TEXT NOT NULL,
         "description" TEXT NOT NULL,
@@ -561,12 +561,13 @@ void seedV10Database(File file, {bool withOrphanStagingTable = false}) {
       );
     ''');
     db.execute('''
-      INSERT INTO "_collateral_items_v11" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "photo_uri", "photo_hash", "custody_status", "created_at", "updated_at")
-      VALUES ('coll-v10-a', 'shop-v10', 'cust-v10', 'loan-v10', 'COLL-V10-A', 'gold', '22K gold necklace', 'Good', 5500, 1500000, '/photos/coll-a.jpg', 'hash-coll-a', 'in_custody', $now, $now);
+      INSERT INTO "_collateral_items_v11" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "photo_uri", "photo_hash", "custody_status", "created_at", "updated_at")
+      VALUES ('coll-v10-a', 'shop-v10', 'cust-v10', 'credit-v10', 'COLL-V10-A', 'gold', '22K gold necklace', 'Good', 5500, 1500000, '/photos/coll-a.jpg', 'hash-coll-a', 'in_custody', $now, $now);
     ''');
   }
 
   db.close();
 }
+
 
 

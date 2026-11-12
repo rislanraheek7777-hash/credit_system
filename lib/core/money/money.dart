@@ -8,7 +8,7 @@ import '../errors/monetary_exceptions.dart';
 /// - Amounts are stored internally as 64-bit integer minor units (e.g. 100 cents = 1.00 LKR).
 /// - Cross-currency arithmetic and comparisons are strictly rejected without conversion.
 /// - Negative amounts are supported for signed ledger adjustments and balance differences,
-///   while business rules preventing loan overpayments are enforced in higher domain layers.
+///   while business rules preventing credit overpayments are enforced in higher domain layers.
 @immutable
 class Money implements Comparable<Money> {
   /// Default currency code for the system baseline (Sri Lankan Rupees).
@@ -368,3 +368,4 @@ class Money implements Comparable<Money> {
     }
   }
 }
+

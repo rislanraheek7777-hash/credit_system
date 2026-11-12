@@ -34,7 +34,7 @@
 **And** presentation formatting is decoupled from the internal integer minor units ledger
 
 ### AC-4: Currency Lock After First Financial Transaction
-**Given** any financial transaction (loan agreement, disbursement, payment, or reversal) exists within the shop tenant  
+**Given** any financial transaction (credit agreement, disbursement, payment, or reversal) exists within the shop tenant  
 **When** the Shop Owner attempts to change the base currency code  
 **Then** the change is programmatically blocked  
 **And** the currency remains locked to the existing code  
@@ -62,7 +62,7 @@
 
 ### Currency Lock Behavior
 - Currency change is blocked when `ShopDao.hasFinancialTransactions(shopId)` returns `true`
-- **Limitation:** `hasFinancialTransactions()` checks `sync_queue` for financial entity types (`loan`, `payment`, `disbursement`, `reversal`). If `sync_queue` entries are cleaned up after server confirmation, the check may return `false` even though financial transactions occurred. This is a local heuristic; server-enforced currency locking is deferred to PostgreSQL RLS/triggers (Epic 4+).
+- **Limitation:** `hasFinancialTransactions()` checks `sync_queue` for financial entity types (`credit`, `payment`, `disbursement`, `reversal`). If `sync_queue` entries are cleaned up after server confirmation, the check may return `false` even though financial transactions occurred. This is a local heuristic; server-enforced currency locking is deferred to PostgreSQL RLS/triggers (Epic 4+).
 
 ### Server Audit Logging
 - Server-side audit logging for shop profile changes is **deferred** to Story 1.3 (PostgreSQL tenant isolation & append-only audit trigger)
@@ -92,3 +92,4 @@
 - **AD-2:** Integer Minor Units with Immutable Money Value Object
 - **AD-4:** Clean Architecture Layering
 - **AD-6:** Granular 14-Permission RBAC, Immediate Session Revocation & Database-Enforced Append-Only Audit Trails
+

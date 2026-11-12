@@ -155,10 +155,8 @@ class Customer {
     if (fullName.length > 255) {
       throw CustomerValidationException('Customer full name cannot exceed 255 characters');
     }
-    if (nic.isEmpty) {
-      throw CustomerValidationException('Customer NIC cannot be empty');
-    }
-    if (!isValidNicFormat(nic)) {
+    // NIC is optional: validate format only when provided.
+    if (nic.trim().isNotEmpty && !isValidNicFormat(nic)) {
       throw CustomerValidationException(
         'Invalid NIC format: "$nic". Must be 9 digits followed by V/X or 12 numeric digits.',
       );
@@ -169,9 +167,7 @@ class Customer {
     if (phone.length > 50) {
       throw CustomerValidationException('Customer phone number cannot exceed 50 characters');
     }
-    if (address.trim().isEmpty) {
-      throw CustomerValidationException('Customer residential address cannot be empty');
-    }
+    // Residential address is optional.
   }
 
   /// Returns a copy of this [Customer] with the given fields replaced.
@@ -227,3 +223,4 @@ class Customer {
         photoHash,
       );
 }
+

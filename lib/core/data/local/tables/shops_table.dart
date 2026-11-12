@@ -21,6 +21,9 @@ class Shops extends Table {
   TextColumn get timezone =>
       text().withDefault(const Constant('Asia/Colombo'))();
 
+  /// Type of shop (e.g. Retail, Wholesale, Service).
+  TextColumn get shopType => text().nullable()();
+
   /// Physical or business street address of the retail shop.
   TextColumn get businessAddress => text().nullable()();
 
@@ -51,3 +54,4 @@ class Shops extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+

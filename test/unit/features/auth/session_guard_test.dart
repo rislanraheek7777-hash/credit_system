@@ -365,7 +365,7 @@ void main() {
       );
       await sessionGuard.requirePermission(
         token,
-        AppPermission.createLoans,
+        AppPermission.createCredits,
         'shop-uuid-456',
       );
       await sessionGuard.requirePermission(
@@ -420,3 +420,4 @@ class _MockSecureStorage implements SecureStorage {
     return true;
   }
 }
+

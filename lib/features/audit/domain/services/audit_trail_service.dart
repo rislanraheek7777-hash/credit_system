@@ -161,3 +161,4 @@ class AuditTrailService {
       ..sort((a, b) => b.serverTimestamp.compareTo(a.serverTimestamp));
   }
 }
+

@@ -10,9 +10,9 @@ import 'package:credit_system/core/data/local/app_database.dart';
 
 /// Regression coverage for the schema version 17 -> 18 migration (Story 5.5).
 ///
-/// The migration creates the `loan_ledger_entries` table for immutable
+/// The migration creates the `credit_ledger_entries` table for immutable
 /// financial ledger entries (compensating debits and controlled adjustments)
-/// linked to a loan. No existing customer, loan, payment, or correction data
+/// linked to a credit. No existing customer, credit, payment, or correction data
 /// is touched.
 void main() {
   late Directory tempDir;
@@ -64,8 +64,8 @@ void main() {
   /// Seeds a genuine version 17 database on disk.
   ///
   /// Carries every column introduced by migrations up through v17 including
-  /// `correctionPending` on loans and the `loan_corrections` table, but **not**
-  /// the `loan_ledger_entries` table (which the v18 migration creates).
+  /// `correctionPending` on credits and the `credit_corrections` table, but **not**
+  /// the `credit_ledger_entries` table (which the v18 migration creates).
   void seedV17Database(File file) {
     final db = sqlite.sqlite3.open(file.path);
     db.execute('''\
@@ -112,7 +112,7 @@ void main() {
         "updated_at" INTEGER NOT NULL
       );''');
     db.execute('''\
-      CREATE TABLE "loans" (
+      CREATE TABLE "credits" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
         "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -152,7 +152,7 @@ void main() {
       CREATE TABLE "payments" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
-        "loan_id" TEXT NOT NULL REFERENCES "loans" ("id") ON DELETE RESTRICT,
+        "credit_id" TEXT NOT NULL REFERENCES "credits" ("id") ON DELETE RESTRICT,
         "receipt_number" TEXT NOT NULL,
         "amount_cents" INTEGER NOT NULL,
         "pre_balance_cents" INTEGER NOT NULL,
@@ -178,10 +178,10 @@ void main() {
         CHECK (post_balance_cents <= pre_balance_cents)
       );''');
     db.execute('''\
-      CREATE TABLE "loan_corrections" (
+      CREATE TABLE "credit_corrections" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
-        "loan_id" TEXT NOT NULL REFERENCES "loans" ("id") ON DELETE RESTRICT,
+        "credit_id" TEXT NOT NULL REFERENCES "credits" ("id") ON DELETE RESTRICT,
         "original_payment_id" TEXT REFERENCES "payments" ("id") ON DELETE RESTRICT,
         "requested_by_user_id" TEXT NOT NULL REFERENCES "app_users" ("id") ON DELETE RESTRICT,
         "correction_amount_cents" INTEGER NOT NULL,
@@ -214,11 +214,11 @@ void main() {
       INSERT INTO "customers" ("id", "shop_id", "full_name", "nic", "phone", "address", "created_at", "updated_at")
       VALUES ('cust-v17', 'shop-v17', 'V17 Customer', '198512345678', '+94 77 123 4567', '1 Main St', $now, $now);''');
     db.execute('''\
-      INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at", "correction_pending")
-      VALUES ('loan-v17-active', 'shop-v17', 'cust-v17', 500000, 300000, 'active', 'disbursed', 30, $now, 'user-v17', $now, $now, 0);''');
+      INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at", "correction_pending")
+      VALUES ('credit-v17-active', 'shop-v17', 'cust-v17', 500000, 300000, 'active', 'disbursed', 30, $now, 'user-v17', $now, $now, 0);''');
     db.execute('''\
-      INSERT INTO "loan_corrections" ("id", "shop_id", "loan_id", "original_payment_id", "requested_by_user_id", "correction_amount_cents", "reason", "status", "created_at", "updated_at")
-      VALUES ('corr-v17-1', 'shop-v17', 'loan-v17-active', NULL, 'user-v17', 200000, 'Typographical error.', 'pending_approval', $now, $now);''');
+      INSERT INTO "credit_corrections" ("id", "shop_id", "credit_id", "original_payment_id", "requested_by_user_id", "correction_amount_cents", "reason", "status", "created_at", "updated_at")
+      VALUES ('corr-v17-1', 'shop-v17', 'credit-v17-active', NULL, 'user-v17', 200000, 'Typographical error.', 'pending_approval', $now, $now);''');
 
     db.close();
   }
@@ -237,13 +237,13 @@ void main() {
       final db = openWithoutMigrations(file);
       addTearDown(() async => db.close());
 
-      // Existing loan data is readable exactly as it is, without the ledger
+      // Existing credit data is readable exactly as it is, without the ledger
       // entries table.
       final raw = sqlite.sqlite3.open(file.path);
       try {
         final rows = raw.select(
-          'SELECT balance_cents, correction_pending FROM loans WHERE id = ?',
-          ['loan-v17-active'],
+          'SELECT balance_cents, correction_pending FROM credits WHERE id = ?',
+          ['credit-v17-active'],
         );
         expect(rows.first.values.first, equals(300000));
         expect(rows.first.values.elementAt(1), equals(0));
@@ -265,46 +265,46 @@ void main() {
       addTearDown(() async => db.close());
 
       // Drift opens lazily; issue a query to force the migration to run.
-      await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v17-active')))
+      await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v17-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(20));
-      expect(db.schemaVersion, equals(20));
+      expect(readUserVersion(file), equals(22));
+      expect(db.schemaVersion, equals(22));
     });
 
-    test('preserves existing loan and correction data and creates the ledger entries table after upgrade', () async {
+    test('preserves existing credit and correction data and creates the ledger entries table after upgrade', () async {
       final file = File(p.join(tempDir.path, 'v18_ledger_table.sqlite'));
       seedV17Database(file);
 
       final db = openWithDeviceSemantics(file);
       addTearDown(() async => db.close());
 
-      await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v17-active')))
+      await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v17-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(20));
+      expect(readUserVersion(file), equals(22));
 
       // Existing data is preserved.
-      final active = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v17-active')))
+      final active = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v17-active')))
           .getSingle();
       expect(active.balanceCents, equals(300000));
       expect(active.correctionPending, isFalse);
 
-      final correction = await (db.select(db.loanCorrections)
+      final correction = await (db.select(db.creditCorrections)
             ..where((c) => c.id.equals('corr-v17-1')))
           .getSingle();
       expect(correction.status, equals('pending_approval'));
       expect(correction.correctionAmountCents, equals(200000));
 
       // The ledger entries table exists and is usable.
-      await db.into(db.loanLedgerEntries).insertReturningOrNull(
-        LoanLedgerEntriesCompanion.insert(
+      await db.into(db.creditLedgerEntries).insertReturningOrNull(
+        CreditLedgerEntriesCompanion.insert(
           id: 'ledger-v18-1',
           shopId: 'shop-v17',
-          loanId: 'loan-v17-active',
+          creditId: 'credit-v17-active',
           originalPaymentId: const Value.absent(),
           correctionId: const Value.absent(),
           entryType: 'compensating_debit',
@@ -318,7 +318,7 @@ void main() {
         ),
       );
 
-      final inserted = await (db.select(db.loanLedgerEntries)
+      final inserted = await (db.select(db.creditLedgerEntries)
             ..where((e) => e.id.equals('ledger-v18-1')))
           .getSingle();
       expect(inserted.shopId, equals('shop-v17'));
@@ -329,12 +329,12 @@ void main() {
 
       // The ledger indexes were created.
       final indexRows = await db.customSelect(
-        "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'loan_ledger_entries';",
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'credit_ledger_entries';",
       ).get();
       final indexNames = indexRows.map((r) => r.read<String>('name')).toList();
       expect(indexNames, containsAll([
         'idx_ledger_entries_shop_id',
-        'idx_ledger_entries_shop_loan',
+        'idx_ledger_entries_shop_credit',
         'idx_ledger_entries_shop_entry_type',
         'idx_ledger_entries_shop_correction',
       ]));
@@ -347,8 +347,8 @@ void main() {
       final db = openWithDeviceSemantics(file);
       addTearDown(() async => db.close());
 
-      await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v17-active')))
+      await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v17-active')))
           .getSingle();
 
       // A non-positive payment amount is still rejected by the payments table
@@ -359,7 +359,7 @@ void main() {
             PaymentsCompanion.insert(
               id: 'pay-bad',
               shopId: 'shop-v17',
-              loanId: 'loan-v17-active',
+              creditId: 'credit-v17-active',
               receiptNumber: 'RCP-BAD',
               amountCents: -100,
               preBalanceCents: 300000,
@@ -380,3 +380,4 @@ void main() {
     });
   });
 }
+

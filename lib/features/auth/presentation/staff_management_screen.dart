@@ -55,7 +55,6 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
 
   @override
   void dispose() {
-    _db.close();
     super.dispose();
   }
 
@@ -227,3 +226,4 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     );
   }
 }
+

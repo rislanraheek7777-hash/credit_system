@@ -16,9 +16,9 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
       id: entry.id,
       shopId: entry.shopId,
       fullName: entry.fullName,
-      nic: entry.nic,
+      nic: entry.nic ?? '',
       phone: entry.phone,
-      address: entry.address,
+      address: entry.address ?? '',
       photoUri: entry.photoUri,
       photoHash: entry.photoHash,
       createdAt: entry.createdAt.toUtc(),
@@ -36,9 +36,11 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
       id: const Value.absent(),
       shopId: Value(customer.shopId),
       fullName: Value(customer.fullName),
-      nic: Value(Customer.normalizeNic(customer.nic)),
+      nic: Value(customer.nic.trim().isEmpty
+          ? null
+          : Customer.normalizeNic(customer.nic)),
       phone: Value(customer.phone),
-      address: Value(customer.address),
+      address: Value(customer.address.trim().isEmpty ? null : customer.address),
       photoUri: Value(customer.photoUri),
       photoHash: Value(customer.photoHash),
       createdAt: Value(customer.createdAt),
@@ -71,6 +73,7 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
   ///
   /// Normalizes the search [nic] prior to comparison.
   Future<Customer?> getCustomerByNic(String shopId, String nic) async {
+    if (nic.trim().isEmpty) return null;
     final normalized = Customer.normalizeNic(nic);
     final query = select(customers)
       ..where((c) => c.shopId.equals(shopId) & c.nic.equals(normalized));
@@ -140,9 +143,11 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
       id: const Value.absent(),
       shopId: const Value.absent(),
       fullName: Value(customer.fullName),
-      nic: Value(Customer.normalizeNic(customer.nic)),
+      nic: Value(customer.nic.trim().isEmpty
+          ? null
+          : Customer.normalizeNic(customer.nic)),
       phone: Value(customer.phone),
-      address: Value(customer.address),
+      address: Value(customer.address.trim().isEmpty ? null : customer.address),
       photoUri: Value(customer.photoUri),
       photoHash: Value(customer.photoHash),
       createdAt: const Value.absent(),
@@ -154,3 +159,4 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
         .write(companion);
   }
 }
+

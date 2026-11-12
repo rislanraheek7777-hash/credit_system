@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../portfolio_dashboard_page.dart';
-import '../../customers/data/daos/loan_dao.dart';
+import '../../customers/data/daos/credit_dao.dart';
 
 export '../portfolio_dashboard_page.dart';
 
@@ -13,15 +13,16 @@ export '../portfolio_dashboard_page.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
     super.key,
-    required this.loanDao,
+    required this.creditDao,
     required this.shopId,
   });
 
-  final LoanDao loanDao;
+  final CreditDao creditDao;
   final String shopId;
 
   @override
   Widget build(BuildContext context) {
-    return PortfolioDashboardPage(loanDao: loanDao, shopId: shopId);
+    return PortfolioDashboardPage(creditDao: creditDao, shopId: shopId);
   }
 }
+

@@ -7,7 +7,7 @@ mixin _$PaymentDaoMixin on DatabaseAccessor<AppDatabase> {
   $ShopsTable get shops => attachedDatabase.shops;
   $CustomersTable get customers => attachedDatabase.customers;
   $AppUsersTable get appUsers => attachedDatabase.appUsers;
-  $LoansTable get loans => attachedDatabase.loans;
+  $CreditsTable get credits => attachedDatabase.credits;
   $PaymentsTable get payments => attachedDatabase.payments;
   $SyncQueueTable get syncQueue => attachedDatabase.syncQueue;
   PaymentDaoManager get managers => PaymentDaoManager(this);
@@ -22,8 +22,8 @@ class PaymentDaoManager {
       $$CustomersTableTableManager(_db.attachedDatabase, _db.customers);
   $$AppUsersTableTableManager get appUsers =>
       $$AppUsersTableTableManager(_db.attachedDatabase, _db.appUsers);
-  $$LoansTableTableManager get loans =>
-      $$LoansTableTableManager(_db.attachedDatabase, _db.loans);
+  $$CreditsTableTableManager get credits =>
+      $$CreditsTableTableManager(_db.attachedDatabase, _db.credits);
   $$PaymentsTableTableManager get payments =>
       $$PaymentsTableTableManager(_db.attachedDatabase, _db.payments);
   $$SyncQueueTableTableManager get syncQueue =>

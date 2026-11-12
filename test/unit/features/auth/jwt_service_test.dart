@@ -260,3 +260,4 @@ Map<String, dynamic> _decodeJwtPayload(String base64UrlPayload) {
   final jsonStr = utf8.decode(base64Url.decode(base64UrlPayload));
   return jsonDecode(jsonStr) as Map<String, dynamic>;
 }
+

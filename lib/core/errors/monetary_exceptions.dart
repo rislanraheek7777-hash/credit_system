@@ -34,3 +34,4 @@ class InvalidMonetaryFormatException extends MonetaryException {
 class MonetaryOverflowException extends MonetaryException {
   const MonetaryOverflowException(super.message);
 }
+

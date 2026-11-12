@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/presentation/loading_screen.dart';
 import 'package:credit_system/core/data/remote/postgres_executor.dart';
@@ -9,12 +9,17 @@ import 'package:credit_system/features/auth/data/services/auth_service.dart';
 import 'package:credit_system/features/auth/data/services/jwt_service.dart';
 import 'package:credit_system/features/auth/data/services/password_hash_service.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
-import 'package:credit_system/features/shop/presentation/shop_creation_screen.dart';
+import 'package:credit_system/features/auth/presentation/signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final void Function(AppUser user, bool isOfflineOnly) onAuthenticated;
+  final void Function(AuthService? service)? onAuthServiceReady;
 
-  const LoginScreen({super.key, required this.onAuthenticated});
+  const LoginScreen({
+    super.key,
+    required this.onAuthenticated,
+    this.onAuthServiceReady,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -66,7 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
-    _appDatabase?.close();
     super.dispose();
   }
 
@@ -193,6 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
           if (!mounted) return;
 
+          widget.onAuthServiceReady?.call(_authService);
           widget.onAuthenticated(user, false);
           return;
         } catch (_) {
@@ -237,6 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
 
+        widget.onAuthServiceReady?.call(_authService);
         widget.onAuthenticated(user, true);
         return;
       }
@@ -246,6 +252,42 @@ class _LoginScreenState extends State<LoginScreen> {
       if (hash == null ||
           !PasswordHashService().verifyPassword(password, hash)) {
         throw const AuthenticationException('Invalid credentials');
+      }
+
+      // Issue a locally signed session so refresh/logout work even without
+      // a configured JWT_SECRET / PostgreSQL connection.
+      try {
+        final jwt = JwtService('placeholder-offline-restore');
+        final storage = FlutterSecureStorageService();
+        final localAuthService = AuthService(
+          pg: PostgreSqlExecutor.offline(),
+          jwt: jwt,
+          passwordHash: PasswordHashService(),
+          secureStorage: storage,
+        );
+        final token = jwt.signToken(
+          userId: localUser.id,
+          shopId: localUser.shopId,
+          sessionVersion: localUser.sessionVersion,
+          role: localUser.role.key,
+        );
+        final refreshToken = jwt.signRefreshToken(
+          userId: localUser.id,
+          shopId: localUser.shopId,
+          sessionVersion: localUser.sessionVersion,
+          role: localUser.role.key,
+        );
+        await storage.write(key: 'jwt_token', value: token);
+        await storage.write(key: 'jwt_shop_id', value: localUser.shopId);
+        await storage.write(key: 'jwt_user_id', value: localUser.id);
+        await storage.write(key: 'refresh_token', value: refreshToken);
+        await storage.write(
+          key: 'offline_session_expiry',
+          value: DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+        );
+        widget.onAuthServiceReady?.call(localAuthService);
+      } catch (_) {
+        // Best-effort; continue with local session even if storage fails.
       }
 
       setState(() {
@@ -434,34 +476,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          const ShopCreationScreen(),
+                                          const SignupScreen(),
                                     ),
                                   );
                                 },
-                          child: const Text('Create New Shop'),
+                          child: const Text('Sign Up'),
                         ),
                       ),
-                       const SizedBox(height: 8),
-                       SizedBox(
-                         width: double.infinity,
-                         child: TextButton(
-                           onPressed: _isLoading
-                               ? null
-                               : () {
-                                   final guestUser = AppUser(
-                                     id: 'guest',
-                                     shopId: 'guest',
-                                     username: 'guest',
-                                     fullName: 'Guest',
-                                     role: AppRole.shopOwner,
-                                     isActive: true,
-                                     sessionVersion: 1,
-                                   );
-                                   widget.onAuthenticated(guestUser, true);
-                                 },
-                           child: const Text('Skip'),
-                         ),
-                       ),
                     ],
                   ),
                 ),
@@ -481,3 +502,5 @@ class AuthenticationException implements Exception {
   @override
   String toString() => 'AuthenticationException: $message';
 }
+
+

@@ -7,7 +7,7 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/core/permissions/authorization_guard.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/correction_dao.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:uuid/uuid.dart';
 
 /// Screen for Shop Owners to review, approve, or reject pending correction
@@ -16,7 +16,7 @@ import 'package:uuid/uuid.dart';
 /// Lists all correction requests awaiting owner decision within the owner's
 /// shop tenant. Each pending request can be approved (which records an
 /// immutable compensating debit ledger entry and lifts the correction lock)
-/// or rejected (which leaves the loan balance unchanged and lifts the lock).
+/// or rejected (which leaves the credit balance unchanged and lifts the lock).
 /// All financial effects are performed by the existing [CorrectionDao] methods
 /// inside atomic transactions; this screen never alters balances or ledger
 /// entries directly.
@@ -48,10 +48,10 @@ class CorrectionReviewScreen extends StatefulWidget {
 
 class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
   late final CorrectionDao _correctionDao;
-  late final LoanDao _loanDao;
+  late final CreditDao _creditDao;
   late final AppDatabase _db;
 
-  List<LoanCorrection> _pending = <LoanCorrection>[];
+  List<CreditCorrection> _pending = <CreditCorrection>[];
   Map<String, PaymentEntry?> _payments = <String, PaymentEntry?>{};
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -76,7 +76,7 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
     super.initState();
     _db = widget.database ?? AppDatabase();
     _correctionDao = CorrectionDao(_db);
-    _loanDao = LoanDao(_db);
+    _creditDao = CreditDao(_db);
     _load();
   }
 
@@ -97,7 +97,7 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
     try {
       final pending = await _correctionDao.getCorrectionsByStatus(
         widget.shopId,
-        LoanCorrectionStatus.pendingApproval.value,
+        CreditCorrectionStatus.pendingApproval.value,
       );
       final paymentsMap = <String, PaymentEntry?>{};
       for (final c in pending) {
@@ -129,9 +129,9 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
 
   /// Shows a confirmation dialog and, if confirmed, approves [correction].
   /// The dialog explains the financial effect before committing.
-  Future<void> _confirmApprove(LoanCorrection correction) async {
-    final loan = await _loanDao.getLoanById(widget.shopId, correction.loanId);
-    final preBalance = loan?.balanceCents ?? 0;
+  Future<void> _confirmApprove(CreditCorrection correction) async {
+    final credit = await _creditDao.getCreditById(widget.shopId, correction.creditId);
+    final preBalance = credit?.balanceCents ?? 0;
     final postBalance = preBalance + correction.correctionAmountCents;
     if (!mounted) return;
     final confirmed = await showDialog<bool>(
@@ -155,12 +155,12 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                 'referencing the original payment.',
               ),
               Text(
-                'Recalculate the loan balance from '
+                'Recalculate the credit balance from '
                 '${Money.fromCents(preBalance).format()} to '
                 '${Money.fromCents(postBalance).format()}.',
               ),
               Text('Permanently preserve the original erroneous payment.'),
-              Text('Lift the correction lock on the loan.'),
+              Text('Lift the correction lock on the credit.'),
               const SizedBox(height: 12),
               const Text(
                 'This action cannot be undone.',
@@ -188,7 +188,7 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
 
   /// Shows a confirmation dialog requiring a non-empty rejection reason and,
   /// if confirmed, rejects [correction].
-  Future<void> _confirmReject(LoanCorrection correction) async {
+  Future<void> _confirmReject(CreditCorrection correction) async {
     final reasonController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -206,11 +206,11 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Leave the loan balance unchanged '
+                'Leave the credit balance unchanged '
                 '${Money.fromCents(correction.resultingBalanceCents ?? 0).format()}.',
               ),
               Text('Permanently preserve the original erroneous payment.'),
-              Text('Lift the correction lock on the loan.'),
+              Text('Lift the correction lock on the credit.'),
               const SizedBox(height: 16),
               const Text(
                 'Rejection reason *',
@@ -250,7 +250,7 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
     await _rejectCorrection(correction, reasonController.text.trim());
   }
 
-  Future<void> _approveCorrection(LoanCorrection correction) async {
+  Future<void> _approveCorrection(CreditCorrection correction) async {
     setState(() {
       _isSubmitting = true;
       _error = null;
@@ -298,7 +298,7 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
   }
 
   Future<void> _rejectCorrection(
-    LoanCorrection correction,
+    CreditCorrection correction,
     String rejectionReason,
   ) async {
     setState(() {
@@ -369,7 +369,7 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Loan ${correction.loanId.substring(0, correction.loanId.length.clamp(0, 8))}...',
+                          'Credit ${correction.creditId.substring(0, correction.creditId.length.clamp(0, 8))}...',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
@@ -480,7 +480,7 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
             const SizedBox(height: 8),
             const Text(
               'Review and decide on correction requests raised by counter '
-              'staff for loans in your shop. Approving records a compensating '
+              'staff for credits in your shop. Approving records a compensating '
               'debit and adjusts the balance; rejecting leaves the balance '
               'unchanged. In both cases the correction lock is lifted.',
             ),
@@ -508,3 +508,4 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
     );
   }
 }
+

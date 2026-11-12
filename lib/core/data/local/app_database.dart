@@ -1,18 +1,18 @@
 import 'package:drift/drift.dart';
 import 'connection/database_connection.dart';
 import 'tables/payments_table.dart';
-import 'tables/loan_corrections_table.dart';
-import 'tables/loan_ledger_entries_table.dart';
+import 'tables/credit_corrections_table.dart';
+import 'tables/credit_ledger_entries_table.dart';
 import 'tables/due_date_extensions_table.dart';
 import 'tables/customer_follow_ups_table.dart';
-import 'tables/loan_resolutions_table.dart';
-import 'tables/loan_administrative_closures_table.dart';
+import 'tables/credit_resolutions_table.dart';
+import 'tables/credit_administrative_closures_table.dart';
 import 'tables/shops_table.dart';
 import 'tables/app_users_table.dart';
 import 'tables/sync_queue_table.dart';
 import 'tables/customers_table.dart';
 import 'tables/customer_photo_exceptions_table.dart';
-import 'tables/loans_table.dart';
+import 'tables/credits_table.dart';
 import 'tables/collateral_items_table.dart';
 import 'tables/collateral_photo_exceptions_table.dart';
 import 'tables/collateral_custody_events_table.dart';
@@ -20,7 +20,7 @@ import '../../../features/shop/data/daos/shop_dao.dart';
 import '../../../features/auth/data/daos/user_dao.dart';
 import '../../../features/customers/data/daos/customer_dao.dart';
 import '../../../features/customers/data/daos/customer_photo_exception_dao.dart';
-import '../../../features/customers/data/daos/loan_dao.dart';
+import '../../../features/customers/data/daos/credit_dao.dart';
 import '../../../features/customers/data/daos/payment_dao.dart';
 import '../../../features/customers/data/daos/correction_dao.dart';
 import '../../../features/customers/data/daos/overdue_dao.dart';
@@ -39,8 +39,9 @@ part 'app_database.g.dart';
 /// Acts as the responsive, offline-capable local storage engine for retail
 /// counters.
 ///
-/// Schema Version: 18 (Story 5: Payment & Receipt; Story 5.5 Corrections &
-/// financial ledger entries).
+/// Schema Version: 22 (Epic 8: Stories 8.1 optional item receipts;
+/// Story 5: Payment & Receipt; Story 5.5 Corrections & financial ledger
+/// entries).
 /// Tables:
 /// - [Shops]: Tenant profile, operating timezone, currency preference, contact
 ///   details, receipt notes.
@@ -52,17 +53,17 @@ part 'app_database.g.dart';
 ///   and phone indexing.
 /// - [CustomerPhotoExceptions]: Formal KYC photo exception requests, decisions,
 ///   and single-use tracking.
-/// - [Loans]: Zero-interest loan agreements scoped to a shop tenant, linked to
+/// - [Credits]: Zero-interest credit agreements scoped to a shop tenant, linked to
 ///   a customer borrower.
 /// - [CollateralItems]: Pledged collateral items with custody state.
 /// - [CollateralPhotoExceptions]: Collateral photo exception requests and
 ///   decisions.
 /// - [CollateralCustodyEvents]: Immutable custody state transition history.
 /// - [CollateralDiscrepancies]: Discrepancy reports and shop-owner resolutions.
-/// - [LoanCorrections]: Controlled financial correction requests and Shop
+/// - [CreditCorrections]: Controlled financial correction requests and Shop
 ///   Owner reversal approvals (Story 5.5).
-/// - [LoanLedgerEntries]: Immutable financial ledger entries (compensating
-///   debits and controlled adjustments) linked to a loan (Story 5.5, FR-22).
+/// - [CreditLedgerEntries]: Immutable financial ledger entries (compensating
+///   debits and controlled adjustments) linked to a credit (Story 5.5, FR-22).
 @DriftDatabase(
   tables: [
     Shops,
@@ -70,25 +71,25 @@ part 'app_database.g.dart';
     SyncQueue,
     Customers,
     CustomerPhotoExceptions,
-    Loans,
+    Credits,
     CollateralItems,
     CollateralPhotoExceptions,
     CollateralCustodyEvents,
     CollateralDiscrepancies,
     Payments,
-    LoanCorrections,
-    LoanLedgerEntries,
+    CreditCorrections,
+    CreditLedgerEntries,
     DueDateExtensions,
     CustomerFollowUps,
-    LoanResolutions,
-    LoanAdministrativeClosures,
+    CreditResolutions,
+    CreditAdministrativeClosures,
   ],
   daos: [
     ShopDao,
     UserDao,
     CustomerDao,
     CustomerPhotoExceptionDao,
-    LoanDao,
+    CreditDao,
     PaymentDao,
     CorrectionDao,
     OverdueDao,
@@ -99,15 +100,38 @@ part 'app_database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
+  /// Shared singleton instance. All screens use the same [AppDatabase] so there
+  /// is only one SQLite connection to the database file, preventing
+  /// "database is locked" errors from concurrent connections.
+  static AppDatabase? _instance;
+
   /// Default constructor connecting via application sandboxed storage.
-  AppDatabase() : super(AppDatabaseConnection.openConnection());
+  ///
+  /// Returns the shared singleton instance. Every call to [AppDatabase] gives
+  /// the same connection, so screens must not close the database themselves.
+  factory AppDatabase() {
+    _instance ??= AppDatabase._internal();
+    return _instance!;
+  }
+
+  AppDatabase._internal() : super(AppDatabaseConnection.openConnection());
 
   /// Testing constructor allowing dependency injection of an isolated
   /// [QueryExecutor] (e.g. [AppDatabaseConnection.openInMemoryConnection]).
   AppDatabase.forTesting(super.executor);
 
+  /// Closes the shared database instance and clears the singleton.
+  ///
+  /// Call this when the app terminates (e.g. in [AuthWrapper.dispose]).
+  /// Screens must not call [close] on their own — only the owner of the
+  /// singleton lifetime may close it.
+  static Future<void> dispose() async {
+    await _instance?.close();
+    _instance = null;
+  }
+
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -153,14 +177,14 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 7) {
             // Upgrade from Schema Version 6 to Version 7 (Story 2.5):
-            // Create the *historical* loans table as it shipped in Story 2.5.
+            // Create the *historical* credits table as it shipped in Story 2.5.
             //
             // The table must not be created from the current (v15) definition
             // here: later migration steps rebuild it with `alterTable`, which
             // copies only the columns that exist at that point in history. A
             // modern table created here would make those copies ambiguous.
             await customStatement('''
-              CREATE TABLE IF NOT EXISTS "loans" (
+              CREATE TABLE IF NOT EXISTS "credits" (
                 "id" TEXT NOT NULL,
                 "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
                 "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -173,7 +197,7 @@ class AppDatabase extends _$AppDatabase {
                 PRIMARY KEY ("id")
               );
             ''');
-            await _createLoanIndexes();
+            await _createCreditIndexes();
           }
           if (from < 8) {
             // Upgrade from Schema Version 7 to Version 8 (Story 1.7):
@@ -189,7 +213,7 @@ class AppDatabase extends _$AppDatabase {
                 "id" TEXT NOT NULL,
                 "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
                 "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
-                "loan_id" TEXT REFERENCES "loans" ("id") ON DELETE RESTRICT,
+                "credit_id" TEXT REFERENCES "credits" ("id") ON DELETE RESTRICT,
                 "item_reference_id" TEXT NOT NULL,
                 "category" TEXT NOT NULL,
                 "description" TEXT NOT NULL,
@@ -267,15 +291,15 @@ class AppDatabase extends _$AppDatabase {
             // Upgrade from Schema Version 11 to Version 12 (Story 4.1):
             // Add the disbursement workflow status. Agreements created before
             // the workflow existed are treated as already disbursed.
-            final loanColumns =
-                await customSelect('PRAGMA table_info("loans")').get();
-            final hasWorkflowStatus = loanColumns
+            final creditColumns =
+                await customSelect('PRAGMA table_info("credits")').get();
+            final hasWorkflowStatus = creditColumns
                 .any((row) => row.read<String>('name') == 'workflow_status');
             if (!hasWorkflowStatus) {
-              await m.addColumn(loans, loans.workflowStatus);
+              await m.addColumn(credits, credits.workflowStatus);
             }
             await customStatement(
-              "UPDATE loans SET workflow_status = 'disbursed' "
+              "UPDATE credits SET workflow_status = 'disbursed' "
               "WHERE workflow_status IS NULL OR workflow_status = '' "
               "OR workflow_status = 'pending_disbursement';",
             );
@@ -284,47 +308,47 @@ class AppDatabase extends _$AppDatabase {
             // Upgrade from Schema Version 12 to Version 13 (Story 4.3):
             // Add the agreed term, custom due date, disbursement record and
             // cancellation record columns.
-            await customStatement('DROP TABLE IF EXISTS "_loans_v13";');
-            await customStatement('DROP TABLE IF EXISTS "tmp_for_copy_loans";');
+            await customStatement('DROP TABLE IF EXISTS "_credits_v13";');
+            await customStatement('DROP TABLE IF EXISTS "tmp_for_copy_credits";');
             await m.alterTable(TableMigration(
-              loans,
+              credits,
               newColumns: [
-                loans.termPresetDays,
-                loans.customDueDate,
-                loans.disbursedAt,
-                loans.disbursedByUserId,
-                loans.cancelledAt,
-                loans.cancellationReason,
-                loans.documentSnapshotId,
-                // Story 5.5: `correctionPending` is part of the current `loans`
+                credits.termPresetDays,
+                credits.customDueDate,
+                credits.disbursedAt,
+                credits.disbursedByUserId,
+                credits.cancelledAt,
+                credits.cancellationReason,
+                credits.documentSnapshotId,
+                // Story 5.5: `correctionPending` is part of the current `credits`
                 // definition. Listing it here lets Drift add it as a new column
                 // during this rebuild (defaulting to `false`) instead of trying
-                // to copy it from the old `loans` table, which predates it.
-                loans.correctionPending,
+                // to copy it from the old `credits` table, which predates it.
+                credits.correctionPending,
               ],
             ));
-            await _createLoanIndexes();
+            await _createCreditIndexes();
           }
           if (from < 14) {
             // Upgrade from Schema Version 13 to Version 14 (Story 4.3 Phase 2):
             // Rebuild the table so the Tier 1 cross-field CHECK constraints are
             // enforced at the persistence boundary. `alterTable` re-creates the
             // current shape, which also introduces `document_snapshot_id`.
-            await customStatement('DROP TABLE IF EXISTS "_loans_v14";');
-            await customStatement('DROP TABLE IF EXISTS "tmp_for_copy_loans";');
+            await customStatement('DROP TABLE IF EXISTS "_credits_v14";');
+            await customStatement('DROP TABLE IF EXISTS "tmp_for_copy_credits";');
             await m.alterTable(TableMigration(
-              loans,
+              credits,
               newColumns: [
-                loans.documentSnapshotId,
-                // Story 5.5: `correctionPending` is part of the current `loans`
+                credits.documentSnapshotId,
+                // Story 5.5: `correctionPending` is part of the current `credits`
                 // definition. Listing it here lets a version 13 database that
                 // predates the column migrate through this rebuild (it gets the
                 // default `false`) instead of drift trying to `SELECT` it from
-                // the old `loans` table, which predates it.
-                loans.correctionPending,
+                // the old `credits` table, which predates it.
+                credits.correctionPending,
               ],
             ));
-            await _createLoanIndexes();
+            await _createCreditIndexes();
           }
           if (from < 15) {
             // Upgrade from Schema Version 14 to Version 15 (Story 4.4):
@@ -333,15 +357,15 @@ class AppDatabase extends _$AppDatabase {
             // Older upgrade paths already passed through `alterTable`, which
             // builds the current table shape and therefore already added the
             // column. Only add it when it is genuinely absent.
-            final loanColumns =
-                await customSelect('PRAGMA table_info("loans")').get();
-            final hasDocumentSnapshotId = loanColumns.any(
+            final creditColumns =
+                await customSelect('PRAGMA table_info("credits")').get();
+            final hasDocumentSnapshotId = creditColumns.any(
               (row) => row.read<String>('name') == 'document_snapshot_id',
             );
             if (!hasDocumentSnapshotId) {
-              await m.addColumn(loans, loans.documentSnapshotId);
+              await m.addColumn(credits, credits.documentSnapshotId);
             }
-            await _createLoanIndexes();
+            await _createCreditIndexes();
           }
           if (from < 16) {
             // Upgrade from Schema Version 15 to Version 16 (Story 5):
@@ -352,8 +376,8 @@ class AppDatabase extends _$AppDatabase {
               'ON "payments" ("shop_id");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_payments_shop_loan" '
-              'ON "payments" ("shop_id", "loan_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_payments_shop_credit" '
+              'ON "payments" ("shop_id", "credit_id");',
             );
             await customStatement(
               'CREATE INDEX IF NOT EXISTS "idx_payments_receipt_number" '
@@ -362,11 +386,11 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 17) {
             // Upgrade from Schema Version 16 to Version 17 (Story 5.5):
-            // Add the correction-pending flag to loans and create the
-            // loan_corrections table for controlled financial correction
+            // Add the correction-pending flag to credits and create the
+            // credit_corrections table for controlled financial correction
             // requests and Shop Owner reversal approvals.
             //
-            // `correctionPending` defaults to false, so existing loans keep
+            // `correctionPending` defaults to false, so existing credits keep
             // their current behaviour (payments allowed). The corrections
             // table is newly created; no existing data is touched.
             //
@@ -374,53 +398,53 @@ class AppDatabase extends _$AppDatabase {
             // the version 13 rebuild (where it is listed in `newColumns`),
             // so guard the add with a PRAGMA check rather than assuming it is
             // absent.
-            final loanColumns =
-                await customSelect('PRAGMA table_info("loans")').get();
-            final hasCorrectionPending = loanColumns.any(
+            final creditColumns =
+                await customSelect('PRAGMA table_info("credits")').get();
+            final hasCorrectionPending = creditColumns.any(
               (row) => row.read<String>('name') == 'correction_pending',
             );
             if (!hasCorrectionPending) {
-              await m.addColumn(loans, loans.correctionPending);
+              await m.addColumn(credits, credits.correctionPending);
             }
-            await m.createTable(loanCorrections);
+            await m.createTable(creditCorrections);
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_loan_corrections_shop_id" '
-              'ON "loan_corrections" ("shop_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_credit_corrections_shop_id" '
+              'ON "credit_corrections" ("shop_id");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_loan_corrections_shop_status" '
-              'ON "loan_corrections" ("shop_id", "status");',
+              'CREATE INDEX IF NOT EXISTS "idx_credit_corrections_shop_status" '
+              'ON "credit_corrections" ("shop_id", "status");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_loan_corrections_shop_loan" '
-              'ON "loan_corrections" ("shop_id", "loan_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_credit_corrections_shop_credit" '
+              'ON "credit_corrections" ("shop_id", "credit_id");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_loan_corrections_shop_payment" '
-              'ON "loan_corrections" ("shop_id", "original_payment_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_credit_corrections_shop_payment" '
+              'ON "credit_corrections" ("shop_id", "original_payment_id");',
             );
           }
           if (from < 18) {
             // Upgrade from Schema Version 17 to Version 18 (Story 5.5):
-            // Create the loan_ledger_entries table for immutable financial
+            // Create the credit_ledger_entries table for immutable financial
             // ledger entries (compensating debits and controlled adjustments)
-            // linked to a loan. No existing data is touched.
-            await m.createTable(loanLedgerEntries);
+            // linked to a credit. No existing data is touched.
+            await m.createTable(creditLedgerEntries);
             await customStatement(
               'CREATE INDEX IF NOT EXISTS "idx_ledger_entries_shop_id" '
-              'ON "loan_ledger_entries" ("shop_id");',
+              'ON "credit_ledger_entries" ("shop_id");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_ledger_entries_shop_loan" '
-              'ON "loan_ledger_entries" ("shop_id", "loan_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_ledger_entries_shop_credit" '
+              'ON "credit_ledger_entries" ("shop_id", "credit_id");',
             );
             await customStatement(
               'CREATE INDEX IF NOT EXISTS "idx_ledger_entries_shop_entry_type" '
-              'ON "loan_ledger_entries" ("shop_id", "entry_type");',
+              'ON "credit_ledger_entries" ("shop_id", "entry_type");',
             );
             await customStatement(
               'CREATE INDEX IF NOT EXISTS "idx_ledger_entries_shop_correction" '
-              'ON "loan_ledger_entries" ("shop_id", "correction_id");',
+              'ON "credit_ledger_entries" ("shop_id", "correction_id");',
             );
           }
           if (from < 19) {
@@ -432,8 +456,8 @@ class AppDatabase extends _$AppDatabase {
               'ON "due_date_extensions" ("shop_id");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_due_date_extensions_shop_loan" '
-              'ON "due_date_extensions" ("shop_id", "loan_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_due_date_extensions_shop_credit" '
+              'ON "due_date_extensions" ("shop_id", "credit_id");',
             );
 
             await m.createTable(customerFollowUps);
@@ -442,28 +466,28 @@ class AppDatabase extends _$AppDatabase {
               'ON "customer_follow_ups" ("shop_id");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_customer_follow_ups_shop_loan" '
-              'ON "customer_follow_ups" ("shop_id", "loan_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_customer_follow_ups_shop_credit" '
+              'ON "customer_follow_ups" ("shop_id", "credit_id");',
             );
 
-            await m.createTable(loanResolutions);
+            await m.createTable(creditResolutions);
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_loan_resolutions_shop_id" '
-              'ON "loan_resolutions" ("shop_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_credit_resolutions_shop_id" '
+              'ON "credit_resolutions" ("shop_id");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_loan_resolutions_shop_loan" '
-              'ON "loan_resolutions" ("shop_id", "loan_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_credit_resolutions_shop_credit" '
+              'ON "credit_resolutions" ("shop_id", "credit_id");',
             );
 
-            await m.createTable(loanAdministrativeClosures);
+            await m.createTable(creditAdministrativeClosures);
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_loan_admin_closures_shop_id" '
-              'ON "loan_administrative_closures" ("shop_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_credit_admin_closures_shop_id" '
+              'ON "credit_administrative_closures" ("shop_id");',
             );
             await customStatement(
-              'CREATE INDEX IF NOT EXISTS "idx_loan_admin_closures_shop_loan" '
-              'ON "loan_administrative_closures" ("shop_id", "loan_id");',
+              'CREATE INDEX IF NOT EXISTS "idx_credit_admin_closures_shop_credit" '
+              'ON "credit_administrative_closures" ("shop_id", "credit_id");',
             );
           }
           if (from < 20) {
@@ -498,7 +522,7 @@ class AppDatabase extends _$AppDatabase {
             //
             // `Customers.id` changes from a UUID TEXT primary key to an
             // auto-increment INTEGER primary key, and every customer-identity
-            // column that references it (`loans.customer_id`,
+            // column that references it (`credits.customer_id`,
             // `collateral_items.customer_id`, `customer_follow_ups.customer_id`
             // and the denormalized `payments.customer_id` snapshot) is retyped
             // to INTEGER.
@@ -572,7 +596,7 @@ class AppDatabase extends _$AppDatabase {
               await customStatement('DROP TABLE "customers_v19_ids";');
               await _createCustomerIndexes();
 
-            } else if (await _columnHasTextData('loans', 'customer_id') ||
+            } else if (await _columnHasTextData('credits', 'customer_id') ||
                 await _columnHasTextData('collateral_items', 'customer_id') ||
                 await _columnHasTextData(
                     'customer_follow_ups', 'customer_id') ||
@@ -594,19 +618,19 @@ class AppDatabase extends _$AppDatabase {
               );
             }
 
-            if (await _columnHasTextType('loans', 'customer_id') ||
-                await _columnHasTextData('loans', 'customer_id')) {
+            if (await _columnHasTextType('credits', 'customer_id') ||
+                await _columnHasTextData('credits', 'customer_id')) {
               await customStatement(
-                'DROP TABLE IF EXISTS "tmp_for_copy_loans";',
+                'DROP TABLE IF EXISTS "tmp_for_copy_credits";',
               );
               await customStatement(
-                'UPDATE "loans" SET "customer_id" = (SELECT "new_id" '
+                'UPDATE "credits" SET "customer_id" = (SELECT "new_id" '
                     'FROM "_customer_id_remap" '
-                    'WHERE "old_id" = "loans"."customer_id");',
+                    'WHERE "old_id" = "credits"."customer_id");',
               );
-              if (await _columnHasTextType('loans', 'customer_id')) {
-                await m.alterTable(TableMigration(loans));
-                await _createLoanIndexes();
+              if (await _columnHasTextType('credits', 'customer_id')) {
+                await m.alterTable(TableMigration(credits));
+                await _createCreditIndexes();
               }
             }
 
@@ -644,8 +668,8 @@ class AppDatabase extends _$AppDatabase {
                       'ON "customer_follow_ups" ("shop_id");',
                 );
                 await customStatement(
-                  'CREATE INDEX IF NOT EXISTS "idx_customer_follow_ups_shop_loan" '
-                      'ON "customer_follow_ups" ("shop_id", "loan_id");',
+                  'CREATE INDEX IF NOT EXISTS "idx_customer_follow_ups_shop_credit" '
+                      'ON "customer_follow_ups" ("shop_id", "credit_id");',
                 );
               }
             }
@@ -667,8 +691,8 @@ class AppDatabase extends _$AppDatabase {
                       'ON "payments" ("shop_id");',
                 );
                 await customStatement(
-                  'CREATE INDEX IF NOT EXISTS "idx_payments_shop_loan" '
-                      'ON "payments" ("shop_id", "loan_id");',
+                  'CREATE INDEX IF NOT EXISTS "idx_payments_shop_credit" '
+                      'ON "payments" ("shop_id", "credit_id");',
                 );
                 await customStatement(
                   'CREATE INDEX IF NOT EXISTS "idx_payments_receipt_number" '
@@ -690,6 +714,71 @@ class AppDatabase extends _$AppDatabase {
           }
         }
       }
+      if (from < 21) {
+        final shopsInfo = await customSelect('PRAGMA table_info("shops")').get();
+        if (shopsInfo.isNotEmpty &&
+            !shopsInfo.any((r) => r.read<String>('name') == 'shop_type')) {
+          await m.addColumn(shops, shops.shopType);
+        }
+      }
+      if (from < 22 && to >= 22) {
+        final customersInfo =
+            await customSelect('PRAGMA table_info("customers")').get();
+        if (customersInfo.isNotEmpty) {
+          await customStatement('PRAGMA foreign_keys = OFF;');
+          await customStatement('PRAGMA legacy_alter_table = ON;');
+          try {
+            await transaction(() async {
+              await customStatement('DROP TABLE IF EXISTS customers_old;');
+              await customStatement(
+                'ALTER TABLE customers RENAME TO customers_old;',
+              );
+              await customStatement('''
+                CREATE TABLE customers (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                  shop_id TEXT NOT NULL REFERENCES shops (id),
+                  full_name TEXT NOT NULL CHECK (length(full_name) BETWEEN 1 AND 255),
+                  nic TEXT CHECK (nic IS NULL OR length(nic) <= 50),
+                  phone TEXT NOT NULL CHECK (length(phone) BETWEEN 1 AND 50),
+                  address TEXT,
+                  photo_uri TEXT,
+                  photo_hash TEXT,
+                  created_at INTEGER NOT NULL,
+                  updated_at INTEGER NOT NULL,
+                  UNIQUE (shop_id, nic)
+                );
+              ''');
+              await customStatement('''
+                INSERT INTO customers (
+                  id, shop_id, full_name, nic, phone, address,
+                  photo_uri, photo_hash, created_at, updated_at
+                )
+                SELECT
+                  id, shop_id, full_name, NULLIF(nic, ''), phone,
+                  NULLIF(address, ''), photo_uri, photo_hash,
+                  created_at, updated_at
+                FROM customers_old;
+              ''');
+              await customStatement('DROP TABLE customers_old;');
+              await customStatement(
+                'CREATE INDEX IF NOT EXISTS "idx_customers_shop_id" '
+                'ON "customers" ("shop_id");',
+              );
+              await customStatement(
+                'CREATE INDEX IF NOT EXISTS "idx_customers_shop_nic" '
+                'ON "customers" ("shop_id", "nic");',
+              );
+              await customStatement(
+                'CREATE INDEX IF NOT EXISTS "idx_customers_shop_phone" '
+                'ON "customers" ("shop_id", "phone");',
+              );
+            });
+          } finally {
+            await customStatement('PRAGMA legacy_alter_table = OFF;');
+            await customStatement('PRAGMA foreign_keys = ON;');
+          }
+        }
+      }
     },
     beforeOpen: (OpeningDetails details) async {
           // Guarantee SQLite foreign-key enforcement is active on every
@@ -698,27 +787,27 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
-  /// Recreates the `loans` indexes idempotently.
+  /// Recreates the `credits` indexes idempotently.
   ///
   /// Table rebuilds replay the indexes captured from the old schema, so the
   /// same index may already exist. `Migrator.createIndex` is not idempotent,
   /// hence the raw `IF NOT EXISTS` statements.
-  Future<void> _createLoanIndexes() async {
+  Future<void> _createCreditIndexes() async {
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS "idx_loans_shop_id" '
-      'ON "loans" ("shop_id");',
+      'CREATE INDEX IF NOT EXISTS "idx_credits_shop_id" '
+      'ON "credits" ("shop_id");',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS "idx_loans_shop_customer" '
-      'ON "loans" ("shop_id", "customer_id");',
+      'CREATE INDEX IF NOT EXISTS "idx_credits_shop_customer" '
+      'ON "credits" ("shop_id", "customer_id");',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS "idx_loans_shop_status" '
-      'ON "loans" ("shop_id", "status");',
+      'CREATE INDEX IF NOT EXISTS "idx_credits_shop_status" '
+      'ON "credits" ("shop_id", "status");',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS "idx_loans_shop_customer_status" '
-      'ON "loans" ("shop_id", "customer_id", "status");',
+      'CREATE INDEX IF NOT EXISTS "idx_credits_shop_customer_status" '
+      'ON "credits" ("shop_id", "customer_id", "status");',
     );
   }
 
@@ -791,8 +880,8 @@ class AppDatabase extends _$AppDatabase {
       'ON "collateral_items" ("shop_id", "customer_id");',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS "idx_collateral_shop_loan" '
-      'ON "collateral_items" ("shop_id", "loan_id");',
+      'CREATE INDEX IF NOT EXISTS "idx_collateral_shop_credit" '
+      'ON "collateral_items" ("shop_id", "credit_id");',
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS "idx_collateral_shop_custody" '
@@ -804,3 +893,4 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 }
+

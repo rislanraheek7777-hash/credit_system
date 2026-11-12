@@ -12,8 +12,7 @@ void main() {
 
     // Title and field labels are visible
     expect(find.text('Register New Customer'), findsOneWidget);
-    expect(find.text('Customer ID'), findsOneWidget);
-    expect(find.text('Shop ID'), findsOneWidget);
+    // Customer ID and Shop ID are now auto-derived; not shown.
     expect(find.text('Full Name'), findsOneWidget);
     expect(find.text('NIC Number'), findsOneWidget);
     expect(find.text('Phone Number'), findsOneWidget);
@@ -38,3 +37,4 @@ void main() {
         findsNothing);
   });
 }
+

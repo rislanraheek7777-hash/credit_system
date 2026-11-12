@@ -9,7 +9,7 @@ import 'package:credit_system/core/permissions/authorization_guard.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/correction_dao.dart';
 import 'package:credit_system/features/customers/data/daos/payment_dao.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:uuid/uuid.dart';
 
 const String shopId = 'corr-shop-1111-1111-1111-111111111101';
@@ -18,7 +18,7 @@ const int customerId = 1;
 const String ownerId = 'corr-owner-1111-1111-1111-111111111101';
 const String managerId = 'corr-mgr-1111-1111-1111-111111111101';
 const String cashierId = 'corr-cash-1111-1111-1111-111111111101';
-const String loanId = 'corr-loan-1111-1111-1111-111111111101';
+const String creditId = 'corr-credit-1111-1111-1111-111111111101';
 const String paymentId = 'corr-pay-1111-1111-1111-111111111101';
 
 Future<void> seedData(AppDatabase db) async {
@@ -78,11 +78,11 @@ Future<void> seedData(AppDatabase db) async {
     ),
   );
 
-  // A disbursed loan with principal 500000 (Rs. 5,000.00) and balance 300000,
+  // A disbursed credit with principal 500000 (Rs. 5,000.00) and balance 300000,
   // after a payment of 200000 was recorded.
-  await db.into(db.loans).insert(
-    LoansCompanion.insert(
-      id: loanId,
+  await db.into(db.credits).insert(
+    CreditsCompanion.insert(
+      id: creditId,
       shopId: shopId,
       customerId: customerId,
       principalCents: 500000,
@@ -103,7 +103,7 @@ Future<void> seedData(AppDatabase db) async {
     PaymentsCompanion.insert(
       id: paymentId,
       shopId: shopId,
-      loanId: loanId,
+      creditId: creditId,
       receiptNumber: 'RCP-CORR-001',
       amountCents: 200000,
       preBalanceCents: 500000,
@@ -147,18 +147,18 @@ AppUser cashier({bool isActive = true}) => AppUser(
       isActive: isActive,
     );
 
-Future<Loan> currentLoan(AppDatabase db) async {
-  final entry = await (db.select(db.loans)
-        ..where((l) => l.id.equals(loanId) & l.shopId.equals(shopId)))
+Future<Credit> currentCredit(AppDatabase db) async {
+  final entry = await (db.select(db.credits)
+        ..where((l) => l.id.equals(creditId) & l.shopId.equals(shopId)))
       .getSingle();
-  return Loan(
+  return Credit(
     id: entry.id,
     shopId: entry.shopId,
     customerId: entry.customerId,
     principalCents: entry.principalCents,
     balanceCents: entry.balanceCents,
-    status: LoanStatus.fromValue(entry.status),
-    workflowStatus: LoanWorkflowStatus.fromValue(entry.workflowStatus),
+    status: CreditStatus.fromValue(entry.status),
+    workflowStatus: CreditWorkflowStatus.fromValue(entry.workflowStatus),
     dueDate: entry.dueDate,
     createdAt: entry.createdAt,
     settledAt: entry.settledAt,
@@ -174,7 +174,7 @@ Future<Loan> currentLoan(AppDatabase db) async {
 
 Future<List<QueryRow>> currentLedgerEntries(AppDatabase db) async {
   return db.customSelect(
-    'SELECT entry_type, amount_cents, pre_balance_cents, post_balance_cents, reason, loan_id, correction_id, original_payment_id FROM loan_ledger_entries WHERE shop_id = ?',
+    'SELECT entry_type, amount_cents, pre_balance_cents, post_balance_cents, reason, credit_id, correction_id, original_payment_id FROM credit_ledger_entries WHERE shop_id = ?',
     variables: [Variable<String>(shopId)],
   ).get();
 }
@@ -201,21 +201,21 @@ void main() {
       final correction = await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(200000),
         reason: 'Typographical error; entered 35000 instead of 3500.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
 
-      expect(correction.status, equals(LoanCorrectionStatus.pendingApproval));
+      expect(correction.status, equals(CreditCorrectionStatus.pendingApproval));
       expect(correction.correctionAmountCents, equals(200000));
       expect(correction.reason, contains('Typographical error'));
       expect(correction.isPending, isTrue);
 
-      // The correction lock is active on the loan.
-      final loan = await currentLoan(db);
-      expect(loan.correctionPending, isTrue);
+      // The correction lock is active on the credit.
+      final credit = await currentCredit(db);
+      expect(credit.correctionPending, isTrue);
     });
 
     test('cashier without requestCorrections cannot request a correction', () async {
@@ -223,7 +223,7 @@ void main() {
         () => correctionDao.requestCorrection(
           actor: cashier(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           originalPaymentId: paymentId,
           amount: Money.fromCents(1000),
           reason: 'Some reason.',
@@ -238,7 +238,7 @@ void main() {
         () => correctionDao.requestCorrection(
           actor: manager(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           originalPaymentId: paymentId,
           amount: Money.fromCents(1000),
           reason: '   ',
@@ -253,7 +253,7 @@ void main() {
         () => correctionDao.requestCorrection(
           actor: manager(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           originalPaymentId: paymentId,
           amount: Money.fromCents(0),
           reason: 'Some reason.',
@@ -263,12 +263,12 @@ void main() {
       );
     });
 
-    test('request on a loan in another shop is rejected', () async {
+    test('request on a credit in another shop is rejected', () async {
       expect(
         () => correctionDao.requestCorrection(
           actor: manager(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           originalPaymentId: paymentId,
           amount: Money.fromCents(1000),
           reason: 'Some reason.',
@@ -286,7 +286,7 @@ void main() {
           return correctionDao.requestCorrection(
             actor: otherActor,
             idempotencyKey: const Uuid().v4(),
-            loanId: loanId,
+            creditId: creditId,
             originalPaymentId: paymentId,
             amount: Money.fromCents(1000),
             reason: 'Cross-shop attempt.',
@@ -301,7 +301,7 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'First request.',
@@ -312,7 +312,7 @@ void main() {
         () => correctionDao.requestCorrection(
           actor: manager(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           originalPaymentId: paymentId,
           amount: Money.fromCents(2000),
           reason: 'Second request.',
@@ -327,7 +327,7 @@ void main() {
       final first = await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Idempotency test.',
@@ -337,7 +337,7 @@ void main() {
       final second = await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(999999),
         reason: 'Different payload, same key.',
@@ -346,7 +346,7 @@ void main() {
 
       expect(second.id, equals(first.id));
       expect(second.reason, equals('Idempotency test.'));
-      final corrections = await correctionDao.getCorrectionsByLoan(shopId, loanId);
+      final corrections = await correctionDao.getCorrectionsByCredit(shopId, creditId);
       expect(corrections.length, equals(1));
     });
   });
@@ -356,7 +356,7 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(200000),
         reason: 'Typographical error; entered 35000 instead of 3500.',
@@ -366,19 +366,19 @@ void main() {
       final correction = await correctionDao.approveCorrection(
         actor: owner(),
         idempotencyKey: const Uuid().v4(),
-        correctionId: (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id,
+        correctionId: (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id,
         reviewedAt: DateTime.utc(2026, 10, 23),
       );
 
-      expect(correction.status, equals(LoanCorrectionStatus.approved));
+      expect(correction.status, equals(CreditCorrectionStatus.approved));
       expect(correction.isApproved, isTrue);
       expect(correction.reviewedByUserId, equals(ownerId));
       expect(correction.resultingBalanceCents, equals(500000)); // 300000 + 200000
 
       // The correction lock is lifted.
-      final loan = await currentLoan(db);
-      expect(loan.correctionPending, isFalse);
-      expect(loan.balanceCents, equals(500000));
+      final credit = await currentCredit(db);
+      expect(credit.correctionPending, isFalse);
+      expect(credit.balanceCents, equals(500000));
 
       // An immutable compensating debit ledger entry was posted:
       // balance increased by the full reversed amount (300000 + 200000 = 500000).
@@ -388,7 +388,7 @@ void main() {
       expect(entries.first.read<int>('amount_cents'), equals(200000));
       expect(entries.first.read<int>('pre_balance_cents'), equals(300000));
       expect(entries.first.read<int>('post_balance_cents'), equals(500000));
-      expect(entries.first.read<String>('loan_id'), equals(loanId));
+      expect(entries.first.read<String>('credit_id'), equals(creditId));
       expect(entries.first.read<String?>('original_payment_id'), equals(paymentId));
       expect(entries.first.read<String?>('correction_id'), equals(correction.id));
       expect(entries.first.read<String>('reason'), contains('Typographical error'));
@@ -398,14 +398,14 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Some reason.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
       final correctionId =
-          (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id;
+          (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id;
 
       expect(
         () => correctionDao.approveCorrection(
@@ -422,14 +422,14 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Some reason.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
       final correctionId =
-          (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id;
+          (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id;
 
       await correctionDao.approveCorrection(
         actor: owner(),
@@ -450,23 +450,23 @@ void main() {
         throwsA(isA<StateError>()),
       );
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(301000)); // adjusted exactly once
-      expect(loan.correctionPending, isFalse);
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(301000)); // adjusted exactly once
+      expect(credit.correctionPending, isFalse);
     });
 
     test('approving a correction in another shop is rejected', () async {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Some reason.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
       final correctionId =
-          (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id;
+          (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id;
 
       final otherOwner = AppUser(
         id: 'corr-other-owner',
@@ -494,15 +494,15 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(200000),
         reason: 'Invalid request.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
       final correctionId =
-          (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id;
-      final balanceBefore = (await currentLoan(db)).balanceCents;
+          (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id;
+      final balanceBefore = (await currentCredit(db)).balanceCents;
 
       final correction = await correctionDao.rejectCorrection(
         actor: owner(),
@@ -512,30 +512,30 @@ void main() {
         reviewedAt: DateTime.utc(2026, 10, 23),
       );
 
-      expect(correction.status, equals(LoanCorrectionStatus.rejected));
+      expect(correction.status, equals(CreditCorrectionStatus.rejected));
       expect(correction.isRejected, isTrue);
       expect(correction.rejectionReason, equals('Not a genuine error.'));
       expect(correction.reviewedByUserId, equals(ownerId));
 
       // Rejection leaves the balance unchanged.
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(balanceBefore));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(balanceBefore));
       // The lock is lifted.
-      expect(loan.correctionPending, isFalse);
+      expect(credit.correctionPending, isFalse);
     });
 
     test('rejection creates no ledger entry', () async {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(200000),
         reason: 'Invalid request.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
       final correctionId =
-          (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id;
+          (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id;
 
       await correctionDao.rejectCorrection(
         actor: owner(),
@@ -554,14 +554,14 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Some reason.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
       final correctionId =
-          (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id;
+          (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id;
 
       expect(
         () => correctionDao.rejectCorrection(
@@ -579,14 +579,14 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Some reason.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
       final correctionId =
-          (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id;
+          (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id;
 
       expect(
         () => correctionDao.rejectCorrection(
@@ -606,7 +606,7 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Pending correction.',
@@ -617,30 +617,30 @@ void main() {
         () => paymentDao.recordPayment(
           actor: cashier(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(5000),
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
-        throwsA(isA<LoanCorrectionPendingException>()),
+        throwsA(isA<CreditCorrectionPendingException>()),
       );
 
-      // The loan balance is unchanged by the blocked payment attempt.
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(300000));
+      // The credit balance is unchanged by the blocked payment attempt.
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(300000));
     });
 
     test('payment is allowed once the correction is rejected (lock lifted)', () async {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Pending correction.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
       final correctionId =
-          (await correctionDao.getCorrectionsByLoan(shopId, loanId)).first.id;
+          (await correctionDao.getCorrectionsByCredit(shopId, creditId)).first.id;
       await correctionDao.rejectCorrection(
         actor: owner(),
         idempotencyKey: const Uuid().v4(),
@@ -653,15 +653,15 @@ void main() {
       final receipt = await paymentDao.recordPayment(
         actor: cashier(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: Money.fromCents(5000),
         recordedAt: DateTime.utc(2026, 10, 23),
       );
       expect(receipt.amountCents, equals(5000));
 
-      final loan = await currentLoan(db);
-      expect(loan.correctionPending, isFalse);
-      expect(loan.balanceCents, equals(295000));
+      final credit = await currentCredit(db);
+      expect(credit.correctionPending, isFalse);
+      expect(credit.balanceCents, equals(295000));
     });
   });
 
@@ -670,7 +670,7 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Pending one.',
@@ -686,7 +686,7 @@ void main() {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Shop-scoped.',
@@ -694,7 +694,7 @@ void main() {
       );
 
       final otherShopCorrections =
-          await correctionDao.getCorrectionsByLoan(otherShopId, loanId);
+          await correctionDao.getCorrectionsByCredit(otherShopId, creditId);
       expect(otherShopCorrections.isEmpty, isTrue);
     });
   });
@@ -704,14 +704,14 @@ void main() {
       final entry = await correctionDao.adjustBalance(
         actor: owner(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: Money.fromCents(50000),
-        adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+        adjustmentType: CreditLedgerEntryType.adjustmentDebit,
         reason: 'Dispute settlement concession.',
         recordedAt: DateTime.utc(2026, 10, 23),
       );
 
-      expect(entry.entryType, equals(LoanLedgerEntryType.adjustmentDebit));
+      expect(entry.entryType, equals(CreditLedgerEntryType.adjustmentDebit));
       expect(entry.amountCents, equals(50000));
       expect(entry.preBalanceCents, equals(300000));
       expect(entry.postBalanceCents, equals(350000));
@@ -719,8 +719,8 @@ void main() {
       expect(entry.recordedByUserId, equals(ownerId));
       expect(entry.isCompensatingDebit, isFalse);
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(350000));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(350000));
 
       final entries = await currentLedgerEntries(db);
       expect(entries, hasLength(1));
@@ -733,19 +733,19 @@ void main() {
       final entry = await correctionDao.adjustBalance(
         actor: owner(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: Money.fromCents(50000),
-        adjustmentType: LoanLedgerEntryType.adjustmentCredit,
+        adjustmentType: CreditLedgerEntryType.adjustmentCredit,
         reason: 'Rounding reconciliation.',
         recordedAt: DateTime.utc(2026, 10, 23),
       );
 
-      expect(entry.entryType, equals(LoanLedgerEntryType.adjustmentCredit));
+      expect(entry.entryType, equals(CreditLedgerEntryType.adjustmentCredit));
       expect(entry.preBalanceCents, equals(300000));
       expect(entry.postBalanceCents, equals(250000));
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(250000));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(250000));
     });
 
     test('non-owner cannot adjust balance', () async {
@@ -753,9 +753,9 @@ void main() {
         () => correctionDao.adjustBalance(
           actor: manager(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(50000),
-          adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+          adjustmentType: CreditLedgerEntryType.adjustmentDebit,
           reason: 'Some reason.',
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
@@ -763,7 +763,7 @@ void main() {
       );
     });
 
-    test('cross-shop loan access is rejected', () async {
+    test('cross-shop credit access is rejected', () async {
       final otherOwner = AppUser(
         id: 'corr-other-owner',
         shopId: otherShopId,
@@ -777,9 +777,9 @@ void main() {
         () => correctionDao.adjustBalance(
           actor: otherOwner,
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(50000),
-          adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+          adjustmentType: CreditLedgerEntryType.adjustmentDebit,
           reason: 'Cross-shop attempt.',
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
@@ -792,9 +792,9 @@ void main() {
         () => correctionDao.adjustBalance(
           actor: owner(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(50000),
-          adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+          adjustmentType: CreditLedgerEntryType.adjustmentDebit,
           reason: '   ',
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
@@ -807,9 +807,9 @@ void main() {
         () => correctionDao.adjustBalance(
           actor: owner(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(0),
-          adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+          adjustmentType: CreditLedgerEntryType.adjustmentDebit,
           reason: 'Some reason.',
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
@@ -819,9 +819,9 @@ void main() {
         () => correctionDao.adjustBalance(
           actor: owner(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(-100),
-          adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+          adjustmentType: CreditLedgerEntryType.adjustmentDebit,
           reason: 'Some reason.',
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
@@ -834,38 +834,38 @@ void main() {
         () => correctionDao.adjustBalance(
           actor: owner(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(400000),
-          adjustmentType: LoanLedgerEntryType.adjustmentCredit,
+          adjustmentType: CreditLedgerEntryType.adjustmentCredit,
           reason: 'Excessive credit.',
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
         throwsA(isA<StateError>()),
       );
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(300000));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(300000));
     });
 
-    test('ledger entry and loan balance agree after successful adjustment', () async {
+    test('ledger entry and credit balance agree after successful adjustment', () async {
       await correctionDao.adjustBalance(
         actor: owner(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: Money.fromCents(25000),
-        adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+        adjustmentType: CreditLedgerEntryType.adjustmentDebit,
         reason: 'Concession.',
         recordedAt: DateTime.utc(2026, 10, 23),
       );
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(325000));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(325000));
 
       final entries = await currentLedgerEntries(db);
       expect(entries, hasLength(1));
       expect(entries.first.read<int>('pre_balance_cents'), equals(300000));
       expect(entries.first.read<int>('post_balance_cents'), equals(325000));
-      expect(entries.first.read<int>('post_balance_cents'), equals(loan.balanceCents));
+      expect(entries.first.read<int>('post_balance_cents'), equals(credit.balanceCents));
     });
 
     test('ledger entry, balance, sync journal and audit event roll back on failure', () async {
@@ -877,23 +877,23 @@ void main() {
         END;
       ''');
 
-      final balanceBefore = (await currentLoan(db)).balanceCents;
+      final balanceBefore = (await currentCredit(db)).balanceCents;
 
       expect(
         () => correctionDao.adjustBalance(
           actor: owner(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(50000),
-          adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+          adjustmentType: CreditLedgerEntryType.adjustmentDebit,
           reason: 'Rollback test.',
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
         throwsA(anything),
       );
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(balanceBefore));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(balanceBefore));
 
       final entries = await currentLedgerEntries(db);
       expect(entries, isEmpty);
@@ -907,9 +907,9 @@ void main() {
       final first = await correctionDao.adjustBalance(
         actor: owner(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         amount: Money.fromCents(50000),
-        adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+        adjustmentType: CreditLedgerEntryType.adjustmentDebit,
         reason: 'Idempotency test.',
         recordedAt: DateTime.utc(2026, 10, 23),
       );
@@ -917,9 +917,9 @@ void main() {
       final second = await correctionDao.adjustBalance(
         actor: owner(),
         idempotencyKey: key,
-        loanId: loanId,
+        creditId: creditId,
         amount: Money.fromCents(999999),
-        adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+        adjustmentType: CreditLedgerEntryType.adjustmentDebit,
         reason: 'Different payload, same key.',
         recordedAt: DateTime.utc(2026, 10, 23),
       );
@@ -927,8 +927,8 @@ void main() {
       expect(second.id, equals(first.id));
       expect(second.amountCents, equals(50000));
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(350000));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(350000));
 
       final entries = await currentLedgerEntries(db);
       expect(entries, hasLength(1));
@@ -938,9 +938,9 @@ void main() {
       await correctionDao.adjustBalance(
         actor: owner(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: Money.fromCents(50000),
-        adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+        adjustmentType: CreditLedgerEntryType.adjustmentDebit,
         reason: 'First adjustment.',
         recordedAt: DateTime.utc(2026, 10, 23),
       );
@@ -953,9 +953,9 @@ void main() {
       await correctionDao.adjustBalance(
         actor: owner(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         amount: Money.fromCents(10000),
-        adjustmentType: LoanLedgerEntryType.adjustmentCredit,
+        adjustmentType: CreditLedgerEntryType.adjustmentCredit,
         reason: 'Second adjustment.',
         recordedAt: DateTime.utc(2026, 10, 24),
       );
@@ -965,38 +965,39 @@ void main() {
       expect(entries.first.read<int>('amount_cents'), equals(50000));
       expect(entries.first.read<int>('post_balance_cents'), equals(350000));
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(340000));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(340000));
     });
 
     test('adjustment is blocked while a correction is pending', () async {
       await correctionDao.requestCorrection(
         actor: manager(),
         idempotencyKey: const Uuid().v4(),
-        loanId: loanId,
+        creditId: creditId,
         originalPaymentId: paymentId,
         amount: Money.fromCents(1000),
         reason: 'Pending correction.',
         requestedAt: DateTime.utc(2026, 10, 22),
       );
-      expect((await currentLoan(db)).correctionPending, isTrue);
+      expect((await currentCredit(db)).correctionPending, isTrue);
 
       expect(
         () => correctionDao.adjustBalance(
           actor: owner(),
           idempotencyKey: const Uuid().v4(),
-          loanId: loanId,
+          creditId: creditId,
           amount: Money.fromCents(50000),
-          adjustmentType: LoanLedgerEntryType.adjustmentDebit,
+          adjustmentType: CreditLedgerEntryType.adjustmentDebit,
           reason: 'Should be blocked.',
           recordedAt: DateTime.utc(2026, 10, 23),
         ),
         throwsA(isA<StateError>()),
       );
 
-      final loan = await currentLoan(db);
-      expect(loan.balanceCents, equals(300000));
-      expect(loan.correctionPending, isTrue);
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(300000));
+      expect(credit.correctionPending, isTrue);
     });
   });
 }
+

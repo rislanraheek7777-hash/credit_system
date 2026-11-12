@@ -121,7 +121,7 @@ void main() {
           INSERT INTO sync_queue (
             id, shop_id, idempotency_key, entity_type, entity_id, action_type, payload_json, status, retry_count, created_at
           ) VALUES (
-            'sync-1', 'non-existent-shop', 'idem-1', 'loan', 'loan-1', 'create_loan', '{}', 'pending_server_ack', 0, 1000
+            'sync-1', 'non-existent-shop', 'idem-1', 'credit', 'credit-1', 'create_credit', '{}', 'pending_server_ack', 0, 1000
           );
         '''),
         throwsA(isA<sqlite.SqliteException>()),
@@ -138,7 +138,7 @@ void main() {
         INSERT INTO sync_queue (
           id, shop_id, idempotency_key, entity_type, entity_id, action_type, payload_json, status, retry_count, created_at
         ) VALUES (
-          'sync-1', 'shop-1', 'idem-1', 'loan', 'loan-1', 'create_loan', '{"principal": 5000000}', 'pending_server_ack', 0, 1000
+          'sync-1', 'shop-1', 'idem-1', 'credit', 'credit-1', 'create_credit', '{"principal": 5000000}', 'pending_server_ack', 0, 1000
         );
       ''');
 
@@ -159,7 +159,7 @@ void main() {
           INSERT INTO sync_queue (
             id, shop_id, idempotency_key, entity_type, entity_id, action_type, payload_json, status, retry_count, created_at
           ) VALUES (
-            'sync-2', 'shop-1', 'idem-2', 'loan', 'loan-2', 'create_loan', '{}', 'invalid_status_xyz', 0, 1000
+            'sync-2', 'shop-1', 'idem-2', 'credit', 'credit-2', 'create_credit', '{}', 'invalid_status_xyz', 0, 1000
           );
         '''),
         throwsA(isA<sqlite.SqliteException>()),
@@ -177,7 +177,7 @@ void main() {
           INSERT INTO sync_queue (
             id, shop_id, idempotency_key, entity_type, entity_id, action_type, payload_json, status, retry_count, created_at
           ) VALUES (
-            'sync-3', 'shop-1', 'idem-3', 'loan', 'loan-3', 'create_loan', '{}', 'pending_server_ack', -1, 1000
+            'sync-3', 'shop-1', 'idem-3', 'credit', 'credit-3', 'create_credit', '{}', 'pending_server_ack', -1, 1000
           );
         '''),
         throwsA(isA<sqlite.SqliteException>()),
@@ -194,7 +194,7 @@ void main() {
         INSERT INTO sync_queue (
           id, shop_id, idempotency_key, entity_type, entity_id, action_type, payload_json, status, retry_count, created_at
         ) VALUES (
-          'sync-4', 'shop-1', 'duplicate-key-1', 'loan', 'loan-4', 'create_loan', '{}', 'pending_server_ack', 0, 1000
+          'sync-4', 'shop-1', 'duplicate-key-1', 'credit', 'credit-4', 'create_credit', '{}', 'pending_server_ack', 0, 1000
         );
       ''');
 
@@ -203,7 +203,7 @@ void main() {
           INSERT INTO sync_queue (
             id, shop_id, idempotency_key, entity_type, entity_id, action_type, payload_json, status, retry_count, created_at
           ) VALUES (
-            'sync-5', 'shop-1', 'duplicate-key-1', 'loan', 'loan-5', 'create_loan', '{}', 'pending_server_ack', 0, 1000
+            'sync-5', 'shop-1', 'duplicate-key-1', 'credit', 'credit-5', 'create_credit', '{}', 'pending_server_ack', 0, 1000
           );
         '''),
         throwsA(isA<sqlite.SqliteException>()),
@@ -287,3 +287,4 @@ class _FakeQueryExecutorUser extends QueryExecutorUser {
   @override
   Future<void> beforeOpen(QueryExecutor executor, OpeningDetails details) async {}
 }
+

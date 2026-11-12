@@ -250,3 +250,4 @@ class MigrationRunner {
     return appliedCount;
   }
 }
+

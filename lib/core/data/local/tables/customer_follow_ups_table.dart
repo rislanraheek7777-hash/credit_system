@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'app_users_table.dart';
 import 'customers_table.dart';
-import 'loans_table.dart';
+import 'credits_table.dart';
 import 'shops_table.dart';
 
 /// Local SQLite schema for customer delinquency follow-up logs (Story 6.3, FR-27).
@@ -10,7 +10,7 @@ import 'shops_table.dart';
 /// Records contact attempts, notes, channels, and optional promised payment dates.
 @DataClassName('CustomerFollowUpEntry')
 @TableIndex(name: 'idx_customer_follow_ups_shop_id', columns: {#shopId})
-@TableIndex(name: 'idx_customer_follow_ups_shop_loan', columns: {#shopId, #loanId})
+@TableIndex(name: 'idx_customer_follow_ups_shop_credit', columns: {#shopId, #creditId})
 class CustomerFollowUps extends Table {
   /// Canonical UUIDv4 primary key.
   TextColumn get id => text()();
@@ -19,9 +19,9 @@ class CustomerFollowUps extends Table {
   TextColumn get shopId =>
       text().references(Shops, #id, onDelete: KeyAction.restrict)();
 
-  /// Associated loan agreement (immutable foreign key boundary).
-  TextColumn get loanId =>
-      text().references(Loans, #id, onDelete: KeyAction.restrict)();
+  /// Associated credit agreement (immutable foreign key boundary).
+  TextColumn get creditId =>
+      text().references(Credits, #id, onDelete: KeyAction.restrict)();
 
   /// Associated customer borrower.
   IntColumn get customerId =>
@@ -52,3 +52,4 @@ class CustomerFollowUps extends Table {
         "CHECK (channel IN ('phone_call', 'in_person', 'physical_notice'))",
       ];
 }
+

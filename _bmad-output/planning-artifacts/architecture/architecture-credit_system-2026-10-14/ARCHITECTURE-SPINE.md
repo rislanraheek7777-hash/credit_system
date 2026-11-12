@@ -34,7 +34,7 @@ The codebase is structured into isolated, testable layers:
 - **Binds:** FR-4, FR-18, FR-21, FR-22, FR-23, FR-31, FR-32
 - **Prevents:**
   - Cross-tenant data leaks across shops.
-  - Floating-point arithmetic errors and orphaned child records (collateral/payments without parent loan).
+  - Floating-point arithmetic errors and orphaned child records (collateral/payments without parent credit).
   - Counter freezing or operational lockout during intermittent internet hiccups.
   - Silent record overwrites or unverified state reconciliation during sync.
   - Duplicate payment postings from concurrent submissions or network retries.
@@ -46,8 +46,8 @@ The codebase is structured into isolated, testable layers:
      - Every relational entity table must carry an immutable, non-nullable `tenant_id` (UUID).
      - PostgreSQL Row-Level Security (RLS) is strictly enforced on all tables:
        ```sql
-       ALTER TABLE loans ENABLE ROW LEVEL SECURITY;
-       CREATE POLICY tenant_isolation_policy ON loans
+       ALTER TABLE credits ENABLE ROW LEVEL SECURITY;
+       CREATE POLICY tenant_isolation_policy ON credits
          USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
        ```
      - Direct client access bypassing the authenticated tenant context is prohibited.
@@ -138,14 +138,14 @@ The codebase is structured into isolated, testable layers:
 - **Binds:** FR-5, FR-6, FR-16, FR-17, FR-19, FR-21, FR-23
 - **Prevents:**
   - Tight coupling between business rules and Flutter UI widgets.
-  - State divergence between loan financial status and physical collateral custody status.
+  - State divergence between credit financial status and physical collateral custody status.
   - Unauthorized counter operations due to client-side permission leakage.
   - Duplicate transaction submissions caused by rapid UI button clicks.
   - Inability to unit-test complex financial lifecycles without mounting widget trees.
 - **Rule:**
   1. **Pure Dart Domain State Machines:**
      - Financial state and custody state must be modeled as independent, decoupled state machines in pure Dart domain models:
-       - **`LoanFinancialState`**: `pendingDisbursement` $\rightarrow$ `active` $\rightarrow$ `overdue` $\rightarrow$ `settled` (or `cancelled`).
+       - **`CreditFinancialState`**: `pendingDisbursement` $\rightarrow$ `active` $\rightarrow$ `overdue` $\rightarrow$ `settled` (or `cancelled`).
        - **`CollateralCustodyState`**: `inCustody` $\rightarrow$ `returned` $\rightarrow$ `exceptionHeld`.
        - **`OverallWorkflowStatus`**: Derived dynamically from financial and custody status:
          $$\text{Status} = \begin{cases} 
@@ -153,7 +153,7 @@ The codebase is structured into isolated, testable layers:
          \text{Active}, & \text{if financial is active} \\
          \text{Overdue}, & \text{if financial is overdue} \\
          \text{Settled (Items Pending Handover)}, & \text{if financial is settled and any item inCustody} \\
-         \text{Closed / Completed}, & \text{if financial is settled and all items returned} \\
+         \text{Closed / Completed}, & \text{if financial is settled and (no item receipts attached or all items returned)} \\
          \text{Closed (Collateral Exception)}, & \text{if financial is settled and any item exceptionHeld} \\
          \text{Cancelled}, & \text{if financial is cancelled}
          \end{cases}$$
@@ -165,10 +165,10 @@ The codebase is structured into isolated, testable layers:
      - A centralized `sessionProvider` holds the authenticated user's `tenantId`, `userId`, `role`, and `Set<AppPermission>`.
      - Granular UI toggles use typed selectors (e.g. `ref.watch(hasPermissionProvider(AppPermission.approveCorrections))`) to disable or hide restricted controls.
   4. **Idempotency & Concurrent Submission Protection:**
-     - Action buttons triggering financial operations (loan creation, disbursement, payment) must observe `AsyncValue.isLoading`.
+     - Action buttons triggering financial operations (credit creation, disbursement, payment) must observe `AsyncValue.isLoading`.
      - Submissions generate a client-side idempotency UUID on first tap and lock the UI controller until confirmed or rejected.
-  5. **Loan Correction Lock:**
-     - When a loan has an active correction pending owner review, the loan detail controller must expose a `isPaymentLocked` state that blocks payment inputs specifically for that loan.
+  5. **Credit Correction Lock:**
+     - When a credit has an active correction pending owner review, the credit detail controller must expose a `isPaymentLocked` state that blocks payment inputs specifically for that credit.
 
 ### AD-4 — Feature-First Clean Architecture & Inward Dependency Rules [ADOPTED]
 
@@ -179,7 +179,7 @@ The codebase is structured into isolated, testable layers:
   - Over-abstraction while maintaining strict architectural boundaries.
 - **Rule:**
   1. **Feature-First Vertical Slices:**
-     - The application is organized by business feature domains: `auth`, `shop`, `customers`, `collateral`, `loans`, `payments`, `overdue`, `reports`, and `audit`.
+     - The application is organized by business feature domains: `auth`, `shop`, `customers`, `collateral`, `credits`, `payments`, `overdue`, `reports`, and `audit`.
   2. **Core Infrastructure (`lib/core/`):**
      - Contains only shared, non-feature-specific primitives:
        - `database/`: Drift database connection, migrations, and shared table mixins (`tenant_id`, timestamps).
@@ -253,7 +253,7 @@ The codebase is structured into isolated, testable layers:
      - Network interruptions trigger retry with exponential backoff.
      - The unique `sha256_hash` and `remote_storage_key` guarantee upload idempotency, preventing duplicate object uploads.
   6. **Retention & Audit Compliance:**
-     - Photos associated with active or settled loans are preserved for the full statutory record retention period. Deletion of photos is restricted exclusively to authorized administrative procedures and logged in the append-only audit trail.
+     - Photos associated with active or settled credits are preserved for the full statutory record retention period. Deletion of photos is restricted exclusively to authorized administrative procedures and logged in the append-only audit trail.
   7. **Automated Verification Gates:**
      - Automated test suites must verify:
        - Client-side compression preserving hallmark clarity within 150–300 KB.
@@ -277,11 +277,11 @@ The codebase is structured into isolated, testable layers:
        1. `registerCustomers`
        2. `viewCustomers`
        3. `viewSensitiveCustomerData`
-       4. `createLoans`
-       5. `confirmLoanDisbursement`
+       4. `createCredits`
+       5. `confirmCreditDisbursement`
        6. `recordPayments`
        7. `viewAndReprintReceipts`
-       8. `viewOverdueLoans`
+       8. `viewOverdueCredits`
        9. `recordCustomerNotes`
        10. `requestCorrections`
        11. `approveCorrections` (Shop Owner only by default)
@@ -299,7 +299,7 @@ The codebase is structured into isolated, testable layers:
      - Explicit authorization is mandatory for:
        - Payment correction approvals (requires `approveCorrections`).
        - Due date extensions (requires Shop Owner role).
-       - Cash disbursement confirmation (requires `confirmLoanDisbursement`).
+       - Cash disbursement confirmation (requires `confirmCreditDisbursement`).
        - Collateral release confirmation (requires `confirmCollateralReturn`).
        - Store financial reports and CSV/PDF data exports (requires `viewFinancialReports`).
        - Customer photo and collateral photo exception approvals (requires Shop Owner role).
@@ -367,14 +367,14 @@ The codebase is structured into isolated, testable layers:
 - **Rule:**
   1. **Risk-Prioritized Test Pyramid Architecture:**
      - **Base (~70% — Pure Dart Domain Unit Tests):**
-       - Exercises core domain business logic: `Money` minor-unit math (AD-2), loan lifecycle state transitions (AD-3), preset and custom due-date calculator (FR-19 Cases 1–5), double-entry ledger balance formulas (FR-22 7 scenarios), independent collateral custody transitions (FR-16), and evaluation of all 14 RBAC permissions (AD-6).
+       - Exercises core domain business logic: `Money` minor-unit math (AD-2), credit lifecycle state transitions (AD-3), preset and custom due-date calculator (FR-19 Cases 1–5), double-entry ledger balance formulas (FR-22 7 scenarios), independent collateral custody transitions (FR-16), and evaluation of all 14 RBAC permissions (AD-6).
        - Executes in pure Dart without Flutter widget tree or database setup in seconds.
      - **Middle (~20% — Integration & Real Database Invariant Tests):**
        - *Drift SQLite Integration:* Verifies schema migrations, foreign-key constraints, atomic transaction rollback behavior on mid-operation failure, and local offline sync queue operations.
        - *PostgreSQL Real-Instance Integration:* Uses a real PostgreSQL test instance (via test containers or local test DB) to verify Row-Level Security (RLS) policies, cross-tenant isolation attack attempts, and database triggers blocking `UPDATE`/`DELETE` on `audit_events`. Tests in SQLite are never treated as proof of PostgreSQL RLS security.
        - *Offline Sync & Network Invariants:* Verifies client retry backoff, idempotency deduplication on repeated submissions, interrupted image uploads, and post-network recovery.
      - **Top (~10% — Counter Flow Widget Tests):**
-       - Uses Flutter `WidgetTester` to verify critical counter screens: customer lookup by NIC, loan agreement origination, payment submission, receipt snapshot preview, and reprint watermark rendering.
+       - Uses Flutter `WidgetTester` to verify critical counter screens: customer lookup by NIC, credit agreement origination, payment submission, receipt snapshot preview, and reprint watermark rendering.
   2. **Boundary & Edge-Case Test Scenarios:**
      - Automated test suites must explicitly cover:
        - Full settlement zero-balance transition (`isZero == true`).
@@ -418,10 +418,10 @@ The codebase is structured into isolated, testable layers:
        - Geographically separate secondary backup replication (e.g., secondary cloud region or offsite cold vault) where supported by the infrastructure provider.
        - Formal, documented disaster recovery runbook detailing step-by-step restore execution, credential rotation, and tenant verification.
   3. **Financial Durability & Restored Ledger Integrity:**
-     - Confirmed financial transactions (loans, cash disbursements, payments, approved reversals) are durable and irrevocable.
+     - Confirmed financial transactions (credits, cash disbursements, payments, approved reversals) are durable and irrevocable.
      - Following any restoration drill or disaster recovery event, automated consistency verification must prove:
        - Complete ledger balance equality: $\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$.
-       - Intact parent-child relationships across Tenants $\rightarrow$ Customers $\rightarrow$ Loans $\rightarrow$ Collateral Items $\rightarrow$ Payments.
+       - Intact parent-child relationships across Tenants $\rightarrow$ Customers $\rightarrow$ Credits $\rightarrow$ Collateral Items $\rightarrow$ Payments.
        - Complete preservation of append-only `audit_events` with zero gaps or truncation.
      - Silent overwrites, arbitrary balance edits, or discarding confirmed financial records during restoration or reconciliation is strictly prohibited.
   4. **Offline Operations & Counter Device Fault Semantics (AD-1 Alignment):**
@@ -486,10 +486,10 @@ lib/
     │   ├── domain/                    # CollateralItem entity, CustodyStatus state machine
     │   ├── data/                      # DriftCollateralDao, CollateralRepositoryImpl
     │   └── presentation/              # CollateralIntakeWidget, ItemVerificationScreen
-    ├── loans/                         # Principal tracking, terms, due dates & disbursements
-    │   ├── domain/                    # Loan entity, LoanFinancialStatus state machine
-    │   ├── data/                      # DriftLoanDao, LoanRepositoryImpl
-    │   └── presentation/              # LoanOriginationScreen, LoanDetailScreen
+    ├── credits/                         # Principal tracking, terms, due dates & disbursements
+    │   ├── domain/                    # Credit entity, CreditFinancialStatus state machine
+    │   ├── data/                      # DriftCreditDao, CreditRepositoryImpl
+    │   └── presentation/              # CreditOriginationScreen, CreditDetailScreen
     ├── payments/                      # Partial repayments, settlements, reversals & receipts
     │   ├── domain/                    # Payment entity, ReceiptSnapshot, Ledger calculator
     │   ├── data/                      # DriftPaymentDao, PaymentRepositoryImpl (ACID)
@@ -515,3 +515,4 @@ The following architectural dimensions are intentionally deferred beyond Version
 2. **Automated Reminders & SMS/WhatsApp Integration:** Outgoing notification gateway architectures deferred pending provider and cost evaluation.
 3. **Multi-Branch Corporate Hierarchy:** Centralized inventory pooling across separate physical storefronts deferred; strictly independent shop tenants in Version 1.
 4. **Bi-directional Third-Party Accounting Sync:** QuickBooks / Xero API synchronization bridges deferred to post-pilot roadmap.
+

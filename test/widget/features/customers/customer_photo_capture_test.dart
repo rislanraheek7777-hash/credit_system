@@ -125,14 +125,6 @@ void main() {
   }) async {
     // Fill text fields
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Customer ID'),
-      customerId,
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Shop ID'),
-      shopId,
-    );
-    await tester.enterText(
       find.widgetWithText(TextFormField, 'Full Name'),
       fullName,
     );
@@ -182,8 +174,11 @@ void main() {
       await tester.tap(find.byKey(const Key('register_customer_button')));
       await tester.pumpAndSettle();
 
-      // Blocked with exact AC message: "Customer photograph is mandatory."
-      expect(find.text('Customer photograph is mandatory.'), findsOneWidget);
+      // Photograph is now optional: registration succeeds without a photo.
+      expect(
+        find.textContaining('Customer "Kumara Silva" registered successfully'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('capturing a photo displays live preview, retake, and clear buttons', (
@@ -344,3 +339,4 @@ void main() {
     });
   });
 }
+

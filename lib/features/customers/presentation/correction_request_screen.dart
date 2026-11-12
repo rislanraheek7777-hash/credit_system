@@ -7,8 +7,8 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/core/permissions/authorization_guard.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/correction_dao.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:uuid/uuid.dart';
 
 /// Screen for requesting a payment correction (Story 5.5, AC-1).
@@ -17,7 +17,7 @@ import 'package:uuid/uuid.dart';
 /// been recorded, so the correction always references the actual original
 /// payment being corrected. The original payment record is never modified or
 /// deleted; the correction request records a mandatory business explanation
-/// and activates the correction lock on the loan until a Shop Owner approves
+/// and activates the correction lock on the credit until a Shop Owner approves
 /// or rejects it.
 ///
 /// Only an actor holding [AppPermission.requestCorrections] may submit a
@@ -29,11 +29,11 @@ class CorrectionRequestScreen extends StatefulWidget {
   /// never trusted from UI input.
   final String shopId;
 
-  /// The loan agreement the corrected payment belongs to.
-  final String loanId;
+  /// The credit agreement the corrected payment belongs to.
+  final String creditId;
 
   /// The original erroneous payment being corrected. Must belong to
-  /// [loanId] within [shopId]; validated by [CorrectionDao.requestCorrection].
+  /// [creditId] within [shopId]; validated by [CorrectionDao.requestCorrection].
   final String originalPaymentId;
 
   /// The amount of the original payment being corrected, in integer cents.
@@ -49,7 +49,7 @@ class CorrectionRequestScreen extends StatefulWidget {
   const CorrectionRequestScreen({
     super.key,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.originalPaymentId,
     required this.paymentAmount,
     required this.currentUser,
@@ -63,9 +63,9 @@ class CorrectionRequestScreen extends StatefulWidget {
 
 class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
   late final CorrectionDao _correctionDao;
-  late final LoanDao _loanDao;
+  late final CreditDao _creditDao;
 
-  Loan? _loan;
+  Credit? _credit;
   bool _isLoading = true;
   bool _isSubmitting = false;
   String? _error;
@@ -80,17 +80,17 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
       widget.currentUser.effectivePermissions
           .contains(AppPermission.requestCorrections);
 
-  /// Whether the loan is eligible for a new correction request (not already
+  /// Whether the credit is eligible for a new correction request (not already
   /// correction-locked).
-  bool get _loanEligibleForCorrection =>
-      _loan != null && !_loan!.correctionPending;
+  bool get _creditEligibleForCorrection =>
+      _credit != null && !_credit!.correctionPending;
 
   @override
   void initState() {
     super.initState();
     final db = widget.database ?? AppDatabase();
     _correctionDao = CorrectionDao(db);
-    _loanDao = LoanDao(db);
+    _creditDao = CreditDao(db);
     // Pre-fill the correction amount with the original payment amount. Per
     // PRD FR-22, the reversal amount is the reversed payment amount.
     _amountController.text = _formatMinorUnits(widget.paymentAmount.minorUnits);
@@ -110,18 +110,18 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
       _error = null;
     });
     try {
-      final loan = await _loanDao.getLoanById(widget.shopId, widget.loanId);
+      final credit = await _creditDao.getCreditById(widget.shopId, widget.creditId);
       if (!mounted) return;
       setState(() {
-        _loan = loan;
+        _credit = credit;
         _isLoading = false;
-        _error = loan == null ? 'Loan agreement not found' : null;
+        _error = credit == null ? 'Credit agreement not found' : null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load loan: $e';
+        _error = 'Failed to load credit: $e';
       });
     }
   }
@@ -165,10 +165,10 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
       return;
     }
 
-    final loan = _loan;
-    if (loan == null) {
+    final credit = _credit;
+    if (credit == null) {
       setState(() {
-        _error = 'Loan agreement not found.';
+        _error = 'Credit agreement not found.';
       });
       return;
     }
@@ -181,10 +181,10 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
       return;
     }
 
-    if (!_loanEligibleForCorrection) {
+    if (!_creditEligibleForCorrection) {
       setState(() {
         _error =
-            'A correction is already pending on this loan. Requests are blocked '
+            'A correction is already pending on this credit. Requests are blocked '
             'until the Shop Owner approves or rejects it.';
       });
       return;
@@ -201,7 +201,7 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
       await _correctionDao.requestCorrection(
         actor: widget.currentUser,
         idempotencyKey: idempotencyKey,
-        loanId: widget.loanId,
+        creditId: widget.creditId,
         originalPaymentId: widget.originalPaymentId,
         amount: amount,
         reason: reason,
@@ -212,7 +212,7 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
       setState(() {
         _isSubmitting = false;
         _successMessage =
-            'Correction requested. The loan is locked pending Shop Owner approval.';
+            'Correction requested. The credit is locked pending Shop Owner approval.';
       });
     } on PermissionDeniedException catch (e) {
       if (!mounted) return;
@@ -249,17 +249,17 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
       );
     }
 
-    final loan = _loan;
-    if (loan == null) {
+    final credit = _credit;
+    if (credit == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Request Correction')),
-        body: Center(child: Text(_error ?? 'Loan not found')),
+        body: Center(child: Text(_error ?? 'Credit not found')),
       );
     }
 
-    final balance = Money.fromCents(loan.balanceCents);
+    final balance = Money.fromCents(credit.balanceCents);
     final canSubmit =
-        _canRequestCorrection && _loanEligibleForCorrection && !_isSubmitting;
+        _canRequestCorrection && _creditEligibleForCorrection && !_isSubmitting;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Request Correction')),
@@ -303,7 +303,7 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
                       'Amount: ${widget.paymentAmount.format()}',
                     ),
                     Text(
-                      'Loan balance: ${balance.format()}',
+                      'Credit balance: ${balance.format()}',
                     ),
                   ],
                 ),
@@ -367,10 +367,10 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
-            if (_canRequestCorrection && !_loanEligibleForCorrection) ...[
+            if (_canRequestCorrection && !_creditEligibleForCorrection) ...[
               const SizedBox(height: 8),
               const Text(
-                'A correction is already pending on this loan.',
+                'A correction is already pending on this credit.',
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
@@ -380,3 +380,4 @@ class _CorrectionRequestScreenState extends State<CorrectionRequestScreen> {
     );
   }
 }
+

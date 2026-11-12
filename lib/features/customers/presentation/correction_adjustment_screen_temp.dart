@@ -7,13 +7,13 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/core/permissions/authorization_guard.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/correction_dao.dart';
-import 'package:credit_system/features/customers/data/daos/loan_dao.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:uuid/uuid.dart';
 
 /// Screen for Shop Owner manual balance adjustments (Story 5.5, AC-5).
 ///
-/// Allows a Shop Owner to manually increase or decrease a loan's outstanding
+/// Allows a Shop Owner to manually increase or decrease a credit's outstanding
 /// balance by an integer-cents amount with a mandatory business rationale.
 /// Adjustments are recorded as immutable ledger entries; the original payment
 /// history is never altered. All financial effects go through
@@ -26,8 +26,8 @@ class CorrectionAdjustmentScreen extends StatefulWidget {
   /// never trusted from UI input.
   final String shopId;
 
-  /// The loan agreement to adjust.
-  final String loanId;
+  /// The credit agreement to adjust.
+  final String creditId;
 
   /// The authenticated Shop Owner submitting the adjustment.
   final AppUser currentUser;
@@ -38,7 +38,7 @@ class CorrectionAdjustmentScreen extends StatefulWidget {
   const CorrectionAdjustmentScreen({
     super.key,
     required this.shopId,
-    required this.loanId,
+    required this.creditId,
     required this.currentUser,
     this.database,
   });
@@ -51,9 +51,9 @@ class CorrectionAdjustmentScreen extends StatefulWidget {
 class _CorrectionAdjustmentScreenState
     extends State<CorrectionAdjustmentScreen> {
   late final CorrectionDao _correctionDao;
-  late final LoanDao _loanDao;
+  late final CreditDao _creditDao;
 
-  Loan? _loan;
+  Credit? _credit;
   bool _isLoading = true;
   bool _isSubmitting = false;
   String? _error;
@@ -62,7 +62,7 @@ class _CorrectionAdjustmentScreenState
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _reasonController = TextEditingController();
 
-  LoanLedgerEntryType? _selectedAdjustmentType;
+  CreditLedgerEntryType? _selectedAdjustmentType;
 
   /// Whether the actor may submit balance adjustments.
   bool get _canAdjustBalance =>
@@ -71,18 +71,18 @@ class _CorrectionAdjustmentScreenState
       widget.currentUser.effectivePermissions
           .contains(AppPermission.approveCorrections);
 
-  /// Whether the loan exists, is in this shop, and is not correction-locked.
-  bool get _loanEligibleForAdjustment =>
-      _loan != null &&
-      _loan!.shopId == widget.shopId &&
-      !_loan!.correctionPending;
+  /// Whether the credit exists, is in this shop, and is not correction-locked.
+  bool get _creditEligibleForAdjustment =>
+      _credit != null &&
+      _credit!.shopId == widget.shopId &&
+      !_credit!.correctionPending;
 
   @override
   void initState() {
     super.initState();
     final db = widget.database ?? AppDatabase();
     _correctionDao = CorrectionDao(db);
-    _loanDao = LoanDao(db);
+    _creditDao = CreditDao(db);
     _load();
   }
 
@@ -99,18 +99,18 @@ class _CorrectionAdjustmentScreenState
       _error = null;
     });
     try {
-      final loan = await _loanDao.getLoanById(widget.shopId, widget.loanId);
+      final credit = await _creditDao.getCreditById(widget.shopId, widget.creditId);
       if (!mounted) return;
       setState(() {
-        _loan = loan;
+        _credit = credit;
         _isLoading = false;
-        _error = loan == null ? 'Loan agreement not found' : null;
+        _error = credit == null ? 'Credit agreement not found' : null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load loan: $e';
+        _error = 'Failed to load credit: $e';
       });
     }
   }
@@ -151,25 +151,25 @@ class _CorrectionAdjustmentScreenState
       return;
     }
 
-    final loan = _loan;
-    if (loan == null) {
+    final credit = _credit;
+    if (credit == null) {
       setState(() {
-        _error = 'Loan agreement not found.';
+        _error = 'Credit agreement not found.';
       });
       return;
     }
 
     if (!_canAdjustBalance) {
       setState(() {
-        _error = 'You do not have permission to adjust loan balances.';
+        _error = 'You do not have permission to adjust credit balances.';
       });
       return;
     }
 
-    if (!_loanEligibleForAdjustment) {
+    if (!_creditEligibleForAdjustment) {
       setState(() {
         _error =
-            'A correction is pending on this loan. Balance adjustments are '
+            'A correction is pending on this credit. Balance adjustments are '
             'blocked until the correction is approved or rejected.';
       });
       return;
@@ -185,7 +185,7 @@ class _CorrectionAdjustmentScreenState
       await _correctionDao.adjustBalance(
         actor: widget.currentUser,
         idempotencyKey: const Uuid().v4(),
-        loanId: widget.loanId,
+        creditId: widget.creditId,
         amount: amount,
         adjustmentType: _selectedAdjustmentType!,
         reason: reason,
@@ -197,7 +197,7 @@ class _CorrectionAdjustmentScreenState
         _isSubmitting = false;
         _successMessage =
             'Adjustment applied. New balance: '
-            '${Money.fromCents(_adjustedBalance(_loan!, amount)).format()}';
+            '${Money.fromCents(_adjustedBalance(_credit!, amount)).format()}';
       });
     } on PermissionDeniedException catch (e) {
       if (!mounted) return;
@@ -215,15 +215,15 @@ class _CorrectionAdjustmentScreenState
   }
 
   /// Computes the post-adjustment balance for display in the confirmation.
-  int _adjustedBalance(Loan loan, Money amount) {
+  int _adjustedBalance(Credit credit, Money amount) {
     switch (_selectedAdjustmentType) {
-      case LoanLedgerEntryType.adjustmentDebit:
-        return loan.balanceCents + amount.minorUnits;
-      case LoanLedgerEntryType.adjustmentCredit:
-        return loan.balanceCents - amount.minorUnits;
-      case LoanLedgerEntryType.compensatingDebit:
+      case CreditLedgerEntryType.adjustmentDebit:
+        return credit.balanceCents + amount.minorUnits;
+      case CreditLedgerEntryType.adjustmentCredit:
+        return credit.balanceCents - amount.minorUnits;
+      case CreditLedgerEntryType.compensatingDebit:
       case null:
-        return loan.balanceCents;
+        return credit.balanceCents;
     }
   }
 
@@ -235,18 +235,18 @@ class _CorrectionAdjustmentScreenState
       );
     }
 
-    final loan = _loan;
-    if (loan == null) {
+    final credit = _credit;
+    if (credit == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Adjust Balance')),
-        body: Center(child: Text(_error ?? 'Loan not found')),
+        body: Center(child: Text(_error ?? 'Credit not found')),
       );
     }
 
-    final balance = Money.fromCents(loan.balanceCents);
+    final balance = Money.fromCents(credit.balanceCents);
     final canSubmit =
         _canAdjustBalance &&
-        _loanEligibleForAdjustment &&
+        _creditEligibleForAdjustment &&
         !_isSubmitting &&
         _selectedAdjustmentType != null;
 
@@ -273,7 +273,7 @@ class _CorrectionAdjustmentScreenState
               ),
               const SizedBox(height: 12),
             ],
-            // Loan context
+            // Credit context
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -281,15 +281,15 @@ class _CorrectionAdjustmentScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Loan agreement',
+                      'Credit agreement',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Loan ID: ${loan.id.substring(0, loan.id.length.clamp(0, 8))}...',
+                      'Credit ID: ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...',
                     ),
                     Text('Outstanding balance: ${balance.format()}'),
-                    if (loan.correctionPending)
+                    if (credit.correctionPending)
                       const Text(
                         'Correction pending — adjustments blocked.',
                         style: TextStyle(color: Colors.orange, fontSize: 12),
@@ -308,18 +308,18 @@ class _CorrectionAdjustmentScreenState
             Row(
               children: [
                 _adjustmentTypeChip(
-                  LoanLedgerEntryType.adjustmentDebit,
+                  CreditLedgerEntryType.adjustmentDebit,
                   'Debit',
                   'Increase balance',
-                  _canAdjustBalance && _loanEligibleForAdjustment &&
+                  _canAdjustBalance && _creditEligibleForAdjustment &&
                       !_isSubmitting,
                 ),
                 const SizedBox(width: 12),
                 _adjustmentTypeChip(
-                  LoanLedgerEntryType.adjustmentCredit,
+                  CreditLedgerEntryType.adjustmentCredit,
                   'Credit',
                   'Decrease balance',
-                  _canAdjustBalance && _loanEligibleForAdjustment &&
+                  _canAdjustBalance && _creditEligibleForAdjustment &&
                       !_isSubmitting,
                 ),
               ],
@@ -379,11 +379,11 @@ class _CorrectionAdjustmentScreenState
             if (!_canAdjustBalance) ...[
               const SizedBox(height: 8),
               const Text(
-                'You do not have permission to adjust loan balances.',
+                'You do not have permission to adjust credit balances.',
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
-            if (_canAdjustBalance && !_loanEligibleForAdjustment) ...[
+            if (_canAdjustBalance && !_creditEligibleForAdjustment) ...[
               const SizedBox(height: 8),
               const Text(
                 'Adjustments are blocked while a correction is pending.',
@@ -398,7 +398,7 @@ class _CorrectionAdjustmentScreenState
 
   /// A selectable adjustment type chip.
   Widget _adjustmentTypeChip(
-    LoanLedgerEntryType type,
+    CreditLedgerEntryType type,
     String label,
     String subtitle,
     bool canSubmit,
@@ -412,7 +412,7 @@ class _CorrectionAdjustmentScreenState
           ? (_) => setState(() => _selectedAdjustmentType = type)
           : null,
       avatar: Text(
-        type == LoanLedgerEntryType.adjustmentDebit ? '+' : '-',
+        type == CreditLedgerEntryType.adjustmentDebit ? '+' : '-',
         style: TextStyle(
           color: isSelected ? Colors.white : Colors.black54,
           fontWeight: FontWeight.bold,
@@ -421,3 +421,4 @@ class _CorrectionAdjustmentScreenState
     );
   }
 }
+

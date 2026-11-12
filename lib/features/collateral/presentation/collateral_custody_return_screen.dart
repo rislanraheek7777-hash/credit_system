@@ -7,7 +7,7 @@ import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_custody_event.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
-import 'package:credit_system/features/collateral/domain/models/loan_administrative_closure.dart';
+import 'package:credit_system/features/collateral/domain/models/credit_administrative_closure.dart';
 import 'package:uuid/uuid.dart';
 
 /// Collateral custody return screen (Story 3.4).
@@ -25,12 +25,12 @@ import 'package:uuid/uuid.dart';
 /// Custody transitions and discrepancy resolutions are recorded as immutable
 /// custody events / discrepancy records. Authorization is enforced in the
 /// underlying DAO operations, not only by hiding buttons:
-/// - staff requesting/reporting a handover requires `createLoans`
+/// - staff requesting/reporting a handover requires `createCredits`
 /// - Shop Owner confirming a return requires `confirmCollateralReturn`
 /// - Shop Owner resolving a discrepancy requires `approveCorrections`
 ///
 /// Each item's custody state is independent, even when several items belong
-/// to the same loan.
+/// to the same credit.
 class CollateralCustodyReturnScreen extends StatefulWidget {
   /// The active shop tenant UUID.
   final String shopId;
@@ -41,8 +41,8 @@ class CollateralCustodyReturnScreen extends StatefulWidget {
   /// Optional customer scope: only this customer's items are displayed.
   final int? customerId;
 
-  /// Optional loan scope: only this loan's items are displayed.
-  final String? loanId;
+  /// Optional credit scope: only this credit's items are displayed.
+  final String? creditId;
 
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
@@ -52,7 +52,7 @@ class CollateralCustodyReturnScreen extends StatefulWidget {
     required this.shopId,
     required this.currentUser,
     this.customerId,
-    this.loanId,
+    this.creditId,
     this.database,
   });
 
@@ -67,8 +67,8 @@ class _CollateralCustodyReturnScreenState
   late CollateralDao _collateralDao;
 
   List<CollateralItem> _items = [];
-  LoanAdministrativeClosure? _closure;
-  bool _isLoanSettled = false;
+  CreditAdministrativeClosure? _closure;
+  bool _isCreditSettled = false;
   bool _isLoading = true;
   String? _error;
 
@@ -82,7 +82,6 @@ class _CollateralCustodyReturnScreenState
 
   @override
   void dispose() {
-    _db.close();
     super.dispose();
   }
 
@@ -93,10 +92,10 @@ class _CollateralCustodyReturnScreenState
     });
 
     try {
-      final items = widget.loanId != null
-          ? await _collateralDao.getCollateralItemsByLoanId(
+      final items = widget.creditId != null
+          ? await _collateralDao.getCollateralItemsByCreditId(
               widget.shopId,
-              widget.loanId!,
+              widget.creditId!,
             )
           : widget.customerId != null
               ? await _collateralDao.getCollateralItemsByCustomerId(
@@ -105,16 +104,16 @@ class _CollateralCustodyReturnScreenState
                 )
               : await _collateralDao.getCollateralItemsByShopId(widget.shopId);
 
-      LoanAdministrativeClosure? closure;
-      bool isLoanSettled = false;
-      if (widget.loanId != null) {
-        closure = await _collateralDao.getAdministrativeClosureByLoanId(
+      CreditAdministrativeClosure? closure;
+      bool isCreditSettled = false;
+      if (widget.creditId != null) {
+        closure = await _collateralDao.getAdministrativeClosureByCreditId(
           widget.shopId,
-          widget.loanId!,
+          widget.creditId!,
         );
-        isLoanSettled = await _collateralDao.isLoanSettled(
+        isCreditSettled = await _collateralDao.isCreditSettled(
           widget.shopId,
-          widget.loanId!,
+          widget.creditId!,
         );
       }
 
@@ -123,7 +122,7 @@ class _CollateralCustodyReturnScreenState
       setState(() {
         _items = items;
         _closure = closure;
-        _isLoanSettled = isLoanSettled;
+        _isCreditSettled = isCreditSettled;
         _isLoading = false;
       });
     } catch (e) {
@@ -142,7 +141,7 @@ class _CollateralCustodyReturnScreenState
 
   /// Whether the current actor can perform staff-initiated custody actions.
   bool get _canRequestHandover {
-    return widget.currentUser.hasPermission(AppPermission.createLoans);
+    return widget.currentUser.hasPermission(AppPermission.createCredits);
   }
 
   /// Whether the current actor can perform Shop Owner custody actions.
@@ -165,13 +164,13 @@ class _CollateralCustodyReturnScreenState
     return widget.currentUser.role.isOwner;
   }
 
-  /// Whether the Shop Owner can administratively close the loan collateral
+  /// Whether the Shop Owner can administratively close the credit collateral
   /// account with an exception (Story 3.5, PRD FR-16).
   bool get _canExecuteAdministrativeClosure {
-    if (widget.loanId == null) return false;
+    if (widget.creditId == null) return false;
     if (!widget.currentUser.role.isOwner) return false;
     if (_closure != null) return false;
-    if (!_isLoanSettled) return false;
+    if (!_isCreditSettled) return false;
     if (_items.isEmpty) return false;
     final hasException = _items.any(
       (i) => i.custodyStatus == CollateralCustodyStatus.exceptionHeld,
@@ -305,14 +304,14 @@ class _CollateralCustodyReturnScreenState
   Future<void> _requestReturn(CollateralItem item) async {
     if (!_canRequestHandover) {
       _showError(
-        'Access denied: "${AppPermission.createLoans.key}" is required to request a collateral return.',
+        'Access denied: "${AppPermission.createCredits.key}" is required to request a collateral return.',
       );
       return;
     }
     final reason = await _reasonDialog(
       title: 'Request Collateral Return',
       label: 'Reason for return request',
-      hint: 'e.g. Customer has settled the loan and is collecting the item',
+      hint: 'e.g. Customer has settled the credit and is collecting the item',
     );
     if (reason == null || !mounted) return;
 
@@ -339,7 +338,7 @@ class _CollateralCustodyReturnScreenState
         item.id,
         CollateralCustodyStatus.handoverRequested,
         actor: widget.currentUser,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
         reason: 'Return requested: $reason',
       );
       _showSuccess('Return request recorded for ${item.itemReferenceId}.');
@@ -355,7 +354,7 @@ class _CollateralCustodyReturnScreenState
   Future<void> _reportHandover(CollateralItem item) async {
     if (!_canRequestHandover) {
       _showError(
-        'Access denied: "${AppPermission.createLoans.key}" is required to report a physical handover.',
+        'Access denied: "${AppPermission.createCredits.key}" is required to report a physical handover.',
       );
       return;
     }
@@ -388,7 +387,7 @@ class _CollateralCustodyReturnScreenState
         item.id,
         CollateralCustodyStatus.handoverReported,
         actor: widget.currentUser,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
         reason: 'Physical handover reported: $details',
       );
       _showSuccess('Physical handover reported for ${item.itemReferenceId}.');
@@ -404,7 +403,7 @@ class _CollateralCustodyReturnScreenState
   Future<void> _cancelRequest(CollateralItem item) async {
     if (!_canRequestHandover) {
       _showError(
-        'Access denied: "${AppPermission.createLoans.key}" is required to cancel a return request.',
+        'Access denied: "${AppPermission.createCredits.key}" is required to cancel a return request.',
       );
       return;
     }
@@ -424,7 +423,7 @@ class _CollateralCustodyReturnScreenState
         item.id,
         CollateralCustodyStatus.inCustody,
         actor: widget.currentUser,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
         reason: 'Return request cancelled by staff',
       );
       _showSuccess('Return request cancelled for ${item.itemReferenceId}.');
@@ -543,7 +542,7 @@ class _CollateralCustodyReturnScreenState
   Future<void> _reportDiscrepancy(CollateralItem item) async {
     if (!_canRequestHandover) {
       _showError(
-        'Access denied: "${AppPermission.createLoans.key}" is required to report a discrepancy.',
+        'Access denied: "${AppPermission.createCredits.key}" is required to report a discrepancy.',
       );
       return;
     }
@@ -568,7 +567,7 @@ class _CollateralCustodyReturnScreenState
         widget.currentUser.id,
         reason,
         actor: widget.currentUser,
-        requiredPermission: AppPermission.createLoans,
+        requiredPermission: AppPermission.createCredits,
       );
       _showSuccess(
         'Discrepancy reported for ${item.itemReferenceId}; awaiting Shop Owner review.',
@@ -666,13 +665,13 @@ class _CollateralCustodyReturnScreenState
     }
   }
 
-  /// Shop Owner administratively closes the loan-level collateral custody
+  /// Shop Owner administratively closes the credit-level collateral custody
   /// account with an exception (Story 3.5, PRD FR-16).
   Future<void> _executeAdministrativeClosure() async {
     if (!_canExecuteAdministrativeClosure) return;
 
     final reason = await _reasonDialog(
-      title: 'Close Loan (Collateral Exception)',
+      title: 'Close Credit (Collateral Exception)',
       label: 'Mandatory Sign-off Rationale',
       hint:
           'e.g. Police seizure impounded item; remainder returned to borrower. Closing collateral account.',
@@ -684,12 +683,12 @@ class _CollateralCustodyReturnScreenState
       final idempotencyKey = const Uuid().v4();
       await _collateralDao.executeAdministrativeClosure(
         widget.shopId,
-        widget.loanId!,
+        widget.creditId!,
         actor: widget.currentUser,
         reason: reason,
         idempotencyKey: idempotencyKey,
       );
-      _showSuccess('Loan administratively closed with collateral exception.');
+      _showSuccess('Credit administratively closed with collateral exception.');
       await _refresh();
     } catch (e) {
       _showError(e);
@@ -700,7 +699,7 @@ class _CollateralCustodyReturnScreenState
 
   Widget _buildClosureBanner() {
     return Container(
-      key: const Key('loan_closure_banner'),
+      key: const Key('credit_closure_banner'),
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -746,7 +745,7 @@ class _CollateralCustodyReturnScreenState
       child: ElevatedButton.icon(
         key: const Key('btn_administrative_closure'),
         icon: const Icon(Icons.assignment_turned_in, color: Colors.white),
-        label: const Text('Administratively Close Loan (Collateral Exception)'),
+        label: const Text('Administratively Close Credit (Collateral Exception)'),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.purple.shade700,
           foregroundColor: Colors.white,
@@ -996,7 +995,7 @@ class _CollateralCustodyReturnScreenState
             const SizedBox(height: 8),
             Text(
               'Items scoped to shop ${widget.shopId.substring(0, 8)}... '
-              '${widget.loanId != null ? 'for loan ${widget.loanId!.substring(0, 8)}...' : widget.customerId != null ? 'for customer ${widget.customerId}' : ''}',
+              '${widget.creditId != null ? 'for credit ${widget.creditId!.substring(0, 8)}...' : widget.customerId != null ? 'for customer ${widget.customerId}' : ''}',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 16),
@@ -1044,9 +1043,9 @@ class _CollateralCustodyReturnScreenState
                                           ),
                                         ),
                                         const SizedBox(height: 6),
-                                        if (item.loanId != null)
+                                        if (item.creditId != null)
                                           Text(
-                                            'Loan: ${item.loanId}',
+                                            'Credit: ${item.creditId}',
                                             style: const TextStyle(
                                               fontSize: 12,
                                               color: Colors.grey,
@@ -1213,3 +1212,4 @@ class _DiscrepancyResolutionDialogState
     );
   }
 }
+

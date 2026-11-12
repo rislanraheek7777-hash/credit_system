@@ -10,13 +10,13 @@ import 'package:credit_system/core/data/local/app_database.dart';
 
 /// Regression coverage for the schema version 16 -> 17 migration (Story 5.5).
 ///
-/// The migration adds the nullable `correctionPending` flag to `loans` and
-/// creates the `loan_corrections` table for controlled financial correction
+/// The migration adds the nullable `correctionPending` flag to `credits` and
+/// creates the `credit_corrections` table for controlled financial correction
 /// requests and Shop Owner reversal approvals.
 ///
-/// Existing loans keep their current behaviour: `correctionPending` defaults
-/// to `false`, so payments remain allowed on all pre-existing loans. No
-/// existing customer, loan, or payment data is touched.
+/// Existing credits keep their current behaviour: `correctionPending` defaults
+/// to `false`, so payments remain allowed on all pre-existing credits. No
+/// existing customer, credit, or payment data is touched.
 void main() {
   late Directory tempDir;
 
@@ -66,7 +66,7 @@ void main() {
 
   /// Seeds a genuine version 16 database on disk.
   ///
-  /// The loans table carries every column introduced by migrations up through
+  /// The credits table carries every column introduced by migrations up through
   /// v16 **except** `correctionPending` (which the v16 migration never added —
   /// that is the gap this migration closes).
   void seedV16Database(File file) {
@@ -115,7 +115,7 @@ void main() {
         "updated_at" INTEGER NOT NULL
       );''');
     db.execute('''\
-      CREATE TABLE "loans" (
+      CREATE TABLE "credits" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
         "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -154,7 +154,7 @@ void main() {
       CREATE TABLE "payments" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
-        "loan_id" TEXT NOT NULL REFERENCES "loans" ("id") ON DELETE RESTRICT,
+        "credit_id" TEXT NOT NULL REFERENCES "credits" ("id") ON DELETE RESTRICT,
         "receipt_number" TEXT NOT NULL,
         "amount_cents" INTEGER NOT NULL,
         "pre_balance_cents" INTEGER NOT NULL,
@@ -191,14 +191,14 @@ void main() {
     db.execute('''\
       INSERT INTO "customers" ("id", "shop_id", "full_name", "nic", "phone", "address", "created_at", "updated_at")
       VALUES ('cust-v16', 'shop-v16', 'V16 Customer', '198512345678', '+94 77 123 4567', '1 Main St', $now, $now);''');
-    // A disbursed loan with an outstanding balance.
+    // A disbursed credit with an outstanding balance.
     db.execute('''\
-      INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at")
-      VALUES ('loan-v16-active', 'shop-v16', 'cust-v16', 500000, 300000, 'active', 'disbursed', 30, $now, 'user-v16', $now, $now);''');
-    // A settled loan.
+      INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at")
+      VALUES ('credit-v16-active', 'shop-v16', 'cust-v16', 500000, 300000, 'active', 'disbursed', 30, $now, 'user-v16', $now, $now);''');
+    // A settled credit.
     db.execute('''\
-      INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at", "settled_at")
-      VALUES ('loan-v16-settled', 'shop-v16', 'cust-v16', 250000, 0, 'settled', 'disbursed', 60, $now, 'user-v16', $now, $now, $now);''');
+      INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "term_preset_days", "disbursed_at", "disbursed_by_user_id", "due_date", "created_at", "settled_at")
+      VALUES ('credit-v16-settled', 'shop-v16', 'cust-v16', 250000, 0, 'settled', 'disbursed', 60, $now, 'user-v16', $now, $now, $now);''');
 
     db.close();
   }
@@ -218,13 +218,13 @@ void main() {
       final db = openWithoutMigrations(file);
       addTearDown(() async => db.close());
 
-      // Read the loan row through raw sqlite (the typed Drift API expects the
+      // Read the credit row through raw sqlite (the typed Drift API expects the
       // `correctionPending` column which is absent from a genuine v16 file).
       final raw = sqlite.sqlite3.open(file.path);
       try {
         final rows = raw.select(
-          'SELECT balance_cents FROM loans WHERE id = ?',
-          ['loan-v16-active'],
+          'SELECT balance_cents FROM credits WHERE id = ?',
+          ['credit-v16-active'],
         );
         expect(rows.first.values.first, equals(300000));
       } finally {
@@ -245,60 +245,60 @@ void main() {
       addTearDown(() async => db.close());
 
       // Drift opens lazily; issue a query to force the migration to run.
-      await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v16-active')))
+      await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(20));
-      expect(db.schemaVersion, equals(20));
+      expect(readUserVersion(file), equals(22));
+      expect(db.schemaVersion, equals(22));
     });
 
-    test('preserves existing loan data and sets correctionPending = false after upgrade', () async {
+    test('preserves existing credit data and sets correctionPending = false after upgrade', () async {
       final file = File(p.join(tempDir.path, 'v17_correction_pending.sqlite'));
       seedV16Database(file);
 
       final db = openWithDeviceSemantics(file);
       addTearDown(() async => db.close());
 
-      await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v16-active')))
+      await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(20));
+      expect(readUserVersion(file), equals(22));
 
-      // Existing loans keep their data and get correctionPending = false.
-      final active = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v16-active')))
+      // Existing credits keep their data and get correctionPending = false.
+      final active = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v16-active')))
           .getSingle();
       expect(active.balanceCents, equals(300000));
       expect(active.correctionPending, isFalse);
 
-      final settled = await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v16-settled')))
+      final settled = await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v16-settled')))
           .getSingle();
       expect(settled.balanceCents, equals(0));
       expect(settled.correctionPending, isFalse);
     });
 
-    test('creates the loan_corrections table and indexes after upgrade', () async {
+    test('creates the credit_corrections table and indexes after upgrade', () async {
       final file = File(p.join(tempDir.path, 'v17_corrections_table.sqlite'));
       seedV16Database(file);
 
       final db = openWithDeviceSemantics(file);
       addTearDown(() async => db.close());
 
-      await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v16-active')))
+      await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(20));
+      expect(readUserVersion(file), equals(22));
 
       // The corrections table exists and is usable.
-      await db.into(db.loanCorrections).insertReturningOrNull(
-        LoanCorrectionsCompanion.insert(
+      await db.into(db.creditCorrections).insertReturningOrNull(
+        CreditCorrectionsCompanion.insert(
           id: 'corr-v17-1',
           shopId: 'shop-v16',
-          loanId: 'loan-v16-active',
+          creditId: 'credit-v16-active',
           originalPaymentId: const Value.absent(),
           requestedByUserId: 'user-v16',
           correctionAmountCents: 5000,
@@ -309,7 +309,7 @@ void main() {
         ),
       );
 
-      final inserted = await (db.select(db.loanCorrections)
+      final inserted = await (db.select(db.creditCorrections)
             ..where((c) => c.id.equals('corr-v17-1')))
           .getSingle();
       expect(inserted.shopId, equals('shop-v16'));
@@ -318,14 +318,14 @@ void main() {
 
       // The corrections indexes were created.
       final indexRows = await db.customSelect(
-        "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'loan_corrections';",
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'credit_corrections';",
       ).get();
       final indexNames = indexRows.map((r) => r.read<String>('name')).toList();
       expect(indexNames, containsAll([
-        'idx_loan_corrections_shop_id',
-        'idx_loan_corrections_shop_status',
-        'idx_loan_corrections_shop_loan',
-        'idx_loan_corrections_shop_payment',
+        'idx_credit_corrections_shop_id',
+        'idx_credit_corrections_shop_status',
+        'idx_credit_corrections_shop_credit',
+        'idx_credit_corrections_shop_payment',
       ]));
     });
 
@@ -336,8 +336,8 @@ void main() {
       final db = openWithDeviceSemantics(file);
       addTearDown(() async => db.close());
 
-      await (db.select(db.loans)
-            ..where((l) => l.id.equals('loan-v16-active')))
+      await (db.select(db.credits)
+            ..where((l) => l.id.equals('credit-v16-active')))
           .getSingle();
 
       // The payments table still enforces its financial CHECK constraints:
@@ -348,7 +348,7 @@ void main() {
             PaymentsCompanion.insert(
               id: 'pay-bad',
               shopId: 'shop-v16',
-              loanId: 'loan-v16-active',
+              creditId: 'credit-v16-active',
               receiptNumber: 'RCP-BAD',
               amountCents: -100,
               preBalanceCents: 300000,
@@ -369,5 +369,6 @@ void main() {
     });
   });
 }
+
 
 

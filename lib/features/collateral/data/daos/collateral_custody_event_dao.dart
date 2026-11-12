@@ -78,3 +78,4 @@ class CollateralCustodyEventDao extends DatabaseAccessor<AppDatabase>
     return entries.map(_toDomain).toList();
   }
 }
+

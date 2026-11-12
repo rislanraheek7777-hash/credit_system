@@ -80,7 +80,7 @@ void main() {
   });
 
   group('CustomerRegistrationService - Mandatory Photo & Persistence (Story 2.2)', () {
-    test('standard registration without photo fails with exact error "Customer photograph is mandatory."', () async {
+    test('standard registration without photo succeeds (photograph optional)', () async {
       final requestNullPhoto = RegisterCustomerRequest(
         id: 'cust-no-photo-1',
         shopId: shopAlphaId,
@@ -91,37 +91,36 @@ void main() {
         rawPhotoBytes: null,
       );
 
-      expect(
-        () => registrationService.registerCustomer(requestNullPhoto),
-        throwsA(
-          isA<CustomerValidationException>().having(
-            (e) => e.message,
-            'message',
-            equals('Customer photograph is mandatory.'),
-          ),
-        ),
-      );
+      final created = await registrationService.registerCustomer(requestNullPhoto);
 
+      expect(created.id, greaterThan(0));
+      expect(created.photoUri, isNull);
+      expect(created.photoHash, isNull);
+      expect(created.fullName, equals('Kamal Perera'));
+
+      final inDb = await customerDao.getCustomerById(shopAlphaId, created.id);
+      expect(inDb, isNotNull);
+      expect(inDb!.photoUri, isNull);
+      expect(inDb.photoHash, isNull);
+    });
+
+    test('standard registration with empty photo bytes succeeds (photograph optional)', () async {
       final requestEmptyPhoto = RegisterCustomerRequest(
         id: 'cust-no-photo-2',
         shopId: shopAlphaId,
         fullName: 'Kamal Perera',
-        nic: '851234567V',
-        phone: '+94 77 123 4567',
+        nic: '901234567V',
+        phone: '+94 77 987 6543',
         address: '10 Main St, Colombo',
         rawPhotoBytes: Uint8List(0),
       );
 
-      expect(
-        () => registrationService.registerCustomer(requestEmptyPhoto),
-        throwsA(
-          isA<CustomerValidationException>().having(
-            (e) => e.message,
-            'message',
-            equals('Customer photograph is mandatory.'),
-          ),
-        ),
-      );
+      final created = await registrationService.registerCustomer(requestEmptyPhoto);
+
+      expect(created.id, greaterThan(0));
+      expect(created.photoUri, isNull);
+      expect(created.photoHash, isNull);
+      expect(created.fullName, equals('Kamal Perera'));
     });
 
     test('successful registration compresses image, stores file on disk, and saves metadata in database', () async {
@@ -923,3 +922,4 @@ void main() {
     });
   });
 }
+

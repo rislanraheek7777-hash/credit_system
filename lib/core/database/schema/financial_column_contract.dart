@@ -57,3 +57,4 @@ class FinancialColumnContract {
   static const String postgresPaymentColumnDdl =
       'amount_minor_units BIGINT NOT NULL CHECK (amount_minor_units > 0)';
 }
+

@@ -70,3 +70,4 @@ class CollateralPhotoExceptions extends Table {
     "CHECK (status IN ('pending_owner_approval', 'approved', 'rejected', 'consumed'))",
   ];
 }
+

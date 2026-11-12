@@ -1,5 +1,5 @@
 import '../../../../core/money/money.dart';
-import '../../domain/models/loan.dart';
+import '../../domain/models/credit.dart';
 import '../../domain/models/receipt.dart';
 
 /// Domain service for receipt generation business logic (Story 5-4, PRD FR-24).
@@ -18,7 +18,7 @@ class ReceiptService {
   Receipt buildReceipt({
     required String id,
     required String shopId,
-    required String loanId,
+    required String creditId,
     required String receiptNumber,
     required Money amount,
     required int preBalanceCents,
@@ -39,7 +39,7 @@ class ReceiptService {
     return Receipt(
       id: id,
       shopId: shopId,
-      loanId: loanId,
+      creditId: creditId,
       receiptNumber: receiptNumber,
       amountCents: amount.minorUnits,
       preBalanceCents: preBalanceCents,
@@ -61,17 +61,17 @@ class ReceiptService {
     );
   }
 
-  /// Whether a [Loan] is eligible for payment recording (PRD FR-21).
+  /// Whether a [Credit] is eligible for payment recording (PRD FR-21).
   ///
-  /// A loan is eligible when:
+  /// A credit is eligible when:
   /// - Cash has been disbursed (workflow status `disbursed`)
   /// - Financial status is `active` or `overdue`
   /// - Outstanding balance is greater than zero
-  bool isEligibleForPayment(Loan loan) {
-    return loan.isDisbursed &&
-        (loan.status == LoanStatus.active ||
-            loan.status == LoanStatus.overdue) &&
-        loan.balanceCents > 0;
+  bool isEligibleForPayment(Credit credit) {
+    return credit.isDisbursed &&
+        (credit.status == CreditStatus.active ||
+            credit.status == CreditStatus.overdue) &&
+        credit.balanceCents > 0;
   }
 
   /// Validates that a proposed payment amount does not exceed the outstanding
@@ -79,7 +79,7 @@ class ReceiptService {
   ///
   /// Returns the validated amount in minor units, or throws
   /// [ArgumentError] if the amount is not positive, or
-  /// [LoanOverpaymentException] if the amount exceeds the balance.
+  /// [CreditOverpaymentException] if the amount exceeds the balance.
   int validateAmount({
     required int amountCents,
     required int balanceCents,
@@ -88,7 +88,7 @@ class ReceiptService {
       throw ArgumentError('Payment amount must be positive.');
     }
     if (amountCents > balanceCents) {
-      throw LoanOverpaymentException(
+      throw CreditOverpaymentException(
         'Payment of Rs. ${(amountCents / 100).toStringAsFixed(2)} exceeds the '
         'outstanding balance of Rs. ${(balanceCents / 100).toStringAsFixed(2)}.',
       );
@@ -96,3 +96,4 @@ class ReceiptService {
     return amountCents;
   }
 }
+

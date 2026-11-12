@@ -30,7 +30,7 @@
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 
 generated: 10-14-2026 13:02
-last_updated: 10-25-2026 18:55
+last_updated: 11-09-2026 16:30
 project: credit_system
 project_key: CS
 tracking_system: file-system
@@ -54,7 +54,7 @@ development_status:
   2-2-mandatory-customer-photo-capture-client-compression-pipeline: done
   2-3-customer-photo-exception-request-shop-owner-approval-workflo: done
   2-4-shop-scoped-duplicate-customer-detection-shared-phone-resolu: done
-  2-5-customer-search-loan-navigation-multi-loan-target-selection: done
+  2-5-customer-search-credit-navigation-multi-credit-target-selection: done
   2-6-server-side-sensitive-customer-data-masking-rbac-enforcement: done
   epic-2-retrospective: optional
 
@@ -67,10 +67,10 @@ development_status:
   epic-3-retrospective: optional
 
   epic-4: done
-  4-1-loan-agreement-data-model-zero-interest-principal-tracking: done
-  4-2-loan-term-selection-preliminary-due-date-display: done
+  4-1-credit-agreement-data-model-zero-interest-principal-tracking: done
+  4-2-credit-term-selection-preliminary-due-date-display: done
   4-3-decoupled-cash-disbursement-confirmation-official-due-date-c: done
-  4-4-loan-agreement-documentation-draft-agreements-cash-disbursem: done
+  4-4-credit-agreement-documentation-draft-agreements-cash-disbursem: done
   epic-4-retrospective: optional
 
   epic-5: done
@@ -96,8 +96,13 @@ development_status:
   7-5-continuous-wal-archiving-s3-object-versioning-disaster-recov: done
   epic-7-retrospective: optional
 
+  epic-8: done
+  8-1-optional-item-receipts-origination-and-terminology: done
+  epic-8-retrospective: optional
+
 action_items:
   - epic: 1
     action: "Complete remaining Acceptance Criteria for Story 1.1 (Drift SQLite and PostgreSQL minor unit mapping layers)"
     owner: "Developer"
     status: done
+

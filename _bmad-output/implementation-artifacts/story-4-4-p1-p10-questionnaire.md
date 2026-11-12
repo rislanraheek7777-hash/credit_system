@@ -1,10 +1,10 @@
 # Story 4.4 — P-1 through P-10 Hardware and Printing Questionnaire
 
 **Project:** Credit Management System
-**Story:** 4.4 — Loan Agreement Documentation, Draft Agreements & Cash Disbursement Vouchers
+**Story:** 4.4 — Credit Agreement Documentation, Draft Agreements & Cash Disbursement Vouchers
 **Audience:** Product Owner / Operations
 **Related approval package:** `_bmad-output/implementation-artifacts/story-4-4-approval-package.md`
-**Related specification:** `_bmad-output/implementation-artifacts/spec-4-4-loan-agreement-documentation-draft-agreements-cash-disbursement-vouchers.md`
+**Related specification:** `_bmad-output/implementation-artifacts/spec-4-4-credit-agreement-documentation-draft-agreements-cash-disbursement-vouchers.md`
 **Questionnaire date:** 2026-10-22
 **Status:** **UNANSWERED — 0 of 10 responses recorded**
 **Decision authority:** This questionnaire records requirements and evidence. It does not approve D4.4-04 or D4.4-07 and does not authorise a dependency, adapter, or implementation change.
@@ -122,3 +122,4 @@ A completed questionnaire supplies evidence for D4.4-07 and the thermal portion 
 ---
 
 *End of questionnaire. No answer, approval, signature, source, test, dependency, migration, database schema, `sprint-status.yaml`, or Git state was created or modified in preparing this instrument.*
+

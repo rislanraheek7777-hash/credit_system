@@ -42,6 +42,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
   String? _successMessage;
 
   final _nameController = TextEditingController();
+  final _shopTypeController = TextEditingController();
   final _businessAddressController = TextEditingController();
   final _contactPhoneController = TextEditingController();
   final _contactEmailController = TextEditingController();
@@ -63,6 +64,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _shopTypeController.dispose();
     _businessAddressController.dispose();
     _contactPhoneController.dispose();
     _contactEmailController.dispose();
@@ -92,6 +94,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
 
         if (shop != null) {
           _nameController.text = shop.name;
+          _shopTypeController.text = shop.shopType ?? '';
           _businessAddressController.text = shop.businessAddress ?? '';
           _contactPhoneController.text = shop.contactPhone ?? '';
           _contactEmailController.text = shop.contactEmail ?? '';
@@ -148,6 +151,9 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
 
       final updated = _shop!.copyWith(
         name: name,
+        shopType: _shopTypeController.text.trim().isEmpty
+            ? null
+            : _shopTypeController.text.trim(),
         businessAddress: _businessAddressController.text.trim().isEmpty
             ? null
             : _businessAddressController.text.trim(),
@@ -245,9 +251,17 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF3E5F5), Color(0xFFE1F5FE)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_error != null) ...[
@@ -267,27 +281,38 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
               const SizedBox(height: 12),
             ],
             // Shop header
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      shop.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text('Shop ID: ${shop.id}'),
-                    const SizedBox(height: 8),
-                    Text('Currency: ${shop.currencyCode}'),
-                    Text('Timezone: ${shop.timezone}'),
-                    const SizedBox(height: 16),
-                  ],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6A1B9A), Color(0xFFAB47BC), Color(0xFFEC407A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Icon(Icons.storefront, color: Colors.white, size: 40),
+                  const SizedBox(height: 8),
+                  Text(
+                    shop.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Shop ID: ${shop.id}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 4),
+                  Text('Shop Type: ${shop.shopType ?? 'General'}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                  Text('Currency: ${shop.currencyCode}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                  Text('Timezone: ${shop.timezone}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -310,6 +335,17 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
               ),
               enabled: canEdit,
               maxLength: 255,
+            ),
+            const SizedBox(height: 12),
+            // Shop Type
+            TextFormField(
+              key: const Key('shop_type_field'),
+              controller: _shopTypeController,
+              decoration: const InputDecoration(
+                labelText: 'Shop Type',
+                border: OutlineInputBorder(),
+              ),
+              enabled: canEdit,
             ),
             const SizedBox(height: 12),
             // Business Address
@@ -439,6 +475,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }

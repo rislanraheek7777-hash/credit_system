@@ -10,11 +10,11 @@ void main() {
         'registerCustomers',
         'viewCustomers',
         'viewSensitiveCustomerData',
-        'createLoans',
-        'confirmLoanDisbursement',
+        'createCredits',
+        'confirmCreditDisbursement',
         'recordPayments',
         'viewAndReprintReceipts',
-        'viewOverdueLoans',
+        'viewOverdueCredits',
         'recordCustomerNotes',
         'requestCorrections',
         'approveCorrections',
@@ -60,7 +60,7 @@ void main() {
         containsAll([
           AppPermission.viewCustomers,
           AppPermission.registerCustomers,
-          AppPermission.createLoans,
+          AppPermission.createCredits,
           AppPermission.recordPayments,
           AppPermission.viewAndReprintReceipts,
           AppPermission.recordCustomerNotes,
@@ -68,7 +68,7 @@ void main() {
       );
       // Verify Cashier lacks sensitive management permissions
       expect(perms.contains(AppPermission.viewSensitiveCustomerData), isFalse);
-      expect(perms.contains(AppPermission.confirmLoanDisbursement), isFalse);
+      expect(perms.contains(AppPermission.confirmCreditDisbursement), isFalse);
       expect(perms.contains(AppPermission.approveCorrections), isFalse);
       expect(perms.contains(AppPermission.viewAuditLogs), isFalse);
     });
@@ -84,8 +84,8 @@ void main() {
 
       // Plus management permissions
       expect(perms.contains(AppPermission.viewSensitiveCustomerData), isTrue);
-      expect(perms.contains(AppPermission.confirmLoanDisbursement), isTrue);
-      expect(perms.contains(AppPermission.viewOverdueLoans), isTrue);
+      expect(perms.contains(AppPermission.confirmCreditDisbursement), isTrue);
+      expect(perms.contains(AppPermission.viewOverdueCredits), isTrue);
       expect(perms.contains(AppPermission.requestCorrections), isTrue);
       expect(perms.contains(AppPermission.confirmCollateralReturn), isTrue);
       expect(perms.contains(AppPermission.viewFinancialReports), isTrue);
@@ -117,3 +117,4 @@ void main() {
     });
   });
 }
+

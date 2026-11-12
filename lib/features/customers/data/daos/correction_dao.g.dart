@@ -7,11 +7,12 @@ mixin _$CorrectionDaoMixin on DatabaseAccessor<AppDatabase> {
   $ShopsTable get shops => attachedDatabase.shops;
   $CustomersTable get customers => attachedDatabase.customers;
   $AppUsersTable get appUsers => attachedDatabase.appUsers;
-  $LoansTable get loans => attachedDatabase.loans;
+  $CreditsTable get credits => attachedDatabase.credits;
   $PaymentsTable get payments => attachedDatabase.payments;
-  $LoanCorrectionsTable get loanCorrections => attachedDatabase.loanCorrections;
-  $LoanLedgerEntriesTable get loanLedgerEntries =>
-      attachedDatabase.loanLedgerEntries;
+  $CreditCorrectionsTable get creditCorrections =>
+      attachedDatabase.creditCorrections;
+  $CreditLedgerEntriesTable get creditLedgerEntries =>
+      attachedDatabase.creditLedgerEntries;
   $SyncQueueTable get syncQueue => attachedDatabase.syncQueue;
   CorrectionDaoManager get managers => CorrectionDaoManager(this);
 }
@@ -25,19 +26,19 @@ class CorrectionDaoManager {
       $$CustomersTableTableManager(_db.attachedDatabase, _db.customers);
   $$AppUsersTableTableManager get appUsers =>
       $$AppUsersTableTableManager(_db.attachedDatabase, _db.appUsers);
-  $$LoansTableTableManager get loans =>
-      $$LoansTableTableManager(_db.attachedDatabase, _db.loans);
+  $$CreditsTableTableManager get credits =>
+      $$CreditsTableTableManager(_db.attachedDatabase, _db.credits);
   $$PaymentsTableTableManager get payments =>
       $$PaymentsTableTableManager(_db.attachedDatabase, _db.payments);
-  $$LoanCorrectionsTableTableManager get loanCorrections =>
-      $$LoanCorrectionsTableTableManager(
+  $$CreditCorrectionsTableTableManager get creditCorrections =>
+      $$CreditCorrectionsTableTableManager(
         _db.attachedDatabase,
-        _db.loanCorrections,
+        _db.creditCorrections,
       );
-  $$LoanLedgerEntriesTableTableManager get loanLedgerEntries =>
-      $$LoanLedgerEntriesTableTableManager(
+  $$CreditLedgerEntriesTableTableManager get creditLedgerEntries =>
+      $$CreditLedgerEntriesTableTableManager(
         _db.attachedDatabase,
-        _db.loanLedgerEntries,
+        _db.creditLedgerEntries,
       );
   $$SyncQueueTableTableManager get syncQueue =>
       $$SyncQueueTableTableManager(_db.attachedDatabase, _db.syncQueue);

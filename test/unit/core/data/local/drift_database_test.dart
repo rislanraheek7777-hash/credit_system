@@ -4,7 +4,7 @@ import 'package:drift/native.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/data/local/connection/database_connection.dart';
-import 'package:credit_system/features/customers/domain/models/loan.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 
 void main() {
   late AppDatabase db;
@@ -20,7 +20,7 @@ void main() {
 
   group('AppDatabase - Local Drift Foundations & Schema v7 Tests', () {
     test('schema version is 20 and all tables exist', () {
-      expect(db.schemaVersion, equals(20));
+      expect(db.schemaVersion, equals(22));
       expect(
         db.allTables.map((t) => t.actualTableName),
         containsAll([
@@ -29,12 +29,12 @@ void main() {
           'sync_queue',
           'customers',
           'customer_photo_exceptions',
-          'loans',
-          'loan_corrections',
-          'loan_ledger_entries',
+          'credits',
+          'credit_corrections',
+          'credit_ledger_entries',
           'due_date_extensions',
           'customer_follow_ups',
-          'loan_resolutions',
+          'credit_resolutions',
         ]),
       );
     });
@@ -90,14 +90,14 @@ void main() {
         role: 'custom',
         isActive: true,
         sessionVersion: 1,
-        permissions: 'viewCustomers,createLoans,recordPayments',
+        permissions: 'viewCustomers,createCredits,recordPayments',
         createdAt: now,
         updatedAt: now,
       );
       await db.into(db.appUsers).insert(user);
 
       final retrieved = await (db.select(db.appUsers)..where((u) => u.id.equals('user-v3-custom'))).getSingle();
-      expect(retrieved.permissions, equals('viewCustomers,createLoans,recordPayments'));
+      expect(retrieved.permissions, equals('viewCustomers,createCredits,recordPayments'));
     });
 
     test('CUSTOMERS (v4): inserts and queries customer profile in shop scope', () async {
@@ -244,7 +244,7 @@ void main() {
       ''');
       rawSqliteDb.execute('''
         INSERT INTO "sync_queue" ("id", "shop_id", "idempotency_key", "entity_type", "entity_id", "action_type", "payload_json", "status", "retry_count", "created_at")
-        VALUES ('sync-v1-record', 'shop-v1-existing', 'idemp-v1-key', 'loan', 'loan-uuid-1', 'create_loan', '{"amount": 1000}', 'pending_server_ack', 0, $nowEpoch);
+        VALUES ('sync-v1-record', 'shop-v1-existing', 'idemp-v1-key', 'credit', 'credit-uuid-1', 'create_credit', '{"amount": 1000}', 'pending_server_ack', 0, $nowEpoch);
       ''');
 
       // Step 2: Open with Drift AppDatabase which targets schemaVersion = 5
@@ -279,7 +279,7 @@ void main() {
       expect(existingSync.id, equals('sync-v1-record'));
       expect(existingSync.shopId, equals('shop-v1-existing'));
       expect(existingSync.idempotencyKey, equals('idemp-v1-key'));
-      expect(existingSync.entityType, equals('loan'));
+      expect(existingSync.entityType, equals('credit'));
       expect(existingSync.payloadJson, equals('{"amount": 1000}'));
       expect(existingSync.status, equals('pending_server_ack'));
 
@@ -525,7 +525,7 @@ void main() {
       ''');
       rawSqliteDb.execute('''
         INSERT INTO "app_users" ("id", "shop_id", "username", "full_name", "role", "is_active", "session_version", "permissions", "created_at", "updated_at")
-        VALUES ('user-v3-orig', 'shop-v3-orig', 'v3.user', 'V3 Staff', 'custom', 1, 3, 'viewCustomers,createLoans', $nowEpoch, $nowEpoch);
+        VALUES ('user-v3-orig', 'shop-v3-orig', 'v3.user', 'V3 Staff', 'custom', 1, 3, 'viewCustomers,createCredits', $nowEpoch, $nowEpoch);
       ''');
       rawSqliteDb.execute('''
         INSERT INTO "sync_queue" ("id", "shop_id", "idempotency_key", "entity_type", "entity_id", "action_type", "payload_json", "status", "retry_count", "created_at")
@@ -538,7 +538,7 @@ void main() {
       final user = await (upgradedDb.select(upgradedDb.appUsers)
             ..where((u) => u.id.equals('user-v3-orig')))
           .getSingle();
-      expect(user.permissions, equals('viewCustomers,createLoans'));
+      expect(user.permissions, equals('viewCustomers,createCredits'));
       expect(user.passwordHash, isNull);
 
       // Verify pre-existing sync_queue record survived without modification
@@ -876,7 +876,7 @@ void main() {
       await upgradedDb.close();
     });
 
-    test('MIGRATION: verifies upgrade from schema version 6 to 8 preserves existing data and adds loans table with indexes', () async {
+    test('MIGRATION: verifies upgrade from schema version 6 to 8 preserves existing data and adds credits table with indexes', () async {
       final rawSqliteDb = sqlite.sqlite3.openInMemory();
       rawSqliteDb.execute('''
         CREATE TABLE "shops" (
@@ -985,38 +985,38 @@ void main() {
           .getSingle();
       expect(existingUser.passwordHash, isNull);
 
-      // Verify the new v7 loans table and indexes were created
-      final loanIndexRows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'loans';").get();
-      final loanIndexNames = loanIndexRows.map((r) => r.read<String>('name')).toList();
-      expect(loanIndexNames, containsAll([
-        'idx_loans_shop_id',
-        'idx_loans_shop_customer',
-        'idx_loans_shop_status',
-        'idx_loans_shop_customer_status',
+      // Verify the new v7 credits table and indexes were created
+      final creditIndexRows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'credits';").get();
+      final creditIndexNames = creditIndexRows.map((r) => r.read<String>('name')).toList();
+      expect(creditIndexNames, containsAll([
+        'idx_credits_shop_id',
+        'idx_credits_shop_customer',
+        'idx_credits_shop_status',
+        'idx_credits_shop_customer_status',
       ]));
 
-      // Verify inserting a loan works after migration
+      // Verify inserting a credit works after migration
       final now = DateTime.now().toUtc();
-      await upgradedDb.into(upgradedDb.loans).insert(
-        LoanEntry(
-          id: 'loan-v7-new',
+      await upgradedDb.into(upgradedDb.credits).insert(
+        CreditEntry(
+          id: 'credit-v7-new',
           shopId: 'shop-v6-orig',
           customerId: 1,
           principalCents: 500000,
           balanceCents: 500000,
           status: 'active',
-          workflowStatus: LoanWorkflowStatus.pendingDisbursement.value,
+          workflowStatus: CreditWorkflowStatus.pendingDisbursement.value,
           dueDate: now.add(const Duration(days: 30)),
           createdAt: now,
           correctionPending: false,
         ),
       );
 
-      final newLoan = await (upgradedDb.select(upgradedDb.loans)
-            ..where((l) => l.id.equals('loan-v7-new')))
+      final newCredit = await (upgradedDb.select(upgradedDb.credits)
+            ..where((l) => l.id.equals('credit-v7-new')))
           .getSingle();
-      expect(newLoan.status, equals('active'));
-      expect(newLoan.customerId, equals(1));
+      expect(newCredit.status, equals('active'));
+      expect(newCredit.customerId, equals(1));
 
       await upgradedDb.close();
     });
@@ -1097,7 +1097,7 @@ void main() {
         CREATE INDEX "idx_photo_exceptions_shop_status" ON "customer_photo_exceptions" ("shop_id", "status");
         CREATE INDEX "idx_photo_exceptions_customer" ON "customer_photo_exceptions" ("shop_id", "target_customer_id");
         CREATE INDEX "idx_photo_exceptions_nic" ON "customer_photo_exceptions" ("shop_id", "customer_nic");
-        CREATE TABLE "loans" (
+        CREATE TABLE "credits" (
           "id" TEXT NOT NULL PRIMARY KEY,
           "shop_id" TEXT NOT NULL,
           "customer_id" TEXT NOT NULL,
@@ -1109,10 +1109,10 @@ void main() {
           "updated_at" INTEGER NOT NULL,
           "settled_at" INTEGER
         );
-        CREATE INDEX "idx_loans_shop_id" ON "loans" ("shop_id");
-        CREATE INDEX "idx_loans_shop_customer" ON "loans" ("shop_id", "customer_id");
-        CREATE INDEX "idx_loans_shop_status" ON "loans" ("shop_id", "status");
-        CREATE INDEX "idx_loans_shop_customer_status" ON "loans" ("shop_id", "customer_id", "status");
+        CREATE INDEX "idx_credits_shop_id" ON "credits" ("shop_id");
+        CREATE INDEX "idx_credits_shop_customer" ON "credits" ("shop_id", "customer_id");
+        CREATE INDEX "idx_credits_shop_status" ON "credits" ("shop_id", "status");
+        CREATE INDEX "idx_credits_shop_customer_status" ON "credits" ("shop_id", "customer_id", "status");
         PRAGMA user_version = 7;
       ''');
 
@@ -1130,8 +1130,8 @@ void main() {
         VALUES ('cust-v7-existing', 'shop-v7-orig', 'V7 Existing Customer', '198512345678', '+94 77 999 8888', '45 Park Road', '/photos/cust.jpg', 'hash-v7', $nowEpoch, $nowEpoch);
       ''');
       rawSqliteDb.execute('''
-        INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "due_date", "created_at", "updated_at")
-        VALUES ('loan-v7-existing', 'shop-v7-orig', 'cust-v7-existing', 500000, 500000, 'active', $nowEpoch, $nowEpoch, $nowEpoch);
+        INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "due_date", "created_at", "updated_at")
+        VALUES ('credit-v7-existing', 'shop-v7-orig', 'cust-v7-existing', 500000, 500000, 'active', $nowEpoch, $nowEpoch, $nowEpoch);
       ''');
 
       final executor = NativeDatabase.opened(rawSqliteDb);
@@ -1153,16 +1153,16 @@ void main() {
       expect(existingCustomer.fullName, equals('V7 Existing Customer'));
       expect(existingCustomer.nic, equals('198512345678'));
 
-      // Verify pre-existing loan survived without loss
-      final existingLoan = await (upgradedDb.select(upgradedDb.loans)
-            ..where((l) => l.id.equals('loan-v7-existing')))
+      // Verify pre-existing credit survived without loss
+      final existingCredit = await (upgradedDb.select(upgradedDb.credits)
+            ..where((l) => l.id.equals('credit-v7-existing')))
           .getSingle();
-      expect(existingLoan.status, equals('active'));
-      expect(existingLoan.customerId, equals(1));
-      // Story 4.1 (schema v12): loans that predate the disbursement workflow
+      expect(existingCredit.status, equals('active'));
+      expect(existingCredit.customerId, equals(1));
+      // Story 4.1 (schema v12): credits that predate the disbursement workflow
       // were already payable under the Story 2.5 model, so the migration
       // backfills them to 'disbursed' rather than blocking their payments.
-      expect(existingLoan.workflowStatus, equals('disbursed'));
+      expect(existingCredit.workflowStatus, equals('disbursed'));
 
       // Verify inserting a user with password_hash set works after migration
       final now = DateTime.now().toUtc();
@@ -1191,11 +1191,11 @@ void main() {
     });
 
     test('MIGRATION: verifies upgrade from schema version 12 to 13 rebuilds the '
-        'loans table, preserves balances and keeps child foreign keys intact',
+        'credits table, preserves balances and keeps child foreign keys intact',
         () async {
-      // A v12 database that already holds a loan and a collateral item bound
+      // A v12 database that already holds a credit and a collateral item bound
       // to it. The child row is what exercises the foreign-key safety of the
-      // loans table rebuild.
+      // credits table rebuild.
       final rawSqliteDb = sqlite.sqlite3.openInMemory();
       rawSqliteDb.execute('''
         CREATE TABLE "shops" (
@@ -1254,7 +1254,7 @@ void main() {
           "created_at" INTEGER NOT NULL,
           "updated_at" INTEGER NOT NULL
         );
-        CREATE TABLE "loans" (
+        CREATE TABLE "credits" (
           "id" TEXT NOT NULL PRIMARY KEY,
           "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
           "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
@@ -1270,7 +1270,7 @@ void main() {
           "id" TEXT NOT NULL PRIMARY KEY,
           "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
           "customer_id" TEXT NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
-          "loan_id" TEXT REFERENCES "loans" ("id") ON DELETE RESTRICT,
+          "credit_id" TEXT REFERENCES "credits" ("id") ON DELETE RESTRICT,
           "item_reference_id" TEXT NOT NULL,
           "category" TEXT NOT NULL,
           "description" TEXT NOT NULL,
@@ -1300,18 +1300,18 @@ void main() {
         VALUES ('cust-v12', 'shop-v12', 'V12 Customer', '198512345678', '+94 77 123 4567', '45 Park Road', $nowEpoch, $nowEpoch);
       ''');
       rawSqliteDb.execute('''
-        INSERT INTO "loans" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
-        VALUES ('loan-v12', 'shop-v12', 'cust-v12', 500000, 500000, 'active', 'pending_disbursement', $nowEpoch, $nowEpoch);
+        INSERT INTO "credits" ("id", "shop_id", "customer_id", "principal_cents", "balance_cents", "status", "workflow_status", "due_date", "created_at")
+        VALUES ('credit-v12', 'shop-v12', 'cust-v12', 500000, 500000, 'active', 'pending_disbursement', $nowEpoch, $nowEpoch);
       ''');
       rawSqliteDb.execute('''
-        INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "loan_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
-        VALUES ('coll-v12', 'shop-v12', 'cust-v12', 'loan-v12', 'COLL-V12-001', 'gold', '22K gold necklace', 'Good', 5500, 1500000, 'in_custody', $nowEpoch, $nowEpoch);
+        INSERT INTO "collateral_items" ("id", "shop_id", "customer_id", "credit_id", "item_reference_id", "category", "description", "condition_grade", "weight_milligrams", "estimated_value_cents", "custody_status", "created_at", "updated_at")
+        VALUES ('coll-v12', 'shop-v12', 'cust-v12', 'credit-v12', 'COLL-V12-001', 'gold', '22K gold necklace', 'Good', 5500, 1500000, 'in_custody', $nowEpoch, $nowEpoch);
       ''');
 
       // Foreign keys are enabled exactly as they are on a real device
       // connection (see AppDatabaseConnection.openSandboxedConnection, which
       // sets `PRAGMA foreign_keys = ON` in the connection setup callback).
-      // Without this the `collateral_items.loan_id -> loans` RESTRICT
+      // Without this the `collateral_items.credit_id -> credits` RESTRICT
       // constraint is never enforced during the migration, which is exactly
       // why this test used to pass while the v12 -> v13 rebuild failed on a
       // device.
@@ -1321,55 +1321,55 @@ void main() {
       );
       final upgradedDb = AppDatabase.forTesting(executor);
 
-      // The pre-existing loan survived the rebuild with its financial
+      // The pre-existing credit survived the rebuild with its financial
       // balances, statuses and due date unchanged.
-      final loan = await (upgradedDb.select(upgradedDb.loans)
-            ..where((l) => l.id.equals('loan-v12')))
+      final credit = await (upgradedDb.select(upgradedDb.credits)
+            ..where((l) => l.id.equals('credit-v12')))
           .getSingle();
-      expect(loan.principalCents, equals(500000));
-      expect(loan.balanceCents, equals(500000),
+      expect(credit.principalCents, equals(500000));
+      expect(credit.balanceCents, equals(500000),
           reason: 'The migration must not change financial balances.');
-      expect(loan.status, equals('active'));
-      expect(loan.workflowStatus, equals('pending_disbursement'));
+      expect(credit.status, equals('active'));
+      expect(credit.workflowStatus, equals('pending_disbursement'));
 
       // The new columns exist and are empty for a pre-existing agreement.
-      expect(loan.termPresetDays, isNull);
-      expect(loan.customDueDate, isNull);
-      expect(loan.disbursedAt, isNull);
-      expect(loan.disbursedByUserId, isNull);
-      expect(loan.cancelledAt, isNull);
-      expect(loan.cancellationReason, isNull);
+      expect(credit.termPresetDays, isNull);
+      expect(credit.customDueDate, isNull);
+      expect(credit.disbursedAt, isNull);
+      expect(credit.disbursedByUserId, isNull);
+      expect(credit.cancelledAt, isNull);
+      expect(credit.cancellationReason, isNull);
 
-      // The child foreign key into "loans" survived the table rebuild.
+      // The child foreign key into "credits" survived the table rebuild.
       final item = await (upgradedDb.select(upgradedDb.collateralItems)
             ..where((c) => c.id.equals('coll-v12')))
           .getSingle();
-      expect(item.loanId, equals('loan-v12'),
+      expect(item.creditId, equals('credit-v12'),
           reason: 'Rebuilding the parent table must keep child rows bound.');
 
-      // The loans indexes were recreated.
-      final loanIndexRows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'loans';").get();
-      final loanIndexNames = loanIndexRows.map((r) => r.read<String>('name')).toList();
-      expect(loanIndexNames, containsAll([
-        'idx_loans_shop_id',
-        'idx_loans_shop_customer',
-        'idx_loans_shop_status',
-        'idx_loans_shop_customer_status',
+      // The credits indexes were recreated.
+      final creditIndexRows = await upgradedDb.customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'credits';").get();
+      final creditIndexNames = creditIndexRows.map((r) => r.read<String>('name')).toList();
+      expect(creditIndexNames, containsAll([
+        'idx_credits_shop_id',
+        'idx_credits_shop_customer',
+        'idx_credits_shop_status',
+        'idx_credits_shop_customer_status',
       ]));
 
       // The rebuilt table accepts a disbursement record.
       final now = DateTime.now().toUtc();
-      await (upgradedDb.update(upgradedDb.loans)
-            ..where((l) => l.id.equals('loan-v12')))
-          .write(LoansCompanion(
+      await (upgradedDb.update(upgradedDb.credits)
+            ..where((l) => l.id.equals('credit-v12')))
+          .write(CreditsCompanion(
         workflowStatus: const Value('disbursed'),
         disbursedAt: Value(now),
         disbursedByUserId: const Value('user-v12'),
         termPresetDays: const Value(30),
       ));
 
-      final disbursed = await (upgradedDb.select(upgradedDb.loans)
-            ..where((l) => l.id.equals('loan-v12')))
+      final disbursed = await (upgradedDb.select(upgradedDb.credits)
+            ..where((l) => l.id.equals('credit-v12')))
           .getSingle();
       expect(disbursed.workflowStatus, equals('disbursed'));
       expect(disbursed.disbursedAt, isNotNull);
@@ -1579,9 +1579,9 @@ void main() {
         id: 'sync-op-1',
         shopId: 'shop-uuid-6',
         idempotencyKey: 'idem-uuid-001',
-        entityType: 'loan',
-        entityId: 'loan-uuid-101',
-        actionType: 'create_loan',
+        entityType: 'credit',
+        entityId: 'credit-uuid-101',
+        actionType: 'create_credit',
         payloadJson: '{"principal_cents": 5000000, "duration_days": 30}',
         status: 'pending_server_ack',
         retryCount: 0,
@@ -1852,3 +1852,4 @@ void main() {
     });
   });
 }
+

@@ -49,3 +49,4 @@ class _DummyExecutor implements SqlDatabaseExecutor {
     return await action(this);
   }
 }
+

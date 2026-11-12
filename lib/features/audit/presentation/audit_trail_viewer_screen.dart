@@ -417,3 +417,4 @@ class _AuditTrailViewerScreenState extends State<AuditTrailViewerScreen> {
     );
   }
 }
+
