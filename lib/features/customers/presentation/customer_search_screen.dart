@@ -6,6 +6,7 @@ import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
+import 'package:credit_system/features/customers/domain/models/customer.dart';
 import 'package:credit_system/features/customers/domain/models/customer_masking.dart';
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
 import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
@@ -155,22 +156,62 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
     }
   }
 
+  /// Opens the customer registration form.
+  ///
+  /// The registration route closes with the created customer as its result.
+  /// When a customer was registered the list is reloaded so the new customer
+  /// shows up on this screen, and the registration is confirmed with a
+  /// SnackBar. Backing out without submitting returns no result, so nothing
+  /// is confirmed and the operator's search filter is left untouched.
+  Future<void> _openRegistrationForm() async {
+    final created = await Navigator.of(context).push<Customer>(
+      MaterialPageRoute(
+        builder: (context) => CustomerRegistrationScreen(
+          currentUser: widget.currentUser,
+          database: widget.database,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (created != null) {
+      // Clear any active search filter before reloading: the reload re-runs
+      // the active query whenever it is at least two characters long, which
+      // would repopulate a filtered list that does not contain the customer
+      // the confirmation announces. The pending debounce is cancelled with
+      // it, so a filter that was typed but not yet applied cannot re-apply
+      // the stale query over the reloaded list.
+      _debounceTimer?.cancel();
+      _searchController.clear();
+    }
+
+    // Refresh the customer list so a newly registered customer
+    // shows up on this screen.
+    await _loadCustomers();
+
+    if (!mounted) return;
+
+    // No result means the staff member backed out without registering
+    // anyone, so there is nothing to confirm.
+    if (created == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Customer "${created.fullName}" registered successfully '
+          '(ID: ${created.id}).',
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) =>
-                  CustomerRegistrationScreen(currentUser: widget.currentUser),
-            ),
-          );
-          // Refresh the customer list so a newly registered customer
-          // shows up on this screen.
-          if (!mounted) return;
-          await _loadCustomers();
-        },
+        onPressed: _openRegistrationForm,
         icon: const Icon(Icons.person_add),
         label: const Text('Add Customer'),
       ),

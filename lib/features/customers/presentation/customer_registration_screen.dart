@@ -27,6 +27,11 @@ String _maskNic(String nic) {
 /// - Explicit "Confirm separate individual sharing phone number" action (AC-3)
 /// - Atomic customer + SyncQueue event insertion on confirmation
 /// - Shop-scoped validation and cross-shop data leakage prevention
+///
+/// On a successful registration the route closes with the created [Customer]
+/// as its result, so the Customers screen the staff member lands on can
+/// reload its list and confirm the registration. Every failure keeps the
+/// screen mounted with the reason inline.
 class CustomerRegistrationScreen extends StatefulWidget {
   const CustomerRegistrationScreen({
     super.key,
@@ -63,7 +68,6 @@ class _CustomerRegistrationScreenState
 
   bool _isLoading = false;
   String? _statusMessage;
-  bool _isSuccess = false;
 
   SharedPhoneDuplicateException? _pendingSharedPhoneException;
   bool _sharedPhoneConfirmed = false;
@@ -86,7 +90,6 @@ class _CustomerRegistrationScreenState
     setState(() {
       _isLoading = true;
       _statusMessage = null;
-      _isSuccess = false;
     });
 
     try {
@@ -112,16 +115,13 @@ class _CustomerRegistrationScreenState
 
       final customer = await service.registerCustomer(request);
 
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _isSuccess = true;
-          _statusMessage =
-              'Customer "${customer.fullName}" registered successfully (ID: ${customer.id}).';
-          _pendingSharedPhoneException = null;
-          _sharedPhoneConfirmed = false;
-        });
-      }
+      if (!mounted) return;
+
+      // The route closes with the created customer as its result. The
+      // confirmation belongs to the Customers screen the staff member lands
+      // on, so this screen shows no success banner of its own — it is popped
+      // before anything it rendered could be read.
+      Navigator.of(context).pop(customer);
     } on DuplicateNicException catch (e) {
       if (mounted) {
         setState(() {
@@ -212,9 +212,9 @@ class _CustomerRegistrationScreenState
 
   @override
   Widget build(BuildContext context) {
-    final statusBgColor = _isSuccess
-        ? Colors.green.withValues(alpha: 0.15)
-        : Colors.red.withValues(alpha: 0.15);
+    // Only failures are rendered inline: a successful registration pops this
+    // route, so there is no success state left to style.
+    final statusBgColor = Colors.red.withValues(alpha: 0.15);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Customer Registration')),
@@ -299,18 +299,12 @@ class _CustomerRegistrationScreenState
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: statusBgColor,
-                    border: Border.all(
-                      color: _isSuccess ? Colors.green : Colors.red,
-                    ),
+                    border: Border.all(color: Colors.red),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     _statusMessage!,
-                    style: TextStyle(
-                      color: _isSuccess
-                          ? Colors.green.shade800
-                          : Colors.red.shade800,
-                    ),
+                    style: TextStyle(color: Colors.red.shade800),
                   ),
                 ),
                 const SizedBox(height: 16),

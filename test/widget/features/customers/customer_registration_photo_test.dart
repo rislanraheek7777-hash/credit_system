@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,7 +9,57 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/core/storage/photo_storage_service.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
+import 'package:credit_system/features/customers/domain/models/customer.dart';
 import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
+
+import '../../../support/customers_test_support.dart';
+
+/// A dummy host route that pushes the registration screen over itself and
+/// reports the result the route closed with.
+///
+/// A successful registration now closes the registration route, so the screen
+/// needs a route to return to — a root route has nothing to pop back to.
+class _RegistrationHost extends StatefulWidget {
+  const _RegistrationHost({
+    required this.database,
+    required this.currentUser,
+    required this.storageService,
+    required this.onResult,
+  });
+
+  final AppDatabase database;
+  final AppUser currentUser;
+  final PhotoStorageService storageService;
+  final ValueChanged<Customer?> onResult;
+
+  @override
+  State<_RegistrationHost> createState() => _RegistrationHostState();
+}
+
+class _RegistrationHostState extends State<_RegistrationHost> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () async {
+            final result = await Navigator.of(context).push<Customer>(
+              MaterialPageRoute(
+                builder: (_) => CustomerRegistrationScreen(
+                  database: widget.database,
+                  currentUser: widget.currentUser,
+                  storageService: widget.storageService,
+                ),
+              ),
+            );
+            widget.onResult(result);
+          },
+          child: const Text('Open registration'),
+        ),
+      ),
+    );
+  }
+}
 
 /// The customer photograph is optional, and the registration screen no longer
 /// offers a capture control for it.
@@ -98,7 +149,12 @@ void main() {
     }
   });
 
-  Future<void> pumpScreen(WidgetTester tester) async {
+  /// Pushes the registration screen over a dummy host route.
+  ///
+  /// The returned completer completes with the result the route closed with:
+  /// the created customer on a successful registration, and nothing when the
+  /// staff member backs out.
+  Future<Completer<Customer?>> pumpScreen(WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -106,16 +162,26 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
+    final completer = Completer<Customer?>();
+
     await tester.pumpWidget(
       MaterialApp(
-        home: CustomerRegistrationScreen(
+        home: _RegistrationHost(
           database: db,
           currentUser: staffUser,
           storageService: storageService,
+          onResult: (customer) {
+            if (!completer.isCompleted) completer.complete(customer);
+          },
         ),
       ),
     );
     await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open registration'));
+    await tester.pumpAndSettle();
+
+    return completer;
   }
 
   Future<void> fillFormFields(
@@ -162,16 +228,24 @@ void main() {
 
     testWidgets('registering without a photograph succeeds and stores no '
         'photo reference', (WidgetTester tester) async {
-      await pumpScreen(tester);
+      final routeResult = await pumpScreen(tester);
       await fillFormFields(tester);
 
       await tester.ensureVisible(find.byKey(const Key('register_customer_button')));
       await tester.tap(find.byKey(const Key('register_customer_button')));
       await tester.pumpAndSettle();
 
+      // The registration route closes with the created customer; the
+      // confirmation belongs to the Customers screen the staff member lands
+      // on, so the registration screen shows no success banner of its own.
+      await pumpUntil(tester, () => routeResult.isCompleted);
+      final created = await routeResult.future;
+      expect(created, isNotNull);
+      expect(created!.fullName, equals('Kumara Silva'));
+      expect(find.byType(CustomerRegistrationScreen), findsNothing);
       expect(
         find.textContaining('Customer "Kumara Silva" registered successfully'),
-        findsOneWidget,
+        findsNothing,
       );
 
       // The customer is persisted, and no photograph is recorded against it.
