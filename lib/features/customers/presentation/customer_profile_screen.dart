@@ -17,6 +17,7 @@ import 'package:credit_system/features/customers/domain/models/receipt.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
 import 'package:credit_system/features/customers/presentation/customer_edit_screen.dart';
+import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
 import 'package:credit_system/features/customers/presentation/credit_origination_screen.dart';
 import 'package:credit_system/features/customers/presentation/payment_screen.dart';
 
@@ -36,6 +37,7 @@ class CustomerProfileScreen extends StatefulWidget {
     required this.currentUser,
     this.canViewSensitive,
     this.database,
+    this.documentPresenter,
   });
 
   final String shopId;
@@ -50,6 +52,12 @@ class CustomerProfileScreen extends StatefulWidget {
 
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
+
+  /// Optional injected document presenter for testing.
+  ///
+  /// Forwarded to the shared draft agreement action; production code leaves
+  /// it unset so the action uses the platform viewer.
+  final DocumentPresenter? documentPresenter;
 
   @override
   State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
@@ -81,9 +89,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     _loadProfile();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _loadProfile({bool showLoading = true}) async {
     setState(() {
-      _isLoading = true;
+      if (showLoading) _isLoading = true;
       _error = null;
     });
 
@@ -172,7 +180,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
                   subtitle: Text(
                     'Status: ${credit.status.value.toUpperCase()}  |  '
-                    'Balance: ${credit.balanceCents / 100}',
+                    'Balance: ${Money.fromCents(credit.balanceCents).format()}',
                   ),
                   trailing: Chip(
                     label: Text(credit.status.value.toUpperCase()),
@@ -259,14 +267,15 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
   }
 
-  /// Opens the credit origination flow for this customer and refreshes the
-  /// profile when the screen is dismissed.
+  /// Opens the credit origination flow for this customer.
   ///
-  /// The origination screen keeps the user on itself after a successful
-  /// submission, so the profile is always reloaded on return to pick up any
-  /// newly created agreement.
+  /// The origination route closes with the created agreement as its result.
+  /// When an agreement was created the profile is reloaded so the new credit
+  /// appears in the credit list, and the creation is confirmed with a
+  /// SnackBar. Backing out without submitting returns no result, so no
+  /// confirmation is shown.
   Future<void> _openAddCredit() async {
-    await Navigator.of(context).push<void>(
+    final created = await Navigator.of(context).push<Credit>(
       MaterialPageRoute(
         builder: (context) => CreditOriginationScreen(
           shopId: widget.shopId,
@@ -277,9 +286,25 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       ),
     );
 
-    if (mounted) {
-      await _loadProfile();
-    }
+    if (!mounted) return;
+
+    // Reload from the database so the credit list reflects the new agreement.
+    await _loadProfile(showLoading: false);
+
+    if (!mounted) return;
+
+    // No result means the user backed out without creating anything.
+    if (created == null) return;
+
+    final dueDate = _shopTimeZone.localDateOf(created.dueDate).isoDate;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Credit agreement created. Preliminary due date: $dueDate.',
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
@@ -326,12 +351,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
             widget.currentUser.role.isOwner);
 
     final canEditCustomer =
-        widget.currentUser.hasPermission(AppPermission.registerCustomers) ||
-            widget.currentUser.role.isOwner;
+        widget.currentUser.hasPermission(AppPermission.registerCustomers);
 
     final canCreateCredits =
-        widget.currentUser.hasPermission(AppPermission.createCredits) ||
-            widget.currentUser.role.isOwner;
+        widget.currentUser.hasPermission(AppPermission.createCredits);
 
     return Scaffold(
       appBar: AppBar(
@@ -420,6 +443,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 onTap: (credit) => _onCreditAction(context, credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
+                currentUser: widget.currentUser,
+                database: widget.database,
+                documentPresenter: widget.documentPresenter,
               ),
               _CreditStatusSection(
                 title: 'Overdue',
@@ -429,6 +455,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 onTap: (credit) => _onCreditAction(context, credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
+                currentUser: widget.currentUser,
+                database: widget.database,
+                documentPresenter: widget.documentPresenter,
               ),
               _CreditStatusSection(
                 title: 'Settled',
@@ -438,6 +467,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 onTap: (credit) => _onCreditAction(context, credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
+                currentUser: widget.currentUser,
+                database: widget.database,
+                documentPresenter: widget.documentPresenter,
               ),
             ],
           ],
@@ -461,6 +493,16 @@ class _CreditStatusSection extends StatelessWidget {
   final Map<String, List<Receipt>> paymentsByCreditId;
   final Map<String, List<CollateralItem>> collateralByCreditId;
 
+  /// The authenticated actor viewing the profile, used to authorize the
+  /// shared draft agreement action.
+  final AppUser currentUser;
+
+  /// Optional injected [AppDatabase] for testing.
+  final AppDatabase? database;
+
+  /// Optional injected document presenter for testing.
+  final DocumentPresenter? documentPresenter;
+
   const _CreditStatusSection({
     required this.title,
     required this.credits,
@@ -469,6 +511,9 @@ class _CreditStatusSection extends StatelessWidget {
     required this.onTap,
     required this.paymentsByCreditId,
     required this.collateralByCreditId,
+    required this.currentUser,
+    required this.database,
+    required this.documentPresenter,
   });
 
   @override
@@ -495,43 +540,63 @@ class _CreditStatusSection extends StatelessWidget {
           final payments = paymentsByCreditId[credit.id] ?? const <Receipt>[];
           final collateral = collateralByCreditId[credit.id] ?? const <CollateralItem>[];
           return Card(
-            child: ListTile(
-              title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Principal: ${credit.principalCents / 100}'),
-                  Text('Balance: ${credit.balanceCents / 100}'),
-                  Text('Due: ${credit.dueDateAsCalendarDate(shopTimeZone)}'),
-                  if (payments.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Payment history',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    ...payments.map(
-                      (p) => Text(
-                        'Receipt ${p.receiptNumber}: ${Money.fromCents(p.amountCents).format()}',
-                      ),
-                    ),
-                  ],
-                  if (collateral.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Collateral',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    ...collateral.map(
-                      (c) => Text('Item ${c.id}: ${c.category.value}'),
-                    ),
-                  ],
-                ],
-              ),
-              trailing: Chip(
-                label: Text(credit.status.value.toUpperCase()),
-                backgroundColor: color.withValues(alpha: 0.15),
-              ),
-              onTap: () => onTap(credit),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ListTile(
+                  title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Principal: ${Money.fromCents(credit.principalCents).format()}'),
+                      Text('Balance: ${Money.fromCents(credit.balanceCents).format()}'),
+                      Text('Due: ${credit.dueDateAsCalendarDate(shopTimeZone)}'),
+                      if (payments.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Payment history',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        ...payments.map(
+                          (p) => Text(
+                            'Receipt ${p.receiptNumber}: ${Money.fromCents(p.amountCents).format()}',
+                          ),
+                        ),
+                      ],
+                      if (collateral.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Collateral',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        ...collateral.map(
+                          (c) => Text('Item ${c.id}: ${c.category.value}'),
+                        ),
+                      ],
+                    ],
+                  ),
+                  trailing: Chip(
+                    label: Text(credit.status.value.toUpperCase()),
+                    backgroundColor: color.withValues(alpha: 0.15),
+                  ),
+                  onTap: () => onTap(credit),
+                ),
+                // The draft agreement slip is a separate, separately tappable
+                // control: the whole tile above stays the payment tap target.
+                // The ListTile supplies no inset of its own, so the action is
+                // aligned with the card's text here.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: CreditDraftAgreementAction(
+                    credit: credit,
+                    currentUser: currentUser,
+                    shopTimeZone: shopTimeZone,
+                    database: database,
+                    documentPresenter: documentPresenter,
+                  ),
+                ),
+              ],
             ),
           );
         }),

@@ -8,9 +8,12 @@ import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
 import 'package:credit_system/features/collateral/presentation/collateral_registration_screen.dart';
+import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 import 'package:credit_system/features/customers/domain/services/credit_submission_idempotency.dart';
 import 'package:credit_system/features/customers/presentation/credit_origination_screen.dart';
+
+import '../../../support/customers_test_support.dart';
 
 const String shopId = '11111111-1111-1111-1111-111111111201';
 const customerId = 1;
@@ -18,35 +21,102 @@ const String staffId = '11111111-1111-1111-1111-111111111203';
 const String itemOneId = 'coll-item-1';
 const String itemTwoId = 'coll-item-2';
 
-/// Pumps until [condition] holds, so asynchronous Drift work completes before
-/// assertions instead of relying on arbitrary delays.
-Future<void> pumpUntil(
-  WidgetTester tester,
-  bool Function() condition, {
-  int maxIterations = 100,
-}) async {
-  for (var i = 0; i < maxIterations; i++) {
-    await tester.pump(const Duration(milliseconds: 20));
-    if (condition()) return;
-  }
-  fail('pumpUntil: condition never became true within $maxIterations pumps.');
-}
-
-/// Pumps until the screen shows either a success or an error outcome and
-/// returns the outcome. The error text is included so a failure is legible.
+/// Pumps until the screen shows an inline error, or the origination route
+/// closes after a successful submission, and returns the outcome.
+///
+/// A successful submission closes the route with the created agreement as its
+/// result, so the screen itself is gone by the time the outcome is known. The
+/// error text is included so a failure is legible.
 Future<String> pumpUntilOutcome(WidgetTester tester) async {
   for (var i = 0; i < 100; i++) {
     await tester.pump(const Duration(milliseconds: 20));
-    final success = find.byKey(const Key('origination_success_display'));
-    if (success.evaluate().isNotEmpty) {
-      return 'success';
-    }
     final error = find.byKey(const Key('origination_error_display'));
     if (error.evaluate().isNotEmpty) {
       return 'error: ${tester.widget<Text>(error).data}';
     }
+    if (find.byType(CreditOriginationScreen).evaluate().isEmpty) {
+      return 'success';
+    }
   }
-  fail('pumpUntilOutcome: neither a success nor an error was displayed.');
+  fail('pumpUntilOutcome: the route never closed and no error was displayed.');
+}
+
+/// Pumps until the origination form is on screen and the pushed route's
+/// transition has settled, so every control is hit-testable.
+Future<void> pumpUntilFormReady(WidgetTester tester) async {
+  await pumpUntil(
+      tester, () => find.byKey(const Key('submit_credit_button')).evaluate().isNotEmpty);
+  await tester.pumpAndSettle();
+}
+
+/// Hosts the origination screen over a dummy home route.
+///
+/// The origination screen closes itself with the created agreement once the
+/// submission succeeds, so it needs a route underneath to pop back to. The
+/// agreement it closed with is captured in [poppedCredit].
+class _OriginationHost extends StatefulWidget {
+  const _OriginationHost({
+    required this.shopId,
+    required this.customerId,
+    required this.currentUser,
+    required this.database,
+    this.idempotency,
+  });
+
+  final String shopId;
+  final int customerId;
+  final AppUser currentUser;
+  final AppDatabase database;
+  final CreditSubmissionIdempotency? idempotency;
+
+  @override
+  State<_OriginationHost> createState() => _OriginationHostState();
+}
+
+class _OriginationHostState extends State<_OriginationHost> {
+  /// The agreement the origination route closed with, if any.
+  Credit? poppedCredit;
+
+  /// Opens the origination screen over the dummy home route.
+  void openOrigination() {
+    Navigator.of(context)
+        .push<Credit>(
+          MaterialPageRoute(
+            builder: (_) => CreditOriginationScreen(
+              shopId: widget.shopId,
+              customerId: widget.customerId,
+              currentUser: widget.currentUser,
+              database: widget.database,
+              idempotency: widget.idempotency,
+            ),
+          ),
+        )
+        .then((credit) {
+      if (!mounted) return;
+      setState(() => poppedCredit = credit);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) openOrigination();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Text(
+          poppedCredit == null
+              ? 'Origination Host'
+              : 'Created ${poppedCredit!.id}',
+        ),
+      ),
+    );
+  }
 }
 
 void main() {
@@ -135,6 +205,8 @@ void main() {
     WidgetTester tester, {
     AppUser? actor,
     CreditSubmissionIdempotency? idempotency,
+    String? shop,
+    int? customer,
   }) async {
     // The origination form is taller than the default 800x600 test surface, so
     // enlarge the viewport to keep every control reachable without scrolling.
@@ -147,17 +219,21 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: CreditOriginationScreen(
-          shopId: shopId,
-          customerId: customerId,
+        home: _OriginationHost(
+          shopId: shop ?? shopId,
+          customerId: customer ?? customerId,
           currentUser: actor ?? cashier(),
           database: db,
           idempotency: idempotency,
         ),
       ),
     );
-    await pumpUntil(tester, () => find.byKey(const Key('submit_credit_button')).evaluate().isNotEmpty);
+    await pumpUntilFormReady(tester);
   }
+
+  /// The agreement the origination route closed with, if any.
+  Credit? poppedCredit(WidgetTester tester) =>
+      tester.state<_OriginationHostState>(find.byType(_OriginationHost)).poppedCredit;
 
   group('CreditOriginationScreen - preset terms (AC-1)', () {
     testWidgets('renders the origination form with all three approved presets',
@@ -370,6 +446,12 @@ void main() {
       expect(credits.first.customerId, equals(customerId));
       expect(credits.first.workflowStatus, equals('pending_disbursement'));
 
+      // The route closed with the created agreement as its result.
+      final created = poppedCredit(tester);
+      expect(created, isNotNull,
+          reason: 'A successful submission must close the route.');
+      expect(created!.id, equals(credits.first.id));
+
       // The pledged item is bound to the new agreement.
       final item = await db.select(db.collateralItems).get();
       final bound = item.firstWhere((i) => i.id == itemOneId);
@@ -396,7 +478,9 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.byKey(const Key('submit_credit_button')));
-      await pumpUntil(tester, () => find.byKey(const Key('origination_success_display')).evaluate().isNotEmpty);
+      final outcome = await pumpUntilOutcome(tester);
+      expect(outcome, equals('success'),
+          reason: 'Submission failed with: $outcome');
 
       final credits = await db.select(db.credits).get();
       final zone = ShopTimeZone.defaultTimeZone();
@@ -577,6 +661,40 @@ void main() {
 
       expect(await db.select(db.credits).get(), isEmpty);
     });
+    testWidgets('the draft agreement action is not offered on the origination '
+        'screen — it relocates to the credit lists', (tester) async {
+      // An actor without createCredits is refused by the DAO, so the
+      // submission fails and the origination screen stays mounted. That is
+      // the only way to inspect the screen after a submission attempt: a
+      // successful submission closes the route.
+      final unprivileged = AppUser(
+        id: staffId,
+        shopId: shopId,
+        username: 'origination.viewer',
+        fullName: 'Origination Viewer',
+        role: AppRole.custom,
+        customPermissions: const {},
+        isActive: true,
+      );
+
+      await pumpScreen(tester, actor: unprivileged);
+
+      await tester.enterText(
+        find.byKey(const Key('principal_amount_field')),
+        '5000.00',
+      );
+      await tester.tap(find.byKey(const Key('term_preset_30')));
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('submit_credit_button')));
+      await pumpUntil(tester,
+          () => find.byKey(const Key('origination_error_display')).evaluate().isNotEmpty);
+
+      // The screen is still open, and it offers no draft agreement action.
+      expect(find.byType(CreditOriginationScreen), findsOneWidget);
+      expect(find.byKey(const Key('view_draft_agreement_button')), findsNothing);
+      expect(find.text('View / Print Draft Agreement'), findsNothing);
+    });
   });
 
   group('CreditOriginationScreen - idempotency key lifecycle (F3)', () {
@@ -632,7 +750,9 @@ void main() {
           .write(const CollateralItemsCompanion(creditId: Value(null)));
 
       await tester.tap(find.byKey(const Key('submit_credit_button')));
-      await pumpUntil(tester, () => find.byKey(const Key('origination_success_display')).evaluate().isNotEmpty);
+      final retryOutcome = await pumpUntilOutcome(tester);
+      expect(retryOutcome, equals('success'),
+          reason: 'The retried submission failed with: $retryOutcome');
 
       // The successful attempt used the SAME key as the failed attempt.
       final auditRows = await db.select(db.syncQueue).get();
@@ -660,17 +780,33 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.byKey(const Key('submit_credit_button')));
-      await pumpUntil(tester, () => find.byKey(const Key('origination_success_display')).evaluate().isNotEmpty);
+      final outcome = await pumpUntilOutcome(tester);
+      expect(outcome, equals('success'),
+          reason: 'Submission failed with: $outcome');
 
       final firstKey = (await db.select(db.syncQueue).get()).first.idempotencyKey;
       expect(idempotency.currentKey, isNull,
           reason: 'The key is cleared after a successful agreement.');
+
+      // The successful submission closed the route, so a genuinely new
+      // submission is made from a freshly opened origination screen that shares
+      // the same idempotency-key manager.
+      tester
+          .state<_OriginationHostState>(find.byType(_OriginationHost))
+          .openOrigination();
+      await pumpUntilFormReady(tester);
 
       // A genuinely new submission (different principal) must not reuse the key.
       await tester.enterText(
         find.byKey(const Key('principal_amount_field')),
         '9000.00',
       );
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('term_preset_30')));
+      await tester.pump();
+      // Pledging the item again fails — it is already bound to the agreement
+      // created above — so the submission stays on the screen.
+      await tester.tap(find.byKey(Key('collateral_item_$itemOneId')));
       await tester.pump();
       await tester.tap(find.byKey(const Key('submit_credit_button')));
       await pumpUntil(tester, () => find.byKey(const Key('origination_error_display')).evaluate().isNotEmpty);
@@ -801,35 +937,22 @@ void main() {
 
     testWidgets('the summary displays the same calendar date that is persisted '
         'for the credit', (tester) async {
-      tester.view.physicalSize = const Size(1200, 3000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
       final tokyoZone = ShopTimeZone('Asia/Tokyo');
       final colomboZone = ShopTimeZone.defaultTimeZone();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: CreditOriginationScreen(
-            shopId: tokyoShopId,
-            customerId: tokyoCustomerId,
-            currentUser: AppUser(
-              id: tokyoStaffId,
-              shopId: tokyoShopId,
-              username: 'tokyo.cashier',
-              fullName: 'Tokyo Cashier',
-              role: AppRole.cashier,
-              isActive: true,
-            ),
-            database: db,
-          ),
+      await pumpScreen(
+        tester,
+        shop: tokyoShopId,
+        customer: tokyoCustomerId,
+        actor: AppUser(
+          id: tokyoStaffId,
+          shopId: tokyoShopId,
+          username: 'tokyo.cashier',
+          fullName: 'Tokyo Cashier',
+          role: AppRole.cashier,
+          isActive: true,
         ),
       );
-      await pumpUntil(tester,
-          () => find.byKey(const Key('submit_credit_button')).evaluate().isNotEmpty);
 
       await tester.enterText(
         find.byKey(const Key('principal_amount_field')),
@@ -853,8 +976,9 @@ void main() {
               'Asia/Colombo calendar.');
 
       await tester.tap(find.byKey(const Key('submit_credit_button')));
-      await pumpUntil(tester,
-          () => find.byKey(const Key('origination_success_display')).evaluate().isNotEmpty);
+      final outcome = await pumpUntilOutcome(tester);
+      expect(outcome, equals('success'),
+          reason: 'Submission failed with: $outcome');
 
       final credits = await db.select(db.credits).get();
       expect(credits.length, equals(1));
@@ -863,65 +987,17 @@ void main() {
       // date the summary previewed.
       final shopZoneDate =
           tokyoZone.localDateOf(credits.first.dueDate).isoDate;
-      final summaryText = tester
-          .widget<Text>(find.byKey(const Key('preliminary_due_date_display')))
-          .data!;
-      final successText = tester
-          .widget<Text>(find.byKey(const Key('origination_success_display')))
-          .data!;
-
-      expect(summaryText, contains(shopZoneDate),
+      expect(previewed, contains(shopZoneDate),
           reason: 'The summary must display the due date in the shop zone.');
-      expect(successText, contains(shopZoneDate),
-          reason: 'The success banner must agree with the summary.');
-    });
 
-    testWidgets(
-        'Story 4.4 - draft agreement button appears only after credit creation and generates draft document',
-        (WidgetTester tester) async {
-      await pumpScreen(tester);
-
-      // Draft agreement button must NOT exist before credit creation (D4.4-01 Option 1A).
-      expect(find.byKey(const Key('view_draft_agreement_button')), findsNothing);
-
-      await tester.enterText(
-        find.byKey(const Key('principal_amount_field')),
-        '25000.00',
-      );
-      await tester.tap(find.byKey(const Key('term_preset_30')));
-      await tester.pump();
-      await tester.tap(find.byKey(Key('collateral_item_$itemOneId')));
-      await tester.pump();
-
-      await tester.tap(find.byKey(const Key('submit_credit_button')));
-      final outcome = await pumpUntilOutcome(tester);
-      expect(outcome, equals('success'),
-          reason: 'Submission failed with: $outcome');
-
-      // After creation, draft agreement button must appear.
-      expect(find.byKey(const Key('view_draft_agreement_button')), findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('view_draft_agreement_button')));
-      await tester.pump();
-      for (var i = 0; i < 50; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-        final err = find.byKey(const Key('draft_error_display'));
-        if (err.evaluate().isNotEmpty) {
-          final msg = tester.widget<Text>(err).data;
-          fail('Draft generation failed with error: $msg');
-        }
-        if (find.byType(AlertDialog).evaluate().isNotEmpty ||
-            find.byKey(const Key('draft_generated_display')).evaluate().isNotEmpty) {
-          break;
-        }
-      }
-
-      // Verify Category 2 audit event was queued in SyncQueue
-      final syncEntries = await db.select(db.syncQueue).get();
-      final draftEvents = syncEntries.where((e) =>
-          e.entityType == 'credit' &&
-          e.actionType == 'generate_credit_draft');
-      expect(draftEvents, isNotEmpty);
+      // The route closed with the created agreement, whose due date is the
+      // same calendar date the summary previewed.
+      final created = poppedCredit(tester);
+      expect(created, isNotNull,
+          reason: 'A successful submission must close the route.');
+      expect(tokyoZone.localDateOf(created!.dueDate).isoDate,
+          equals(shopZoneDate),
+          reason: 'The closed route must carry the shop-zone due date.');
     });
   });
 }

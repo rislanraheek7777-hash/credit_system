@@ -5,15 +5,11 @@ import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
 import 'package:credit_system/features/collateral/presentation/collateral_registration_screen.dart';
-import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
-import 'package:credit_system/features/customers/data/services/document_generation_service_impl.dart';
-import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 import 'package:credit_system/features/customers/domain/services/credit_submission_idempotency.dart';
 import 'package:credit_system/features/shop/data/daos/shop_dao.dart';
 import 'package:credit_system/features/shop/domain/models/shop_profile.dart';
-import 'voucher_pdf_viewer_web.dart' if (dart.library.io) 'voucher_pdf_viewer_mobile.dart';
 
 /// The exact label mandated by Story 4.2 AC-1 and PRD FR-17 for a date that
 /// has not yet been finalised by cash disbursement.
@@ -132,6 +128,11 @@ class CreditOriginationSummary extends StatelessWidget {
 /// (F4). The idempotency key is managed by [CreditSubmissionIdempotency] so a
 /// retry of the same submission reuses its key while a genuinely new
 /// submission receives a fresh one (F3).
+///
+/// On a successful submission the route closes with the created agreement as
+/// its result; the customer profile that launched it reloads its credit list
+/// and confirms the creation. A failed submission keeps this screen open and
+/// reports the error inline.
 class CreditOriginationScreen extends StatefulWidget {
   /// The active shop tenant UUID.
   final String shopId;
@@ -183,12 +184,6 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
   bool _loadFailed = false;
   bool _isSubmitting = false;
   String? _error;
-  String? _successMessage;
-  Credit? _createdCredit;
-  bool _isGeneratingDraft = false;
-  bool _draftGenerated = false;
-  String? _draftError;
-  String? _draftFilePath;
 
   @override
   void initState() {
@@ -366,6 +361,11 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
   ///
   /// The idempotency key is bound to the submission's fingerprint (F3), and
   /// the authenticated user is passed straight through as the actor (F4).
+  ///
+  /// On success the route closes with the created agreement as its result, so
+  /// the caller (the customer profile) can reload its credit list and confirm
+  /// the creation. On failure the screen stays open and reports the error
+  /// inline; a failure is never reported as a success.
   Future<void> _submit() async {
     if (_loadFailed) {
       setState(() => _error =
@@ -395,7 +395,6 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
     setState(() {
       _isSubmitting = true;
       _error = null;
-      _successMessage = null;
     });
 
     try {
@@ -430,16 +429,11 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
       _idempotency.reset();
 
       if (!mounted) return;
-      setState(() {
-        _isSubmitting = false;
-        _createdCredit = credit;
-        _draftGenerated = false;
-        _draftError = null;
-        _draftFilePath = null;
-        _successMessage =
-            'Credit agreement ${credit.id} created. Due date (preliminary): '
-            '${_shopTimeZone.localDateOf(credit.dueDate).isoDate}.';
-      });
+
+      // Hand the created agreement back to the caller and close this route.
+      // The confirmation belongs to the customer profile the staff member came
+      // from — it reloads its credit list and confirms the creation.
+      Navigator.of(context).pop(credit);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -449,107 +443,6 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
       // NOTE: the idempotency key is deliberately NOT reset on failure, so a
       // retry of the same submission reuses the same key (F3).
     }
-  }
-
-  Future<void> _viewDraftAgreement() async {
-    if (_createdCredit == null) return;
-    setState(() {
-      _isGeneratingDraft = true;
-      _draftError = null;
-    });
-
-    try {
-      final db = widget.database ?? AppDatabase();
-      final shopDao = ShopDao(db);
-      final customerDao = CustomerDao(db);
-
-      final shop = await shopDao.getShopById(widget.shopId);
-      final customer =
-          await customerDao.getCustomerById(widget.shopId, widget.customerId);
-      final collateralList = _collateralItems
-          .where((item) => _selectedCollateralIds.contains(item.id))
-          .toList();
-
-      final service = DocumentGenerationServiceImpl();
-      final bytes = await service.generateDraftPdf(
-        credit: _createdCredit!,
-        actor: widget.currentUser,
-        shopTimeZone: _shopTimeZone,
-        shopName: shop?.name ?? 'Not recorded',
-        shopAddress: shop?.businessAddress ?? 'Not recorded',
-        shopPhone: shop?.contactPhone ?? 'Not recorded',
-        shopTaxId: shop?.registrationNumber ?? 'Not recorded',
-        disbursingStaffId: widget.currentUser.id,
-        customer: customer,
-        collateralItems: collateralList,
-      );
-
-      await service.recordDocumentAuditEvent(
-        db: db,
-        shopId: widget.shopId,
-        actorId: widget.currentUser.id,
-        actionType: DocumentGenerationServiceImpl.draftGeneratedActionType,
-        customerId: widget.customerId.toString(),
-        creditId: _createdCredit!.id,
-        isDraft: true,
-      );
-
-      final fileName = 'draft_agreement_${_createdCredit!.id}.pdf';
-      final savedPath = await viewVoucherPdf(bytes, fileName);
-
-      if (!mounted) return;
-      setState(() {
-        _isGeneratingDraft = false;
-        _draftGenerated = true;
-        _draftFilePath = savedPath;
-      });
-
-      if (savedPath != null) {
-        _showDraftSavedDialog(savedPath);
-      } else {
-        _showDraftDownloadedDialog();
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isGeneratingDraft = false;
-        _draftError = 'Failed to generate draft agreement: $e';
-      });
-    }
-  }
-
-  void _showDraftSavedDialog(String path) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Draft Agreement Saved'),
-        content: Text('Draft agreement PDF saved to:\n$path'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDraftDownloadedDialog() {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Draft Agreement Downloaded'),
-        content: const Text(
-          'The draft agreement PDF has been downloaded to your device.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -576,53 +469,6 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
                   style: const TextStyle(color: Colors.red),
                 ),
                 const SizedBox(height: 12),
-              ],
-              if (_successMessage != null) ...[
-                Text(
-                  _successMessage!,
-                  key: const Key('origination_success_display'),
-                  style: const TextStyle(color: Colors.green),
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (_createdCredit != null) ...[
-                if (_draftError != null) ...[
-                  Text(
-                    _draftError!,
-                    key: const Key('draft_error_display'),
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                if (_draftGenerated && _draftError == null) ...[
-                  const Text(
-                    'Draft agreement slip generated.',
-                    key: Key('draft_generated_display'),
-                    style: TextStyle(color: Colors.green),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                ElevatedButton.icon(
-                  key: const Key('view_draft_agreement_button'),
-                  onPressed: _isGeneratingDraft ? null : _viewDraftAgreement,
-                  icon: _isGeneratingDraft
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.description_outlined),
-                  label: const Text('View / Print Draft Agreement'),
-                ),
-                if (_draftFilePath != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Saved: $_draftFilePath',
-                    key: const Key('draft_saved_path_display'),
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-                const SizedBox(height: 16),
               ],
 
               // --- Principal ---

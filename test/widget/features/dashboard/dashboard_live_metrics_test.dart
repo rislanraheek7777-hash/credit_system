@@ -124,9 +124,9 @@ void main() {
     await _pumpUntilCardValue(tester, 'metric-total-customers', '2');
     await _pumpUntilCardValue(tester, 'metric-total-staff', '1');
     await _pumpUntilCardValue(tester, 'metric-total-credits', '1');
-    await _pumpUntilCardValue(tester, 'metric-active-credit', r'$500.00');
-    await _pumpUntilCardValue(tester, 'metric-outstanding', r'$500.00');
-    await _pumpUntilCardValue(tester, 'metric-collected', r'$0.00');
+    await _pumpUntilCardValue(tester, 'metric-active-credit', 'Rs. 500.00');
+    await _pumpUntilCardValue(tester, 'metric-outstanding', 'Rs. 500.00');
+    await _pumpUntilCardValue(tester, 'metric-collected', 'Rs. 0.00');
     await _pumpUntilCardValue(tester, 'metric-ratio', '0.00');
 
     await addCustomer('Customer Three');
@@ -141,8 +141,8 @@ void main() {
       principalCents: 25000,
     );
     await _pumpUntilCardValue(tester, 'metric-total-credits', '2');
-    await _pumpUntilCardValue(tester, 'metric-active-credit', r'$750.00');
-    await _pumpUntilCardValue(tester, 'metric-outstanding', r'$750.00');
+    await _pumpUntilCardValue(tester, 'metric-active-credit', 'Rs. 750.00');
+    await _pumpUntilCardValue(tester, 'metric-outstanding', 'Rs. 750.00');
   });
 }
 

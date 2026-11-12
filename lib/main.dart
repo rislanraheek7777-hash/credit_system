@@ -12,6 +12,7 @@ import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/customer.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
+import 'package:credit_system/core/money/money.dart';
 import 'package:credit_system/core/presentation/loading_screen.dart';
 import 'package:credit_system/core/data/remote/postgres_executor.dart';
 import 'package:credit_system/core/data/secure_storage.dart';
@@ -193,9 +194,14 @@ class _DashboardPageState extends State<_DashboardPage> {
     });
   }
 
+  /// Formats a monetary amount using the canonical [Money] presentation, so
+  /// the dashboard matches every other screen.
+  ///
+  /// The amount is rendered in [Money.defaultCurrency]; the shop's own
+  /// `currencyCode` is not applied here. That gap is pre-existing and is
+  /// logged in `deferred-work.md`.
   String formatCurrency(int cents) {
-    final rupees = cents / 100;
-    return 'Rs.${rupees.toStringAsFixed(2)}';
+    return Money.fromCents(cents).format();
   }
 
   @override
