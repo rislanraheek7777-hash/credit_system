@@ -163,8 +163,8 @@ void main() {
       workflowStatus: CreditWorkflowStatus.disbursed,
       settledAt: now,
     );
-    // Agreed but not yet disbursed: counted as a credit agreement, but it must
-    // not inflate the live (active) portfolio or the outstanding balance.
+    // Agreed but not yet disbursed: counted as a credit agreement and included
+    // in active credit/outstanding so the dashboard reflects creation immediately.
     await addCredit(
       id: 'alpha-pending',
       shopId: shopAlphaId,
@@ -222,10 +222,10 @@ void main() {
       expect(metrics.totalCustomers, 2);
       expect(metrics.totalStaff, 2);
       expect(metrics.totalCredits, 4);
-      expect(metrics.activeCreditCents, 80000);
-      expect(metrics.outstandingCents, 70000);
+      expect(metrics.activeCreditCents, 87000);
+      expect(metrics.outstandingCents, 77000);
       expect(metrics.collectedCents, 30000);
-      expect(metrics.ratio, closeTo(30000 / 70000, 1e-9));
+      expect(metrics.ratio, closeTo(30000 / 77000, 1e-9));
     });
 
     test('returns an empty snapshot for an unknown shop', () async {
@@ -250,8 +250,8 @@ void main() {
       expect(initial.totalCustomers, 2);
       expect(initial.totalStaff, 2);
       expect(initial.totalCredits, 4);
-      expect(initial.activeCreditCents, 80000);
-      expect(initial.outstandingCents, 70000);
+      expect(initial.activeCreditCents, 87000);
+      expect(initial.outstandingCents, 77000);
 
       await addPayment(
         id: 'alpha-live-payment',
@@ -279,6 +279,36 @@ void main() {
       await _waitUntil(() => values.last.totalCredits == initial.totalCredits + 1);
 
       expect(values.last.activeCreditCents, initial.activeCreditCents + 15000);
+      expect(values.last.outstandingCents, initial.outstandingCents + 15000);
+    });
+
+    test('re-emits and counts a newly created pending-disbursement credit', () async {
+      final values = <DashboardMetrics>[];
+      final subscription = service.watchMetrics(shopAlphaId).listen(values.add);
+      addTearDown(subscription.cancel);
+
+      await _waitUntil(() => values.isNotEmpty);
+      final initial = values.last;
+
+      await addCredit(
+        id: 'alpha-new-pending',
+        shopId: shopAlphaId,
+        customerId: alphaCustomerOneId,
+        principalCents: 12000,
+        balanceCents: 12000,
+        status: CreditStatus.active,
+        workflowStatus: CreditWorkflowStatus.pendingDisbursement,
+      );
+      await _waitUntil(() => values.last.totalCredits == initial.totalCredits + 1);
+
+      expect(values.last.activeCreditCents, initial.activeCreditCents + 12000);
+      expect(values.last.outstandingCents, initial.outstandingCents + 12000);
+      expect(values.last.collectedCents, initial.collectedCents);
+
+      final beta = await service.loadMetrics(shopBetaId);
+      expect(beta.totalCredits, 1);
+      expect(beta.activeCreditCents, 99900);
+      expect(beta.outstandingCents, 99900);
     });
   });
 }

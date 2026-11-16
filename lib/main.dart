@@ -368,11 +368,19 @@ class _DashboardPageState extends State<_DashboardPage> {
                         return const SizedBox.shrink();
                       }
                       final allCredits = snapshot.data!;
-                      final activeCredits = allCredits.where((c) =>
-                          (c.status == CreditStatus.active ||
-                              c.status == CreditStatus.overdue) &&
-                          c.workflowStatus == CreditWorkflowStatus.disbursed
-                        ).toList()
+                      final activeCredits = allCredits
+                          .where(
+                            (c) =>
+                                (c.status == CreditStatus.active ||
+                                    c.status == CreditStatus.overdue) &&
+                                (c.workflowStatus ==
+                                        CreditWorkflowStatus.pendingDisbursement ||
+                                    c.workflowStatus ==
+                                        CreditWorkflowStatus.disbursed ||
+                                    c.workflowStatus ==
+                                        CreditWorkflowStatus.overdue),
+                          )
+                          .toList()
                         ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
                       if (activeCredits.isEmpty) {
                         return const Text(

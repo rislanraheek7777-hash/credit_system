@@ -34,10 +34,12 @@ class DashboardMetrics {
   /// Number of non-cancelled credit agreements in the shop.
   final int totalCredits;
 
-  /// Sum of principals for credits currently active or overdue.
+  /// Sum of principals for credits that are active/overdue and pending
+  /// disbursement, disbursed, or overdue (excludes cancelled).
   final int activeCreditCents;
 
-  /// Sum of outstanding balances for credits currently active or overdue.
+  /// Sum of outstanding balances for credits that are active/overdue and pending
+  /// disbursement, disbursed, or overdue (excludes cancelled).
   final int outstandingCents;
 
   /// Principal already repaid across all non-cancelled credits.

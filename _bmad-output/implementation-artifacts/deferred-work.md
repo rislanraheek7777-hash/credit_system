@@ -74,3 +74,10 @@
   summary: Backing out of the customer registration form reloads the shop list even when the search field holds a single character, so the list contradicts the query.
   evidence: `_onSearchChanged` clears the results for queries under two characters (`customer_search_screen.dart:68-82`), while `_loadCustomers()` falls through to the full shop list for the same query (`:121-134`); `_openRegistrationForm()` calls it unconditionally after the form closes (`:189-191`). The pre-change FAB handler reloaded the same way, so this is pre-existing and not caused by the registration-returns-to-Customers change.
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-dashboard-update-when-credit-added.md`
+  summary: Active portfolio inclusion criteria are duplicated between dashboard metrics SQL and the `_DashboardPage` Active Credits list filter.
+  evidence: `DashboardMetricsService` aggregates `active_credit_cents`/`outstanding_cents` and `main.dart` filters the Active Credits list separately; this change updated both consistently to include `pending_disbursement`, but there is no shared definition/test enforcing parity if status/workflow rules change in the future. Pre-existing maintenance risk, not introduced by this fix.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dashboard-update-when-credit-added.md`
+  summary: No explicit automated coverage for in-place credit status/workflow transitions affecting dashboard metrics and the Active Credits list after initial emission.
+  evidence: Updated tests cover creation/reactive inserts (including pending disbursement) and payment-driven balance changes, but not transitions such as pending→disbursed or becoming cancelled/settled on an existing credit row; reactive behavior was not modified by this fix. Follow-up coverage gap.

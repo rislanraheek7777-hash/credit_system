@@ -54,6 +54,8 @@ void main() {
     required String id,
     required int customerId,
     required int principalCents,
+    CreditStatus status = CreditStatus.active,
+    CreditWorkflowStatus workflowStatus = CreditWorkflowStatus.disbursed,
   }) {
     return creditDao.createCredit(
       Credit(
@@ -62,8 +64,8 @@ void main() {
         customerId: customerId,
         principalCents: principalCents,
         balanceCents: principalCents,
-        status: CreditStatus.active,
-        workflowStatus: CreditWorkflowStatus.disbursed,
+        status: status,
+        workflowStatus: workflowStatus,
         dueDate: now.add(const Duration(days: 30)),
         createdAt: now,
       ),
@@ -103,7 +105,8 @@ void main() {
     await closeDb();
   });
 
-  testWidgets('dashboard cards update when customers, staff, and credits are added',
+  testWidgets(
+      'dashboard cards and active credits list update when credits are added, including pending disbursement',
       (tester) async {
     final owner = AppUser(
       id: 'owner',
@@ -128,6 +131,8 @@ void main() {
     await _pumpUntilCardValue(tester, 'metric-outstanding', 'Rs. 500.00');
     await _pumpUntilCardValue(tester, 'metric-collected', 'Rs. 0.00');
     await _pumpUntilCardValue(tester, 'metric-ratio', '0.00');
+    await _pumpUntilText(tester, 'No active credits', present: false);
+    await _pumpUntilText(tester, 'Customer One', present: true);
 
     await addCustomer('Customer Three');
     await _pumpUntilCardValue(tester, 'metric-total-customers', '3');
@@ -143,6 +148,18 @@ void main() {
     await _pumpUntilCardValue(tester, 'metric-total-credits', '2');
     await _pumpUntilCardValue(tester, 'metric-active-credit', 'Rs. 750.00');
     await _pumpUntilCardValue(tester, 'metric-outstanding', 'Rs. 750.00');
+
+    await addCredit(
+      id: 'credit-pending',
+      customerId: firstCustomerId,
+      principalCents: 12000,
+      workflowStatus: CreditWorkflowStatus.pendingDisbursement,
+    );
+    await _pumpUntilCardValue(tester, 'metric-total-credits', '3');
+    await _pumpUntilCardValue(tester, 'metric-active-credit', 'Rs. 870.00');
+    await _pumpUntilCardValue(tester, 'metric-outstanding', 'Rs. 870.00');
+    await _pumpUntilText(tester, 'Principal: Rs. 120.00', present: true);
+    await _pumpUntilText(tester, 'Balance: Rs. 120.00', present: true);
   });
 }
 
@@ -163,5 +180,30 @@ Future<void> _pumpUntilCardValue(
     await tester.pump(const Duration(milliseconds: 20));
   }
   fail('Dashboard card "$cardKey" never displayed "$value".');
+}
+
+Future<void> _pumpUntilText(
+  WidgetTester tester,
+  String text, {
+  required bool present,
+}) async {
+  for (var attempt = 0; attempt < 200; attempt++) {
+    final finder = find.text(text);
+    final isPresent = finder.evaluate().isNotEmpty;
+    if (isPresent == present) {
+      if (present) {
+        expect(finder, findsWidgets);
+      } else {
+        expect(finder, findsNothing);
+      }
+      return;
+    }
+    await tester.pump(const Duration(milliseconds: 20));
+  }
+  fail(
+    present
+        ? 'Text "$text" never appeared.'
+        : 'Text "$text" never disappeared.',
+  );
 }
 

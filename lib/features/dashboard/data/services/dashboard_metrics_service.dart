@@ -9,10 +9,10 @@ import '../../domain/models/dashboard_metrics.dart';
 /// watched variant re-runs whenever customers, staff accounts, credits, or
 /// payments change, so the dashboard reflects new records without a reload.
 ///
-/// Active credit and outstanding only count credits whose cash has actually been
-/// disbursed: an agreement still awaiting disbursement is financially `active`
-/// but no repayment obligation has begun, so counting it would overstate the
-/// live portfolio.
+/// Active credit and outstanding include newly created agreements that are still
+/// awaiting disbursement (pending disbursement), as well as disbursed and overdue
+/// credits, so the dashboard reflects credit creation immediately. Cancelled
+/// credits are excluded from counts and sums.
 class DashboardMetricsService {
   DashboardMetricsService(this._db);
 
@@ -25,10 +25,10 @@ SELECT
   (SELECT COUNT(*) FROM credits WHERE shop_id = ? AND status <> 'cancelled') AS total_credits,
   (SELECT COALESCE(SUM(principal_cents), 0) FROM credits
     WHERE shop_id = ? AND status IN ('active', 'overdue')
-      AND workflow_status IN ('disbursed', 'overdue')) AS active_credit_cents,
+      AND workflow_status IN ('pending_disbursement', 'disbursed', 'overdue')) AS active_credit_cents,
   (SELECT COALESCE(SUM(balance_cents), 0) FROM credits
     WHERE shop_id = ? AND status IN ('active', 'overdue')
-      AND workflow_status IN ('disbursed', 'overdue')) AS outstanding_cents,
+      AND workflow_status IN ('pending_disbursement', 'disbursed', 'overdue')) AS outstanding_cents,
   (SELECT COALESCE(SUM(principal_cents - balance_cents), 0) FROM credits
     WHERE shop_id = ? AND status <> 'cancelled') AS collected_cents
 ''';
