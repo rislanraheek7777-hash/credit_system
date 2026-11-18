@@ -133,6 +133,7 @@ void main() {
         createdAt: now.subtract(const Duration(days: 35)),
         settledAt: now.subtract(const Duration(days: 2)),
         correctionPending: false,
+        creditType: 'cash',
       ),
     );
 
@@ -149,6 +150,7 @@ void main() {
         dueDate: now.add(const Duration(days: 25)),
         createdAt: now.subtract(const Duration(days: 5)),
         correctionPending: false,
+        creditType: 'cash',
       ),
     );
   });

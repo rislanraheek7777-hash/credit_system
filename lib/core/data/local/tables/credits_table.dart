@@ -91,6 +91,13 @@ class Credits extends Table {
   /// (Story 5.3 AC-3, Story 5.5).
   BoolColumn get correctionPending => boolean().withDefault(const Constant(false))();
 
+  /// Type of the credit agreement: 'cash' (monetary amount only) or 'items'
+  /// (amount plus one or more item receipts attached at origination).
+  ///
+  /// Set once at origination and never reclassified afterwards.
+  TextColumn get creditType =>
+      text().withDefault(const Constant('cash'))();
+
   /// Document snapshot identifier, set at disbursement time.
   ///
   /// The current Story 4.4 scaffold stores only this identifier. It does not
@@ -127,6 +134,7 @@ class Credits extends Table {
     "CHECK (status <> 'cancelled' OR disbursed_by_user_id IS NULL)",
     "CHECK (status <> 'settled' OR workflow_status = 'disbursed')",
     "CHECK (status = 'cancelled' OR (cancelled_at IS NULL AND (cancellation_reason IS NULL OR length(trim(cancellation_reason)) = 0)))",
+    "CHECK (credit_type IN ('cash', 'items'))",
     "CHECK (status = 'settled' OR settled_at IS NULL)",
   ];
 }

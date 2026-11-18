@@ -81,3 +81,43 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-dashboard-update-when-credit-added.md`
   summary: No explicit automated coverage for in-place credit status/workflow transitions affecting dashboard metrics and the Active Credits list after initial emission.
   evidence: Updated tests cover creation/reactive inserts (including pending disbursement) and payment-driven balance changes, but not transitions such as pending→disbursed or becoming cancelled/settled on an existing credit row; reactive behavior was not modified by this fix. Follow-up coverage gap.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: Per-card Settle buttons on the customer profile route to the count-based settle selection instead of the tapped card's `_settleCredit(credit)`; no test binds `settle_credit_button_<id>` to the resulting PaymentScreen's creditId.
+  evidence: `customer_profile_screen.dart:652/666/680` discard the card's credit; `_openSettleCreditSelection()` (:440) re-derives actionableCredits and settles `actionableCredits.first` or opens a selection dialog. Every settle-group test seeds one eligible credit, so the tap-target path is indistinguishable. Flagged by all three review layers of spec-collateral-registration-returns-to-credit-origination.md; belongs to the settle-button change (`spec-credit-settle-button-customer-profile.md`).
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: The settle eligibility gate in `CreditSettleAction.isAvailableFor` was dropped: Settle renders on disbursed, settled, zero-balance and pending-disbursement cards for any `recordPayments` holder; the settle spec's ineligible-credits test fails as shipped and that spec's Verification section still claims all-pass.
+  evidence: `credit_settle_action.dart:49-51` checks only `recordPayments`; `sprint-change-proposal-2026-11-17.md` itself flags the mismatch; the review layer ran the failing test (`settle action ineligible credits offer no Settle action` — found the button). Pre-existing in-flight settle-credit work, not this story.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: The settle action and selection flow ship multiple unverified defects: a double-brace literal in the multi-credit dialog subtitle, an unguarded `firstWhere` crash when the selected credit id vanishes, a dead-end SnackBar on zero-actionable-credit taps, and stale/contradictory code comments.
+  evidence: `customer_profile_screen.dart:484` interpolates `'Balance: ${...format()}}'` printing a literal `}`; `_openSettleCreditSelection` first-where/empty-state unguarded; comments at :145/:176 describe deleted or differently-wired code. Pre-existing in-flight settle-credit work.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: The customer profile lost the origination creation confirmation (`Credit agreement created. Preliminary due date: …` SnackBar) and the credit-edit profile refresh.
+  evidence: `customer_profile_screen.dart:381-404` drops the mandated SnackBar and discards `created` behind `// ignore: unused_local_variable`; two profile tests fail as filed. `_openEditCustomer` re-fetches via an unclosed fresh `AppDatabase()` and never calls `_loadProfile()` (:406-431), so saved name/details never re-render; its test fails as filed. Pre-existing in-flight profile rework.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: The dashboard's "Active Credits" list was deleted from `lib/main.dart` with no replacement UI, no spec authorization, and an unmodified widget test that now fails (`dashboard_live_metrics_test.dart`: `Text "Customer One" never appeared`).
+  evidence: Blind-hunter and edge-case-hunter review of the collateral-origination diff; the portfolio dashboard still shows the "Active Credits" metric, so the home screen is inconsistent with its own metric. Pre-existing in-flight deletion.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: The mandatory Story 3.2 per-item photograph workflow (compression, storage, SHA-256 verification, mandatory photo gate) and photo-exception workflow are removed from collateral registration.
+  evidence: The baseline's `collateral_registration_screen.dart` carried the photo UI; the current tree — pre-existing in-flight rework predating this story — registers with no photo and no owner-approved exception, while `epics.md` FR-15 and frozen Stories 3.2/3.3 specs still mandate them, and `spec-8-1` says "Preserve per-item photo behavior". Needs a correct-course decision on whether the photo workflow is retired and the planning artifacts amended. Surfaced during settlement of spec-collateral-registration-returns-to-credit-origination.md review.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: Settle-mode full settlements never render the receipt PDF: `payment_screen.dart` pops with the receipt before `_generateReceiptPdf(receipt)` runs.
+  evidence: `payment_screen.dart:241-245` pop-before-generate in the settle path; the non-settle full-payment path generates and shows the PDF. The DB receipt row is still committed so history/reprint work; the artifact itself is silently skipped with no covering test. Pre-existing in-flight settle-credit work.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: The migration bundle ships an unverified `credit_type` v23 backfill (misclassifies legacy item-backed agreements as `cash` on upgrade), an unverified NULL-collateral document/DAO fallback path, a strict `CreditType.fromValue` that crashes every credit read on a drifted stored value, and no dedicated v23/v24 migration tests.
+  evidence: `app_database.dart:799-846`'s UPDATE runs but no test asserts `credit_type` after upgrade from pre-v23 (`drift_migration_v25_test.dart` skips the block; v11–v20 contain no references — review layer ran them: 95 passed); no `Unspecified`/`Not recorded` coverage for NULL description/condition/weight in documents or DAO round-trip; `credit_dao`/`correction_dao`/`overdue_dao` decode `credit_type` via a throwing `CreditType.fromValue`; v23/v24 have no dedicated test file; v25 got one; older migration tests were bumped to 25 mechanically and kept stale names ("Schema v7 Tests", "version is 20"). Pre-existing in-flight migration work.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: Repo hygiene drifted in the pre-existing in-flight tree: `_bmad/core/module-help.csv` renamed every `bmad-*` skill to `bmd-*` (with a new `_bmad/core/bmd-help/SKILL.md` missing YAML frontmatter and the CSV lost its trailing newline) while repo-wide references still say `bmad-*`; AGENTS.md carries stale state ("Ship (Next): bmad-build", `bmad-prfaque` typo, `core/domain/` reference); `files.txt` (empty) and `customer_photo_capture_test.dart` (empty) were committed; sprint-status `last_updated` is a placeholder midnight; UX mockups carry an internally inconsistent due-date example ("Due in 16 days · 02 Dec 2026" from an 18 Nov baseline).
+  evidence: Verified by file reads and searches during the review; all items pre-existing in-flight artifacts, not this story's.
+
+- source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
+  summary: Two pre-existing registration-screen concurrency gaps: the DAO-failure catch path calls `setState` without a `mounted` guard, and dismissing the route while `createCollateralItem` is in flight silently drops the route result (the caller reloads too early, or the committed item never appears with no confirmation).
+  evidence: `collateral_registration_screen.dart:182-187` catch block unchanged from baseline; `:178-181` commit-then-pop with no dismiss protection while `_isLoading`; the origination reload-after-push pattern races the insert in the dismiss case. Both pre-existing; neither path was changed by this spec.

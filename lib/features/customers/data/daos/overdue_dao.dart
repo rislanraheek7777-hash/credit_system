@@ -105,6 +105,7 @@ class OverdueDao extends DatabaseAccessor<AppDatabase> with _$OverdueDaoMixin {
       cancelledAt: entry.cancelledAt,
       cancellationReason: entry.cancellationReason,
       correctionPending: entry.correctionPending,
+      creditType: CreditType.fromValue(entry.creditType),
     );
   }
 

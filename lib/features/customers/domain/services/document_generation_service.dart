@@ -6,6 +6,7 @@ import '../../../../core/permissions/app_permission.dart';
 import '../../../collateral/domain/models/collateral_item.dart';
 import '../models/customer.dart';
 import '../models/credit.dart';
+import '../models/credit_document_content.dart';
 import '../models/credit_term.dart';
 
 /// Abstract service for generating credit agreement documents (Story 4.4).
@@ -72,6 +73,36 @@ abstract class DocumentGenerationService {
     required String shopTaxId,
     required String disbursingStaffId,
     bool showRawPII = false,
+    Customer? customer,
+    List<CollateralItem> collateralItems = const [],
+  });
+
+  /// Builds the draft agreement content for on-screen display only.
+  ///
+  /// This is the renderer-agnostic counterpart to [generateDraftPdf]: the very
+  /// same authorization, tenant-boundary and `pending_disbursement` checks are
+  /// enforced, and the very same lines are returned, but nothing is rendered
+  /// or persisted — no PDF is produced, no file is written and no storage
+  /// location is handed out. The caller decides how to present the content
+  /// (for example as a scrollable on-screen document review).
+  ///
+  /// [actor] must be active, belong to the credit's shop, and hold
+  /// [AppPermission.createCredits] (PRD FR-20), exactly as for the PDF path.
+  /// Raw PII is only resolved when the actor actually holds
+  /// [AppPermission.viewSensitiveCustomerData].
+  ///
+  /// Throws [PermissionDeniedException] when the actor is unauthorized.
+  /// Throws [CreditDisbursementStateException] when the credit is not in
+  /// `pending_disbursement` workflow status.
+  Future<CreditDocumentContent> buildDraftContent({
+    required Credit credit,
+    required AppUser actor,
+    required ShopTimeZone shopTimeZone,
+    required String shopName,
+    required String shopAddress,
+    required String shopPhone,
+    required String shopTaxId,
+    required String disbursingStaffId,
     Customer? customer,
     List<CollateralItem> collateralItems = const [],
   });

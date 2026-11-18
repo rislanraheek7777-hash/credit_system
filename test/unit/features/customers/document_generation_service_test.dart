@@ -95,6 +95,7 @@ Credit buildPendingCredit({
   DateTime? customDueDate,
   DateTime? dueDate,
   DateTime? createdAt,
+  CreditType creditType = CreditType.items,
 }) {
   return Credit(
     id: id,
@@ -108,6 +109,7 @@ Credit buildPendingCredit({
     createdAt: createdAt ?? DateTime.utc(2026, 10, 16, 9),
     termPresetDays: termPresetDays,
     customDueDate: customDueDate,
+    creditType: creditType,
   );
 }
 
@@ -120,6 +122,7 @@ Credit buildDisbursedCredit({
   DateTime? dueDate,
   DateTime? createdAt,
   bool includeDisbursementTimestamp = true,
+  CreditType creditType = CreditType.items,
 }) {
   return Credit(
     id: id,
@@ -136,6 +139,7 @@ Credit buildDisbursedCredit({
         ? (disbursedAt ?? DateTime.utc(2026, 10, 20, 9, 30))
         : null,
     disbursedByUserId: 'user-1',
+    creditType: creditType,
   );
 }
 
@@ -331,7 +335,8 @@ void main() {
         content.allLines,
         contains('Preliminary Due Date (Pending Disbursement): 2026-11-15'),
       );
-      expect(content.allLines, contains('Principal Amount: Rs. 1,500.50'));
+      expect(content.allLines, contains('Amount: Rs. 1,500.50'));
+      expect(content.allLines, contains('Credit Type: Items'));
       final joined = content.allLines.join('\n');
       expect(joined, contains('Item Receipt Summary:'));
       expect(joined, contains('COLL-001: Gold necklace'));
@@ -447,7 +452,8 @@ void main() {
         );
         expect(joined, contains('Disbursing Staff ID: staff-7'));
         expect(joined, contains('Official Confirmed Due Date: 2026-11-19'));
-        expect(joined, contains('Disbursed Principal Amount: Rs. 1,500.50'));
+        expect(joined, contains('Disbursed Amount: Rs. 1,500.50'));
+        expect(joined, contains('Credit Type: Items'));
         expect(joined, contains('Initial Outstanding Balance: Rs. 1,500.50'));
         expect(joined, contains('COLL-001: Gold necklace'));
         expect(joined, contains('5.500 g'));

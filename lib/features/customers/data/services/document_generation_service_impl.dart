@@ -49,12 +49,87 @@ class DocumentGenerationServiceImpl implements DocumentGenerationService {
     Customer? customer,
     List<CollateralItem> collateralItems = const [],
   }) async {
+    final canResolveRawPII = _authorizeDraftDocument(
+      credit: credit,
+      actor: actor,
+      customer: customer,
+      actionDescription: 'generate a draft credit agreement',
+    );
+
+    // The caller-supplied showRawPII flag is never trusted: raw PII is only
+    // permitted when the actor actually holds viewSensitiveCustomerData.
+    final effectiveShowRawPII = showRawPII && canResolveRawPII;
+
+    final content = buildDraftDocumentContent(
+      credit: credit,
+      shopTimeZone: shopTimeZone,
+      shopName: shopName,
+      shopAddress: shopAddress,
+      shopPhone: shopPhone,
+      shopTaxId: shopTaxId,
+      disbursingStaffId: disbursingStaffId,
+      showRawPII: effectiveShowRawPII,
+      customer: customer,
+      collateralItems: collateralItems,
+    );
+    return _renderPdf(content);
+  }
+
+  @override
+  Future<CreditDocumentContent> buildDraftContent({
+    required Credit credit,
+    required AppUser actor,
+    required ShopTimeZone shopTimeZone,
+    required String shopName,
+    required String shopAddress,
+    required String shopPhone,
+    required String shopTaxId,
+    required String disbursingStaffId,
+    Customer? customer,
+    List<CollateralItem> collateralItems = const [],
+  }) async {
+    final canResolveRawPII = _authorizeDraftDocument(
+      credit: credit,
+      actor: actor,
+      customer: customer,
+      actionDescription: 'view the draft credit agreement',
+    );
+
+    // There is no caller-supplied flag on the on-screen path: raw PII is
+    // resolved purely from the actor's effective permissions.
+    return buildDraftDocumentContent(
+      credit: credit,
+      shopTimeZone: shopTimeZone,
+      shopName: shopName,
+      shopAddress: shopAddress,
+      shopPhone: shopPhone,
+      shopTaxId: shopTaxId,
+      disbursingStaffId: disbursingStaffId,
+      showRawPII: canResolveRawPII,
+      customer: customer,
+      collateralItems: collateralItems,
+    );
+  }
+
+  /// Shared authorization for every pre-disbursement draft renderer.
+  ///
+  /// Enforces the `createCredits` permission, the tenant boundary, the
+  /// `pending_disbursement` precondition and the borrower binding. Raw PII is
+  /// authorized purely from the actor's effective permissions; the caller-
+  /// supplied [showRawPII]-style flag is applied by the caller, intersected
+  /// with the `true` returned here.
+  bool _authorizeDraftDocument({
+    required Credit credit,
+    required AppUser actor,
+    required Customer? customer,
+    required String actionDescription,
+  }) {
     // --- Authorization: draft generation requires createCredits (PRD FR-20). ---
     AuthorizationGuard.checkPermission(
       isActive: actor.isActive,
       effectivePermissions: actor.effectivePermissions,
       permission: AppPermission.createCredits,
-      actionDescription: 'generate a draft credit agreement',
+      actionDescription: actionDescription,
     );
     // Tenant boundary: the actor must belong to the credit's shop.
     if (actor.shopId != credit.shopId) {
@@ -73,24 +148,7 @@ class DocumentGenerationServiceImpl implements DocumentGenerationService {
     }
     _assertCustomerBelongsToCredit(customer, credit);
 
-    // The caller-supplied showRawPII flag is never trusted: raw PII is only
-    // permitted when the actor actually holds viewSensitiveCustomerData.
-    final effectiveShowRawPII =
-        showRawPII && actor.hasPermission(AppPermission.viewSensitiveCustomerData);
-
-    final content = buildDraftDocumentContent(
-      credit: credit,
-      shopTimeZone: shopTimeZone,
-      shopName: shopName,
-      shopAddress: shopAddress,
-      shopPhone: shopPhone,
-      shopTaxId: shopTaxId,
-      disbursingStaffId: disbursingStaffId,
-      showRawPII: effectiveShowRawPII,
-      customer: customer,
-      collateralItems: collateralItems,
-    );
-    return _renderPdf(content);
+    return actor.hasPermission(AppPermission.viewSensitiveCustomerData);
   }
 
   @override

@@ -269,8 +269,8 @@ void main() {
             ..where((l) => l.id.equals('credit-v17-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(22));
-      expect(db.schemaVersion, equals(22));
+      expect(readUserVersion(file), equals(25));
+      expect(db.schemaVersion, equals(25));
     });
 
     test('preserves existing credit and correction data and creates the ledger entries table after upgrade', () async {
@@ -284,7 +284,7 @@ void main() {
             ..where((l) => l.id.equals('credit-v17-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(22));
+      expect(readUserVersion(file), equals(25));
 
       // Existing data is preserved.
       final active = await (db.select(db.credits)

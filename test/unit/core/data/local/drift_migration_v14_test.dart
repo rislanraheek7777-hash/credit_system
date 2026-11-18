@@ -127,9 +127,9 @@ void main() {
       await (db.select(db.credits)..where((l) => l.id.equals('credit-v13-pending')))
           .getSingle();
 
-      expect(readUserVersion(dbFile), equals(22),
+      expect(readUserVersion(dbFile), equals(25),
           reason: 'Opening a version 13 database must migrate it to 20.');
-      expect(db.schemaVersion, equals(22));
+      expect(db.schemaVersion, equals(25));
 
       // The version 13 agreements survive the rebuild with their values.
       final pending = await (db.select(db.credits)
@@ -180,14 +180,14 @@ void main() {
       await first.close();
 
       // The migration must have recorded the new schema version on disk.
-      expect(readUserVersion(dbFile), equals(22));
+      expect(readUserVersion(dbFile), equals(25));
 
       // Second launch on the same file: the migration must not run again and
       // the database must open cleanly.
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(22));
+      expect(second.schemaVersion, equals(25));
       final credit = await (second.select(second.credits)
             ..where((l) => l.id.equals('credit-v13-pending')))
           .getSingle();
@@ -209,7 +209,7 @@ void main() {
       expect(await first.select(first.credits).get(), hasLength(3));
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(22),
+      expect(readUserVersion(dbFile), equals(25),
           reason: 'Drift must record the new schema version after the '
               'migration committed.');
 
@@ -218,7 +218,7 @@ void main() {
 
       expect(await second.select(second.credits).get(), hasLength(3));
       expect(await second.select(second.collateralItems).get(), hasLength(3));
-      expect(readUserVersion(dbFile), equals(22));
+      expect(readUserVersion(dbFile), equals(25));
     });
 
     test('keeps every collateral item bound to its agreement', () async {
@@ -274,9 +274,9 @@ void main() {
           creditId: const Value('credit-does-not-exist'),
           itemReferenceId: 'COLL-DANGLING',
           category: 'gold',
-          description: 'Dangling item',
-          conditionGrade: 'Good',
-          weightMilligrams: 1000,
+          description: const Value('Dangling item'),
+          conditionGrade: const Value('Good'),
+          weightMilligrams: const Value(1000),
           estimatedValueCents: 1000,
           createdAt: DateTime.now().toUtc(),
           updatedAt: DateTime.now().toUtc(),

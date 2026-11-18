@@ -495,7 +495,7 @@ class _CreditDisbursementScreenState extends State<CreditDisbursementScreen> {
 
             // --- Agreement summary ---
             Text(
-              'Principal: ${Money(credit.principalCents, currency: currency).format()}',
+              'Amount: ${Money(credit.principalCents, currency: currency).format()}',
               style: const TextStyle(fontSize: 14),
             ),
             Text(
@@ -533,7 +533,7 @@ class _CreditDisbursementScreenState extends State<CreditDisbursementScreen> {
               const SizedBox(height: 8),
               for (final item in _collateral)
                 Text(
-                  '${item.itemReferenceId} — ${item.description}',
+                  '${item.itemReferenceId} - ${item.description ?? 'Unspecified'}',
                   style: const TextStyle(fontSize: 12),
                 ),
               const SizedBox(height: 16),

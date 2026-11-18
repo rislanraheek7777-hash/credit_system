@@ -5,7 +5,7 @@ sources:
   - {planning_artifacts}/prds/prd-credit_system-2026-10-13/prd.md
   - {planning_artifacts}/briefs/brief-credit_system-2026-10-13/brief.md
   - {planning_artifacts}/briefs/brief-credit_system-2026-10-13/addendum.md
-updated: 2026-11-05
+updated: 2026-11-17
 ---
 
 # Credit System — Experience Spine
@@ -24,11 +24,13 @@ Multi-surface: Flutter Web (counter terminal) + Flutter Mobile (camera capture, 
 | Credit Creation Wizard | Customer profile / search | Term + principal + optional item receipts + review + submit |
 | Pending Disbursement Worklist | Dashboard / nav | Non-destructive list of undisbursed agreements |
 | Disbursement Confirmation | Worklist / credit | Confirm cash handover, finalize due date |
-| Payment Recording | Customer profile → credit | Amount entry, balance preview, overpayment block |
+| Credit Details | Customer profile / overdue queue / credit lists | Agreement at a glance: outstanding-balance hero, collateral custody, payment history, follow-up notes; entry to Record Payment, Disbursement, Handover |
+| Payment Recording | Customer profile → credit / Credit Details | Amount entry, balance preview, overpayment block |
 | Receipt View | After payment / history | Immutable receipt, reprint, PDF |
 | Collateral Handover | Customer profile → settled credit | Per-item verify & confirm return; partial pickup |
 | Overdue Review Queue | Dashboard (owner) | Badged list, filters, follow-up logging, extension, resolution |
 | Correction Request | Payment receipt | Submit correction with mandatory reason |
+| Balance Adjustment Proposal | Credit Details / settle flow | Staff (`requestCorrections`) proposes debit/credit adjustment with mandatory reason; posts only on Shop Owner approval (`approveCorrections`); payments locked on that credit while pending; owner may also execute directly |
 | Correction Approval Queue | Dashboard (owner) | Approve/reject with reason |
 | Shop Profile | Settings | Business identity, branding, timezone, currency format |
 | Staff Management | Settings (owner) | Accounts + 14 permission toggles |
@@ -44,6 +46,7 @@ Microcopy is concise, factual, and action-oriented. Use canonical glossary terms
 ## Component Patterns (behavioral)
 - **Search**: debounced 300ms, min 2 chars, shop-scoped; empty state with icon + text.
 - **Forms**: mandatory fields block submit; inline validation; pre-save photo preview with retake.
+- **Credit Details**: single-agreement "everything at a glance" surface. Balance hero (outstanding in mono, paid-progress bar vs principal, due-date pill with days remaining/overdue). Actions RBAC-gated: Record Payment (hidden/disabled when correction-pending lock active — lock banner shown instead), Confirm Disbursement (only in Pending Disbursement), Reprint Ticket, Correction Request, Balance Adjustment (staff-propose → owner-approve; blocked while an adjustment proposal is pending; owner may execute directly). Collateral section lists item receipts with per-item custody badge. Payment history is reverse-chronological with receipt #, actor, running balance; reversed entries shown struck-through with link to reversal. Follow-up notes (overdue) reverse-chronological with actor/timestamp. PII masked for unauthorized staff; no cross-tenant data. Entry points: customer profile, overdue queue, credit lists.
 - **Multi-select credit**: explicit selection dialog when >1 actionable credit; single proceeds directly.
 - **Payment**: amount parses to Money; validates 0 < amount ≤ balance; shows new balance preview; idempotent submit disables button while in flight.
 - **Receipt**: generated after commit; PDF failure reported separately; reprint preserves original identity + reprint watermark.
@@ -59,6 +62,7 @@ Microcopy is concise, factual, and action-oriented. Use canonical glossary terms
 - Pending-disbursement: non-destructive worklist; never auto-cancelled.
 - Correction-pending lock: blocks new payments only on affected credit.
 - Item receipts are optional at origination. A settled credit with zero item receipts has no handover step and resolves to `Closed / Completed`.
+- Credit Details renders the derived overall status. `Settled (Items Pending Handover)` swaps the primary action to "Verify & Return Items"; `Closed / Completed` and `Cancelled / Undisbursed` render read-only with no Record Payment affordance. Correction-pending lock blocks Record Payment on that credit only and shows an explicit banner.
 
 ## Interaction Primitives
 - Tap/click to select; long-press not required.
@@ -85,8 +89,11 @@ Microcopy is concise, factual, and action-oriented. Use canonical glossary terms
 2. **Returning partial payment (UJ-2)** — search → select target credit among multiple → enter amount → validation + balance preview → submit (idempotent) → receipt print; reprint preserves original identity + reprint audit.
    - Climax: balance updated, receipt #RCP generated.
 3. **Full settlement + collateral handover (UJ-3)** — final payment → balance 0 → Settled; items remain In Custody; verify against original photos/weights → per-item confirm return; partial pickup supported; all returned → Closed/Completed.
-4. **Payment correction (UJ-4)** — request correction with mandatory reason → correction-pending lock on that credit → owner approves (reversal posted, lock lifted) or rejects with reason → repost correct payment.
-5. **Overdue review + extension (UJ-5)** — auto-overdue badge at local midnight after due date → owner queue review → call borrower → extend due date with reason → status resets to Active; promise-to-pay logging; structured resolutions.
+4. **Credit review at the counter** — Kasun opens Credit #LN-1042 from Sunil's profile → scans outstanding-balance hero, due-date pill, collateral custody badges, and last receipts → taps Record Payment (or logs a follow-up note when overdue). Owner sees Extend Due Date inline.
+   - Climax: correct credit selected, balance verified against receipts, action taken in one screen — no navigation to a separate ledger.
+5. **Payment correction (UJ-4)** — request correction with mandatory reason → correction-pending lock on that credit → owner approves (reversal posted, lock lifted) or rejects with reason → repost correct payment.
+5b. **Partial forgiveness at settlement** — staff proposes a credit adjustment (forgiven amount, or new effective balance from which the delta is derived) with mandatory reason → correction-pending lock on that credit → owner approves (immutable `adjustment_credit` posted, lock lifted) or rejects with reason → staff settles the remainder via the normal payment/settle path.
+6. **Overdue review + extension (UJ-5)** — auto-overdue badge at local midnight after due date → owner queue review → call borrower → extend due date with reason → status resets to Active; promise-to-pay logging; structured resolutions.
 
 ## Inspiration & Anti-patterns
 - Inspiration: digitized paper logbooks/receipts; collateral-first lifecycle; shop branding on receipts.
@@ -107,6 +114,9 @@ Local append-only queue records events first; server audit trail appended on syn
 
 ### Receipts & Audit
 Immutable snapshots at payment confirmation capture shop profile, amounts, balances, timestamps, actor. Reprint adds `*** REPRINT ***` + reprint timestamp + audit entry. Audit trail append-only; no edit/delete even by owner/admin.
+
+### Credit Details Screen
+Single-agreement overview surface (balance hero + collateral custody + payment history + follow-ups). Composition confirmed 2026-11-17: mobile single-column, web counter two-column (form/summary left, payments/notes right, max 1200px). Visual references: [mockups/credit-details-mobile.html](mockups/credit-details-mobile.html) · [mockups/credit-details-web.html](mockups/credit-details-web.html). Spines win on conflict with mocks.
 
 ### Overdue Governance
 Auto-transition at 00:00 local day after due date if balance >0. Owner-only extension with mandatory reason; original due date + extension chain preserved. Promise-to-pay dates surface reminders. Resolutions: under review, written off (owner), collateral retained/legal dispute (owner). No automated seizure.

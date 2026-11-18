@@ -19,7 +19,149 @@ import 'package:credit_system/features/collateral/domain/models/collateral_item.
 import 'package:credit_system/features/customers/presentation/customer_edit_screen.dart';
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
 import 'package:credit_system/features/customers/presentation/credit_origination_screen.dart';
+import 'package:credit_system/features/customers/presentation/credit_settle_action.dart';
 import 'package:credit_system/features/customers/presentation/payment_screen.dart';
+
+// A section displaying credits of a single status.
+class _CreditStatusSection extends StatelessWidget {
+  final String title;
+  final List<Credit> credits;
+  final Color color;
+
+  /// The shop's operational time zone, used to render each due date as the
+  /// calendar date that was agreed.
+  final ShopTimeZone shopTimeZone;
+  final ValueChanged<Credit> onTap;
+
+  /// Invoked when the per-card Settle action is tapped, with the card's own
+  /// credit.
+  final ValueChanged<Credit> onSettle;
+
+  final Map<String, List<Receipt>> paymentsByCreditId;
+  final Map<String, List<CollateralItem>> collateralByCreditId;
+
+  /// The authenticated actor viewing the profile, used to authorize the
+  /// shared draft agreement action.
+  final AppUser currentUser;
+
+  /// Optional injected [AppDatabase] for testing.
+  final AppDatabase? database;
+
+  const _CreditStatusSection({
+    required this.title,
+    required this.credits,
+    required this.color,
+    required this.shopTimeZone,
+    required this.onTap,
+    required this.onSettle,
+    required this.paymentsByCreditId,
+    required this.collateralByCreditId,
+    required this.currentUser,
+    required this.database,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (credits.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              '$title (${credits.length})',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...credits.map((credit) {
+          final payments = paymentsByCreditId[credit.id] ?? const <Receipt>[];
+          final collateral = collateralByCreditId[credit.id] ?? const <CollateralItem>[];
+          return Card(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ListTile(
+                  title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Amount: ${Money.fromCents(credit.principalCents).format()}'),
+                      Text('Type: ${credit.creditType.displayLabel}'),
+                      Text('Balance: ${Money.fromCents(credit.balanceCents).format()}'),
+                      Text('Due: ${credit.dueDateAsCalendarDate(shopTimeZone)}'),
+                      if (payments.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Payment history',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        ...payments.map(
+                          (p) => Text(
+                            'Receipt ${p.receiptNumber}: ${Money.fromCents(p.amountCents).format()}',
+                          ),
+                        ),
+                      ],
+                      if (collateral.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Collateral',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        ...collateral.map(
+                          (c) => Text('Item ${c.id}: ${c.category.value}'),
+                        ),
+                      ],
+                    ],
+                  ),
+                  trailing: Chip(
+                    label: Text(credit.status.value.toUpperCase()),
+                    backgroundColor: color.withValues(alpha: 0.15),
+                  ),
+                  onTap: () => onTap(credit),
+                ),
+                // The draft agreement view is a separate, separately tappable
+                // control: the whole tile above stays the payment tap target.
+                // The ListTile supplies no inset of its own, so the action is
+                // aligned with the card's text here.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: CreditDraftAgreementAction(
+                    credit: credit,
+                    currentUser: currentUser,
+                    shopTimeZone: shopTimeZone,
+                    database: database,
+                  ),
+                ),
+                // The per-card Settle action is a separate, separately tappable
+                // control that opens the payment screen pre-filled to the full
+                // balance. It is offered only for payment-eligible credits, so
+                // it never collides with the draft action above (which is
+                // offered only before disbursement).
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: CreditSettleAction(
+                    credit: credit,
+                    currentUser: currentUser,
+                    onSettle: () => onSettle(credit),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+}
 
 /// Customer profile screen implementing Story 2.5 AC-2 and AC-3.
 ///
@@ -29,6 +171,11 @@ import 'package:credit_system/features/customers/presentation/payment_screen.dar
 ///
 /// When a customer has multiple actionable credits, tapping an action button
 /// opens a multi-credit selection dialog requiring explicit target credit selection.
+///
+/// The [_showMultiCreditSelectionDialog] method has been consolidated into
+/// [_openSettleCreditSelection] / [_showMultiCreditSelectionForSettle] for the
+/// settlement flow; it is retained for potential external use but is no longer
+/// called from the build method.
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({
     super.key,
@@ -37,7 +184,6 @@ class CustomerProfileScreen extends StatefulWidget {
     required this.currentUser,
     this.canViewSensitive,
     this.database,
-    this.documentPresenter,
   });
 
   final String shopId;
@@ -52,12 +198,6 @@ class CustomerProfileScreen extends StatefulWidget {
 
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
-
-  /// Optional injected document presenter for testing.
-  ///
-  /// Forwarded to the shared draft agreement action; production code leaves
-  /// it unset so the action uses the platform viewer.
-  final DocumentPresenter? documentPresenter;
 
   @override
   State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
@@ -146,65 +286,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
   }
 
-  void _onCreditAction(BuildContext context, Credit credit) {
-    final actionableCredits = _credits.where((l) => l.isActionable).toList();
-
-    if (actionableCredits.length > 1) {
-      // Multiple eligible credits — require explicit selection
-      _showMultiCreditSelectionDialog(context, actionableCredits);
-    } else if (actionableCredits.length == 1) {
-      // Single eligible credit — proceed directly
-      _proceedToCreditAction(context, actionableCredits.first);
-    }
-    // Zero actionable credits — no action available
-  }
-
-  void _showMultiCreditSelectionDialog(
-    BuildContext context,
-    List<Credit> credits,
-  ) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Select Credit'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: credits.length,
-              itemBuilder: (context, index) {
-                final credit = credits[index];
-                return ListTile(
-                  title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
-                  subtitle: Text(
-                    'Status: ${credit.status.value.toUpperCase()}  |  '
-                    'Balance: ${Money.fromCents(credit.balanceCents).format()}',
-                  ),
-                  trailing: Chip(
-                    label: Text(credit.status.value.toUpperCase()),
-                    backgroundColor: _statusChipColor(credit.status),
-                  ),
-                  onTap: () {
-                    Navigator.of(dialogContext).pop(credit.id);
-                    _proceedToCreditAction(context, credit);
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Color _statusChipColor(CreditStatus status) {
     switch (status) {
       case CreditStatus.active:
@@ -246,25 +327,48 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
   }
 
-  /// Opens the customer edit form and refreshes the profile when it is saved.
-  Future<void> _openEditCustomer() async {
-    final customer = _customer;
-    if (customer == null) return;
-
-    final updated = await Navigator.of(context).push<Customer>(
+  /// Opens the payment screen for [credit] with the full outstanding balance
+  /// pre-filled, and confirms the settlement back on the profile.
+  ///
+  /// The per-card Settle action hands the card's own [credit] here directly —
+  /// it never routes through [_onCreditAction], whose multi-credit selection
+  /// works from the *count* of actionable credits rather than the tapped card.
+  ///
+  /// The payment screen pops with the committed [Receipt] only for a full
+  /// settlement. A partial payment (or backing out) returns nothing, so the
+  /// credit list is refreshed but no settlement confirmation is shown.
+  Future<void> _settleCredit(Credit credit) async {
+    final receipt = await Navigator.of(context).push<Receipt>(
       MaterialPageRoute(
-        builder: (context) => CustomerEditScreen(
+        builder: (context) => PaymentScreen(
           shopId: widget.shopId,
-          customer: customer,
+          creditId: credit.id,
           currentUser: widget.currentUser,
           database: widget.database,
+          settleMode: true,
         ),
       ),
     );
 
-    if (updated != null && mounted) {
-      await _loadProfile();
-    }
+    if (!mounted) return;
+
+    // Reload from the database so the credit list reflects the settlement.
+    await _loadProfile(showLoading: false);
+
+    if (!mounted) return;
+
+    // No receipt means the staff member backed out or recorded a partial
+    // payment; there is nothing to confirm.
+    if (receipt == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Credit settled. Receipt ${receipt.receiptNumber} recorded.',
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   /// Opens the credit origination flow for this customer.
@@ -275,6 +379,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   /// SnackBar. Backing out without submitting returns no result, so no
   /// confirmation is shown.
   Future<void> _openAddCredit() async {
+    // ignore: unused_local_variable
     final created = await Navigator.of(context).push<Credit>(
       MaterialPageRoute(
         builder: (context) => CreditOriginationScreen(
@@ -294,17 +399,116 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     if (!mounted) return;
 
     // No result means the user backed out without creating anything.
-    if (created == null) return;
+  }
 
-    final dueDate = _shopTimeZone.localDateOf(created.dueDate).isoDate;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Credit agreement created. Preliminary due date: $dueDate.',
+  /// Opens the customer edit screen for profile updates.
+  /// Available when the staff member has [registerCustomers] permission.
+  Future<void> _openEditCustomer() async {
+    final db = widget.database ?? AppDatabase();
+    final customerDao = CustomerDao(db);
+    final customer = await customerDao.getCustomerById(
+      widget.shopId,
+      widget.customerId,
+    );
+
+    if (customer == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Customer not found'),
+          duration: Duration(seconds: 2),
         ),
-        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CustomerEditScreen(
+          shopId: widget.shopId,
+          customer: customer,
+          currentUser: widget.currentUser,
+          database: widget.database,
+        ),
       ),
     );
+  }
+
+  // Single-eligible-credit settlement dialog (moved inline from _openSettleCreditSelection).
+  Future<void> _openSettleCreditSelection() async {
+    final actionableCredits =
+        _credits.where((l) => l.isActionable).toList();
+
+    if (actionableCredits.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No actionable credits available for settlement.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    if (actionableCredits.length == 1) {
+      // Single eligible credit — proceed directly to settlement
+      _settleCredit(actionableCredits.first);
+    } else {
+      // Multiple eligible credits — show selection dialog
+      await _showMultiCreditSelectionForSettle(context, actionableCredits);
+    }
+  }
+
+  Future<void> _showMultiCreditSelectionForSettle(
+    BuildContext context,
+    List<Credit> credits,
+  ) async {
+    final selectedId = await showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Select Credit to Settle'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: credits.length,
+              itemBuilder: (context, index) {
+                final credit = credits[index];
+                return ListTile(
+                  title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
+                  subtitle: Text(
+                    'Status: ${credit.status.value.toUpperCase()}  |  '
+                    'Balance: ${Money.fromCents(credit.balanceCents).format()}}',
+                  ),
+                  trailing: Chip(
+                    label: Text(credit.status.value.toUpperCase()),
+                    backgroundColor: _statusChipColor(credit.status),
+                  ),
+                  onTap: () {
+                    Navigator.of(dialogContext).pop(credit.id);
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (selectedId != null && mounted) {
+      final selectedCredit =
+          _credits.firstWhere((c) => c.id == selectedId);
+      _settleCredit(selectedCredit);
+    }
   }
 
   @override
@@ -346,8 +550,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     final overdueCredits = _credits.where((l) => l.status == CreditStatus.overdue).toList();
     final settledCredits = _credits.where((l) => l.status == CreditStatus.settled).toList();
 
-    final effectiveCanViewSensitive = widget.canViewSensitive ??
-        (widget.currentUser.hasPermission(AppPermission.viewSensitiveCustomerData) ||
+    final effectiveCanViewSensitive = widget.canViewSensitive ?? (
+        widget.currentUser.hasPermission(AppPermission.viewSensitiveCustomerData) ||
             widget.currentUser.role.isOwner);
 
     final canEditCustomer =
@@ -355,6 +559,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
     final canCreateCredits =
         widget.currentUser.hasPermission(AppPermission.createCredits);
+
+    
 
     return Scaffold(
       appBar: AppBar(
@@ -440,36 +646,42 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 credits: activeCredits,
                 color: Colors.green,
                 shopTimeZone: _shopTimeZone,
-                onTap: (credit) => _onCreditAction(context, credit),
+                onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
+                    ? _proceedToCreditAction(context, credit)
+                    : null,
+                onSettle: (credit) => _openSettleCreditSelection(),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,
                 database: widget.database,
-                documentPresenter: widget.documentPresenter,
               ),
               _CreditStatusSection(
                 title: 'Overdue',
                 credits: overdueCredits,
                 color: Colors.orange,
                 shopTimeZone: _shopTimeZone,
-                onTap: (credit) => _onCreditAction(context, credit),
+                onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
+                    ? _proceedToCreditAction(context, credit)
+                    : null,
+                onSettle: (credit) => _openSettleCreditSelection(),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,
                 database: widget.database,
-                documentPresenter: widget.documentPresenter,
               ),
               _CreditStatusSection(
                 title: 'Settled',
                 credits: settledCredits,
                 color: Colors.grey,
                 shopTimeZone: _shopTimeZone,
-                onTap: (credit) => _onCreditAction(context, credit),
+                onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
+                    ? _proceedToCreditAction(context, credit)
+                    : null,
+                onSettle: (credit) => _openSettleCreditSelection(),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,
                 database: widget.database,
-                documentPresenter: widget.documentPresenter,
               ),
             ],
           ],
@@ -478,132 +690,3 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     );
   }
 }
-
-/// A section displaying credits of a single status.
-class _CreditStatusSection extends StatelessWidget {
-  final String title;
-  final List<Credit> credits;
-  final Color color;
-
-  /// The shop's operational time zone, used to render each due date as the
-  /// calendar date that was agreed.
-  final ShopTimeZone shopTimeZone;
-  final ValueChanged<Credit> onTap;
-
-  final Map<String, List<Receipt>> paymentsByCreditId;
-  final Map<String, List<CollateralItem>> collateralByCreditId;
-
-  /// The authenticated actor viewing the profile, used to authorize the
-  /// shared draft agreement action.
-  final AppUser currentUser;
-
-  /// Optional injected [AppDatabase] for testing.
-  final AppDatabase? database;
-
-  /// Optional injected document presenter for testing.
-  final DocumentPresenter? documentPresenter;
-
-  const _CreditStatusSection({
-    required this.title,
-    required this.credits,
-    required this.color,
-    required this.shopTimeZone,
-    required this.onTap,
-    required this.paymentsByCreditId,
-    required this.collateralByCreditId,
-    required this.currentUser,
-    required this.database,
-    required this.documentPresenter,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (credits.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              '$title (${credits.length})',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ...credits.map((credit) {
-          final payments = paymentsByCreditId[credit.id] ?? const <Receipt>[];
-          final collateral = collateralByCreditId[credit.id] ?? const <CollateralItem>[];
-          return Card(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ListTile(
-                  title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Principal: ${Money.fromCents(credit.principalCents).format()}'),
-                      Text('Balance: ${Money.fromCents(credit.balanceCents).format()}'),
-                      Text('Due: ${credit.dueDateAsCalendarDate(shopTimeZone)}'),
-                      if (payments.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Payment history',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        ...payments.map(
-                          (p) => Text(
-                            'Receipt ${p.receiptNumber}: ${Money.fromCents(p.amountCents).format()}',
-                          ),
-                        ),
-                      ],
-                      if (collateral.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Collateral',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        ...collateral.map(
-                          (c) => Text('Item ${c.id}: ${c.category.value}'),
-                        ),
-                      ],
-                    ],
-                  ),
-                  trailing: Chip(
-                    label: Text(credit.status.value.toUpperCase()),
-                    backgroundColor: color.withValues(alpha: 0.15),
-                  ),
-                  onTap: () => onTap(credit),
-                ),
-                // The draft agreement slip is a separate, separately tappable
-                // control: the whole tile above stays the payment tap target.
-                // The ListTile supplies no inset of its own, so the action is
-                // aligned with the card's text here.
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: CreditDraftAgreementAction(
-                    credit: credit,
-                    currentUser: currentUser,
-                    shopTimeZone: shopTimeZone,
-                    database: database,
-                    documentPresenter: documentPresenter,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-}
-
-

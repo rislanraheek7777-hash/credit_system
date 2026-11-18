@@ -69,6 +69,7 @@ class CreditDao extends DatabaseAccessor<AppDatabase> with _$CreditDaoMixin {
           : null,
       cancellationReason: entry.cancellationReason,
       correctionPending: entry.correctionPending,
+      creditType: CreditType.fromValue(entry.creditType),
     );
   }
 
@@ -92,6 +93,7 @@ class CreditDao extends DatabaseAccessor<AppDatabase> with _$CreditDaoMixin {
       cancelledAt: Value(credit.cancelledAt),
       cancellationReason: Value(credit.cancellationReason),
       correctionPending: Value(credit.correctionPending),
+      creditType: Value(credit.creditType.value),
     );
   }
 
@@ -326,6 +328,7 @@ class CreditDao extends DatabaseAccessor<AppDatabase> with _$CreditDaoMixin {
             'customerId': customerId,
             'principalCents': principal.minorUnits,
             'currency': shop.currencyCode,
+            'creditType': collateralItemIds.isEmpty ? 'cash' : 'items',
             'dueDate': dueDate.toIso8601String(),
             'createdAt': createdAt.toIso8601String(),
           })),
@@ -365,6 +368,12 @@ class CreditDao extends DatabaseAccessor<AppDatabase> with _$CreditDaoMixin {
         termPresetDays: termPresetDays,
         customDueDate: customDueDate,
         correctionPending: false,
+        // A monetary-amount-only agreement is a cash credit; attaching one or
+        // more item receipts makes it an items credit. The type is fixed at
+        // origination and never reclassified afterwards.
+        creditType: collateralItemIds.isEmpty
+            ? CreditType.cash
+            : CreditType.items,
       );
 
       await into(credits).insert(_toCompanion(credit));

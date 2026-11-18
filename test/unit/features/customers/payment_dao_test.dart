@@ -508,9 +508,9 @@ void main() {
       expect(receipt2.amountCents, receipt1.amountCents);
     });
 
-    test('schema version is 22 and payments table is accessible', () async {
-      // Verify the database is at schema version 22
-      expect(db.schemaVersion, 22);
+    test('schema version is current and payments table is accessible', () async {
+      // Verify the database is at the current schema version
+      expect(db.schemaVersion, 25);
 
       // Verify the payments table exists and is queryable
       final count = await db.customSelect(

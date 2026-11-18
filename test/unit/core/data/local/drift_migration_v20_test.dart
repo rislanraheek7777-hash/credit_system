@@ -136,8 +136,8 @@ void main() {
       // Drift opens lazily, so the migration runs on the first query.
       await db.select(db.customers).get();
 
-      expect(readUserVersion(file), equals(22));
-      expect(db.schemaVersion, equals(22));
+      expect(readUserVersion(file), equals(25));
+      expect(db.schemaVersion, equals(25));
     });
 
     test('preserves all customer data and converts ids to rowid-based integers',
@@ -390,7 +390,7 @@ void main() {
       await first.select(first.customers).get();
       await first.close();
 
-      expect(readUserVersion(file), equals(22));
+      expect(readUserVersion(file), equals(25));
 
       final second = openWithDeviceSemantics(file);
       addTearDown(() async => second.close());

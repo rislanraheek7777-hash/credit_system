@@ -2,12 +2,8 @@
 ///
 /// The customer profile and the shop-wide credit list render the same credit
 /// cards, so their tests share the same database seeding, the same viewport
-/// handling, the same asynchronous pumping helpers and the same document
-/// presenter seam.
+/// handling and the same asynchronous pumping helpers.
 library;
-
-import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -16,6 +12,7 @@ import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/data/local/connection/database_connection.dart';
 import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
+import 'package:credit_system/features/customers/presentation/credit_draft_agreement_view_screen.dart';
 
 /// The shop tenant used by the credit-list widget tests.
 const String testShopId = 'shop-123';
@@ -115,59 +112,28 @@ Future<void> insertCredit(AppDatabase db, Credit credit) async {
     dueDate: Value(credit.dueDate),
     createdAt: Value(credit.createdAt),
     settledAt: Value(credit.settledAt),
+    creditType: Value(credit.creditType.value),
   ));
 }
 
-/// Renders the raw bytes of an uncompressed PDF as text.
-///
-/// The document service writes the PDF uncompressed on purpose ("Kept
-/// uncompressed so mandatory text remains inspectable in QA"), so the printed
-/// text can be searched for the content the slip is required to carry.
-String pdfText(Uint8List bytes) => utf8.decode(bytes, allowMalformed: true);
-
-/// A document presenter that records what the draft action handed over.
-///
-/// The production presenter waits on a platform channel that never resolves
-/// under `flutter test`, so the hand-off is only observable through an
-/// injected presenter.
-class RecordingDocumentPresenter {
-  /// The bytes handed to the presenter.
-  Uint8List? bytes;
-
-  /// The file name handed to the presenter.
-  String? fileName;
-
-  /// The path the presenter reports the document as saved to.
-  ///
-  /// `null` models the platform taking the document itself (a browser
-  /// download), which the action reports as a download rather than a save.
-  String? savedPath = '/tmp/draft-agreement.pdf';
-
-  /// Presents [bytes] as [fileName] and reports [savedPath].
-  Future<String?> call(Uint8List bytes, String fileName) async {
-    this.bytes = bytes;
-    this.fileName = fileName;
-    return savedPath;
-  }
-}
-
 /// Taps the shared draft agreement action for [creditId] and waits until the
-/// document has been handed over.
+/// on-screen draft agreement view has opened.
 ///
 /// Fails the test when the action reports an inline failure instead.
-Future<void> generateDraftAgreement(
+Future<void> openDraftAgreement(
   WidgetTester tester,
   String creditId,
 ) async {
   await tester.tap(find.byKey(CreditDraftAgreementAction.buttonKey(creditId)));
-  for (var i = 0; i < 100; i++) {
-    await tester.pump(const Duration(milliseconds: 20));
-    final error =
-        find.byKey(CreditDraftAgreementAction.errorKey(creditId));
-    if (error.evaluate().isNotEmpty) {
-      fail('Draft generation failed: ${tester.widget<Text>(error).data}');
-    }
-    if (find.byType(AlertDialog).evaluate().isNotEmpty) return;
+  await pumpUntil(
+    tester,
+    () =>
+        find.byType(CreditDraftAgreementViewScreen).evaluate().isNotEmpty ||
+        find.byKey(CreditDraftAgreementAction.errorKey(creditId)).evaluate().isNotEmpty,
+  );
+  final error =
+      find.byKey(CreditDraftAgreementAction.errorKey(creditId));
+  if (error.evaluate().isNotEmpty) {
+    fail('Draft view failed: ${tester.widget<Text>(error).data}');
   }
-  fail('The draft agreement was never handed over to the presenter.');
 }

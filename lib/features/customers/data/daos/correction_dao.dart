@@ -1313,6 +1313,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       cancelledAt: entry.cancelledAt,
       cancellationReason: entry.cancellationReason,
       correctionPending: entry.correctionPending,
+      creditType: CreditType.fromValue(entry.creditType),
     );
   }
 }

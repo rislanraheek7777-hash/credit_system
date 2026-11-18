@@ -11,7 +11,6 @@ import 'package:credit_system/features/customers/domain/models/credit_term.dart'
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
 
 /// Credit details screen listing every credit agreement of the active shop.
-///
 /// Reached from the main navigation bar's "Credit Details" option. Exposes the
 /// shop's credit portfolio: each agreement's customer, principal, outstanding
 /// balance, status, and agreed due date.
@@ -21,7 +20,6 @@ class CreditDetailsScreen extends StatefulWidget {
     required this.shopId,
     required this.currentUser,
     this.database,
-    this.documentPresenter,
   });
 
   /// The active shop tenant UUID.
@@ -32,12 +30,6 @@ class CreditDetailsScreen extends StatefulWidget {
 
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
-
-  /// Optional injected document presenter for testing.
-  ///
-  /// Forwarded to the shared draft agreement action; production code leaves
-  /// it unset so the action uses the platform viewer.
-  final DocumentPresenter? documentPresenter;
 
   @override
   State<CreditDetailsScreen> createState() => _CreditDetailsScreenState();
@@ -152,7 +144,6 @@ class _CreditDetailsScreenState extends State<CreditDetailsScreen> {
                     shopTimeZone: _shopTimeZone,
                     currentUser: widget.currentUser,
                     database: widget.database,
-                    documentPresenter: widget.documentPresenter,
                   );
                 },
               ),
@@ -173,16 +164,12 @@ class _CreditCard extends StatelessWidget {
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
 
-  /// Optional injected document presenter for testing.
-  final DocumentPresenter? documentPresenter;
-
   const _CreditCard({
     required this.credit,
     required this.customer,
     required this.shopTimeZone,
     required this.currentUser,
     required this.database,
-    required this.documentPresenter,
   });
 
   Color _statusColor(CreditStatus status) {
@@ -228,18 +215,18 @@ class _CreditCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text('Customer: ${customer?.fullName ?? 'Unknown'}'),
-            Text('Principal: ${Money.fromCents(credit.principalCents).format()}'),
+            Text('Amount: ${Money.fromCents(credit.principalCents).format()}'),
+            Text('Type: ${credit.creditType.displayLabel}'),
             Text('Balance: ${Money.fromCents(credit.balanceCents).format()}'),
             Text('Due: ${credit.dueDateAsCalendarDate(shopTimeZone)}'),
-            // The draft agreement slip is offered straight from the list, so
-            // staff can print it without leaving the portfolio. The card's own
-            // padding supplies the horizontal inset.
+            // The draft agreement view is offered straight from the list, so
+            // staff can review it without leaving the portfolio. The card's
+            // own padding supplies the horizontal inset.
             CreditDraftAgreementAction(
               credit: credit,
               currentUser: currentUser,
               shopTimeZone: shopTimeZone,
               database: database,
-              documentPresenter: documentPresenter,
             ),
           ],
         ),
@@ -247,4 +234,5 @@ class _CreditCard extends StatelessWidget {
     );
   }
 }
+
 

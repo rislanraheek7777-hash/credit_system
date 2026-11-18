@@ -6,7 +6,7 @@ sources:
   - {planning_artifacts}/prds/prd-credit_system-2026-10-13/prd.md
   - {planning_artifacts}/briefs/brief-credit_system-2026-10-13/brief.md
   - {planning_artifacts}/briefs/brief-credit_system-2026-10-13/addendum.md
-updated: 2026-11-05
+updated: 2026-11-17
 colors:
   surface-base: '#F5F7FA'
   surface-raised: '#FFFFFF'
@@ -118,6 +118,16 @@ components:
     borderColor: '{colors.border-hairline}'
     borderRadius: '{rounded.md}'
     padding: '{spacing.3} {spacing.4}'
+  balance-hero:
+    backgroundColor: '{colors.surface-raised}'
+    borderRadius: '{rounded.lg}'
+    padding: '{spacing.5}'
+    borderColor: '{colors.border-hairline}'
+  item-receipt-card:
+    backgroundColor: '{colors.surface-raised}'
+    borderRadius: '{rounded.md}'
+    padding: '{spacing.3}'
+    borderColor: '{colors.border-hairline}'
   app-bar:
     backgroundColor: '{colors.accent}'
     textColor: '{colors.ink-on-accent}'
@@ -153,6 +163,8 @@ Rounded corners: 4px (xs) for chips/badges, 12px (md) for inputs/buttons, 16px (
 - **Dialogs**: 24px radius, scrim, title + content + actions.
 - **Receipts**: monospace, immutable snapshot, watermarks for draft/reprint.
 - **Photo capture**: preview thumbnail, retake/re-upload, mandatory indicator.
+- **Balance hero** (credit details): outstanding amount in mono 32/40px, paid-progress bar (accent on sunken track) vs principal, due-date pill (warning when ≤14 days or overdue). Paid/principal/disbursed meta in mono below.
+- **Item receipt card**: 56–64px photo thumbnail, category · description · weight/condition, mono estimated value, custody pill (In Custody / Returned / Exception-Held).
 
 ## Do's and Don'ts
 - Do keep counter flows under ~1 minute; minimize clicks for returning customers.

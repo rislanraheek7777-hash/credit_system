@@ -174,7 +174,7 @@ class PortfolioDashboardPage extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   _CreditMetricRow(
-                                    label: 'Principal',
+                                    label: 'Amount',
                                     value: _formatCents(credit.principalCents),
                                   ),
                                   _CreditMetricRow(

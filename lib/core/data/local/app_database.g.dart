@@ -4080,6 +4080,18 @@ class $CreditsTable extends Credits with TableInfo<$CreditsTable, CreditEntry> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _creditTypeMeta = const VerificationMeta(
+    'creditType',
+  );
+  @override
+  late final GeneratedColumn<String> creditType = GeneratedColumn<String>(
+    'credit_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('cash'),
+  );
   static const VerificationMeta _documentSnapshotIdMeta =
       const VerificationMeta('documentSnapshotId');
   @override
@@ -4110,6 +4122,7 @@ class $CreditsTable extends Credits with TableInfo<$CreditsTable, CreditEntry> {
     createdAt,
     settledAt,
     correctionPending,
+    creditType,
     documentSnapshotId,
   ];
   @override
@@ -4267,6 +4280,12 @@ class $CreditsTable extends Credits with TableInfo<$CreditsTable, CreditEntry> {
         ),
       );
     }
+    if (data.containsKey('credit_type')) {
+      context.handle(
+        _creditTypeMeta,
+        creditType.isAcceptableOrUnknown(data['credit_type']!, _creditTypeMeta),
+      );
+    }
     if (data.containsKey('document_snapshot_id')) {
       context.handle(
         _documentSnapshotIdMeta,
@@ -4353,6 +4372,10 @@ class $CreditsTable extends Credits with TableInfo<$CreditsTable, CreditEntry> {
         DriftSqlType.bool,
         data['${effectivePrefix}correction_pending'],
       )!,
+      creditType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}credit_type'],
+      )!,
       documentSnapshotId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}document_snapshot_id'],
@@ -4432,6 +4455,12 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
   /// (Story 5.3 AC-3, Story 5.5).
   final bool correctionPending;
 
+  /// Type of the credit agreement: 'cash' (monetary amount only) or 'items'
+  /// (amount plus one or more item receipts attached at origination).
+  ///
+  /// Set once at origination and never reclassified afterwards.
+  final String creditType;
+
   /// Document snapshot identifier, set at disbursement time.
   ///
   /// The current Story 4.4 scaffold stores only this identifier. It does not
@@ -4458,6 +4487,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
     required this.createdAt,
     this.settledAt,
     required this.correctionPending,
+    required this.creditType,
     this.documentSnapshotId,
   });
   @override
@@ -4494,6 +4524,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
       map['settled_at'] = Variable<DateTime>(settledAt);
     }
     map['correction_pending'] = Variable<bool>(correctionPending);
+    map['credit_type'] = Variable<String>(creditType);
     if (!nullToAbsent || documentSnapshotId != null) {
       map['document_snapshot_id'] = Variable<String>(documentSnapshotId);
     }
@@ -4533,6 +4564,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
           ? const Value.absent()
           : Value(settledAt),
       correctionPending: Value(correctionPending),
+      creditType: Value(creditType),
       documentSnapshotId: documentSnapshotId == null && nullToAbsent
           ? const Value.absent()
           : Value(documentSnapshotId),
@@ -4566,6 +4598,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       settledAt: serializer.fromJson<DateTime?>(json['settledAt']),
       correctionPending: serializer.fromJson<bool>(json['correctionPending']),
+      creditType: serializer.fromJson<String>(json['creditType']),
       documentSnapshotId: serializer.fromJson<String?>(
         json['documentSnapshotId'],
       ),
@@ -4592,6 +4625,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'settledAt': serializer.toJson<DateTime?>(settledAt),
       'correctionPending': serializer.toJson<bool>(correctionPending),
+      'creditType': serializer.toJson<String>(creditType),
       'documentSnapshotId': serializer.toJson<String?>(documentSnapshotId),
     };
   }
@@ -4614,6 +4648,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
     DateTime? createdAt,
     Value<DateTime?> settledAt = const Value.absent(),
     bool? correctionPending,
+    String? creditType,
     Value<String?> documentSnapshotId = const Value.absent(),
   }) => CreditEntry(
     id: id ?? this.id,
@@ -4641,6 +4676,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
     createdAt: createdAt ?? this.createdAt,
     settledAt: settledAt.present ? settledAt.value : this.settledAt,
     correctionPending: correctionPending ?? this.correctionPending,
+    creditType: creditType ?? this.creditType,
     documentSnapshotId: documentSnapshotId.present
         ? documentSnapshotId.value
         : this.documentSnapshotId,
@@ -4686,6 +4722,9 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
       correctionPending: data.correctionPending.present
           ? data.correctionPending.value
           : this.correctionPending,
+      creditType: data.creditType.present
+          ? data.creditType.value
+          : this.creditType,
       documentSnapshotId: data.documentSnapshotId.present
           ? data.documentSnapshotId.value
           : this.documentSnapshotId,
@@ -4712,6 +4751,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
           ..write('createdAt: $createdAt, ')
           ..write('settledAt: $settledAt, ')
           ..write('correctionPending: $correctionPending, ')
+          ..write('creditType: $creditType, ')
           ..write('documentSnapshotId: $documentSnapshotId')
           ..write(')'))
         .toString();
@@ -4736,6 +4776,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
     createdAt,
     settledAt,
     correctionPending,
+    creditType,
     documentSnapshotId,
   );
   @override
@@ -4759,6 +4800,7 @@ class CreditEntry extends DataClass implements Insertable<CreditEntry> {
           other.createdAt == this.createdAt &&
           other.settledAt == this.settledAt &&
           other.correctionPending == this.correctionPending &&
+          other.creditType == this.creditType &&
           other.documentSnapshotId == this.documentSnapshotId);
 }
 
@@ -4780,6 +4822,7 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
   final Value<DateTime> createdAt;
   final Value<DateTime?> settledAt;
   final Value<bool> correctionPending;
+  final Value<String> creditType;
   final Value<String?> documentSnapshotId;
   final Value<int> rowid;
   const CreditsCompanion({
@@ -4800,6 +4843,7 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
     this.createdAt = const Value.absent(),
     this.settledAt = const Value.absent(),
     this.correctionPending = const Value.absent(),
+    this.creditType = const Value.absent(),
     this.documentSnapshotId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -4821,6 +4865,7 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
     required DateTime createdAt,
     this.settledAt = const Value.absent(),
     this.correctionPending = const Value.absent(),
+    this.creditType = const Value.absent(),
     this.documentSnapshotId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -4848,6 +4893,7 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? settledAt,
     Expression<bool>? correctionPending,
+    Expression<String>? creditType,
     Expression<String>? documentSnapshotId,
     Expression<int>? rowid,
   }) {
@@ -4869,6 +4915,7 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
       if (createdAt != null) 'created_at': createdAt,
       if (settledAt != null) 'settled_at': settledAt,
       if (correctionPending != null) 'correction_pending': correctionPending,
+      if (creditType != null) 'credit_type': creditType,
       if (documentSnapshotId != null)
         'document_snapshot_id': documentSnapshotId,
       if (rowid != null) 'rowid': rowid,
@@ -4893,6 +4940,7 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
     Value<DateTime>? createdAt,
     Value<DateTime?>? settledAt,
     Value<bool>? correctionPending,
+    Value<String>? creditType,
     Value<String?>? documentSnapshotId,
     Value<int>? rowid,
   }) {
@@ -4914,6 +4962,7 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
       createdAt: createdAt ?? this.createdAt,
       settledAt: settledAt ?? this.settledAt,
       correctionPending: correctionPending ?? this.correctionPending,
+      creditType: creditType ?? this.creditType,
       documentSnapshotId: documentSnapshotId ?? this.documentSnapshotId,
       rowid: rowid ?? this.rowid,
     );
@@ -4973,6 +5022,9 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
     if (correctionPending.present) {
       map['correction_pending'] = Variable<bool>(correctionPending.value);
     }
+    if (creditType.present) {
+      map['credit_type'] = Variable<String>(creditType.value);
+    }
     if (documentSnapshotId.present) {
       map['document_snapshot_id'] = Variable<String>(documentSnapshotId.value);
     }
@@ -5002,6 +5054,7 @@ class CreditsCompanion extends UpdateCompanion<CreditEntry> {
           ..write('createdAt: $createdAt, ')
           ..write('settledAt: $settledAt, ')
           ..write('correctionPending: $correctionPending, ')
+          ..write('creditType: $creditType, ')
           ..write('documentSnapshotId: $documentSnapshotId, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5101,13 +5154,10 @@ class $CollateralItemsTable extends CollateralItems
   late final GeneratedColumn<String> description = GeneratedColumn<String>(
     'description',
     aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 1,
-      maxTextLength: 1000,
-    ),
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 1000),
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _conditionGradeMeta = const VerificationMeta(
     'conditionGrade',
@@ -5116,13 +5166,10 @@ class $CollateralItemsTable extends CollateralItems
   late final GeneratedColumn<String> conditionGrade = GeneratedColumn<String>(
     'condition_grade',
     aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 1,
-      maxTextLength: 100,
-    ),
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 100),
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _weightMilligramsMeta = const VerificationMeta(
     'weightMilligrams',
@@ -5131,9 +5178,9 @@ class $CollateralItemsTable extends CollateralItems
   late final GeneratedColumn<int> weightMilligrams = GeneratedColumn<int>(
     'weight_milligrams',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _estimatedValueCentsMeta =
       const VerificationMeta('estimatedValueCents');
@@ -5285,8 +5332,6 @@ class $CollateralItemsTable extends CollateralItems
           _descriptionMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_descriptionMeta);
     }
     if (data.containsKey('condition_grade')) {
       context.handle(
@@ -5296,8 +5341,6 @@ class $CollateralItemsTable extends CollateralItems
           _conditionGradeMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_conditionGradeMeta);
     }
     if (data.containsKey('weight_milligrams')) {
       context.handle(
@@ -5307,8 +5350,6 @@ class $CollateralItemsTable extends CollateralItems
           _weightMilligramsMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_weightMilligramsMeta);
     }
     if (data.containsKey('estimated_value_cents')) {
       context.handle(
@@ -5398,15 +5439,15 @@ class $CollateralItemsTable extends CollateralItems
       description: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}description'],
-      )!,
+      ),
       conditionGrade: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}condition_grade'],
-      )!,
+      ),
       weightMilligrams: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}weight_milligrams'],
-      )!,
+      ),
       estimatedValueCents: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}estimated_value_cents'],
@@ -5457,18 +5498,21 @@ class CollateralItemEntry extends DataClass
   /// Unique item reference within the shop (e.g., "COLL-001").
   final String itemReferenceId;
 
-  /// Collateral item category: 'gold', 'electronics', or 'valuables'.
+  /// Collateral item category: 'gold', 'electronics', 'sports', 'dress',
+  /// 'grocery', 'cosmetic', 'medicine', 'valuables', or 'other'.
   final String category;
 
-  /// Human-readable description of the pledged item.
-  final String description;
+  /// Human-readable description of the pledged item. Optional (Story 3.5).
+  final String? description;
 
   /// Condition grade (free text, e.g., "Like New", "Good", "Fair", "Poor").
-  final String conditionGrade;
+  /// Optional (Story 3.5).
+  final String? conditionGrade;
 
   /// Weight in integer milligrams (e.g., 5.5 g → 5500 mg).
   /// Stored as integer to avoid floating-point precision loss.
-  final int weightMilligrams;
+  /// Optional (Story 3.5): NULL means the weight was not recorded.
+  final int? weightMilligrams;
 
   /// Estimated collateral value in integer minor units (cents).
   /// Follows [Money] conventions — never Dart `double`.
@@ -5496,9 +5540,9 @@ class CollateralItemEntry extends DataClass
     this.creditId,
     required this.itemReferenceId,
     required this.category,
-    required this.description,
-    required this.conditionGrade,
-    required this.weightMilligrams,
+    this.description,
+    this.conditionGrade,
+    this.weightMilligrams,
     required this.estimatedValueCents,
     this.photoUri,
     this.photoHash,
@@ -5517,9 +5561,15 @@ class CollateralItemEntry extends DataClass
     }
     map['item_reference_id'] = Variable<String>(itemReferenceId);
     map['category'] = Variable<String>(category);
-    map['description'] = Variable<String>(description);
-    map['condition_grade'] = Variable<String>(conditionGrade);
-    map['weight_milligrams'] = Variable<int>(weightMilligrams);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || conditionGrade != null) {
+      map['condition_grade'] = Variable<String>(conditionGrade);
+    }
+    if (!nullToAbsent || weightMilligrams != null) {
+      map['weight_milligrams'] = Variable<int>(weightMilligrams);
+    }
     map['estimated_value_cents'] = Variable<int>(estimatedValueCents);
     if (!nullToAbsent || photoUri != null) {
       map['photo_uri'] = Variable<String>(photoUri);
@@ -5543,9 +5593,15 @@ class CollateralItemEntry extends DataClass
           : Value(creditId),
       itemReferenceId: Value(itemReferenceId),
       category: Value(category),
-      description: Value(description),
-      conditionGrade: Value(conditionGrade),
-      weightMilligrams: Value(weightMilligrams),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      conditionGrade: conditionGrade == null && nullToAbsent
+          ? const Value.absent()
+          : Value(conditionGrade),
+      weightMilligrams: weightMilligrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(weightMilligrams),
       estimatedValueCents: Value(estimatedValueCents),
       photoUri: photoUri == null && nullToAbsent
           ? const Value.absent()
@@ -5571,9 +5627,9 @@ class CollateralItemEntry extends DataClass
       creditId: serializer.fromJson<String?>(json['creditId']),
       itemReferenceId: serializer.fromJson<String>(json['itemReferenceId']),
       category: serializer.fromJson<String>(json['category']),
-      description: serializer.fromJson<String>(json['description']),
-      conditionGrade: serializer.fromJson<String>(json['conditionGrade']),
-      weightMilligrams: serializer.fromJson<int>(json['weightMilligrams']),
+      description: serializer.fromJson<String?>(json['description']),
+      conditionGrade: serializer.fromJson<String?>(json['conditionGrade']),
+      weightMilligrams: serializer.fromJson<int?>(json['weightMilligrams']),
       estimatedValueCents: serializer.fromJson<int>(
         json['estimatedValueCents'],
       ),
@@ -5594,9 +5650,9 @@ class CollateralItemEntry extends DataClass
       'creditId': serializer.toJson<String?>(creditId),
       'itemReferenceId': serializer.toJson<String>(itemReferenceId),
       'category': serializer.toJson<String>(category),
-      'description': serializer.toJson<String>(description),
-      'conditionGrade': serializer.toJson<String>(conditionGrade),
-      'weightMilligrams': serializer.toJson<int>(weightMilligrams),
+      'description': serializer.toJson<String?>(description),
+      'conditionGrade': serializer.toJson<String?>(conditionGrade),
+      'weightMilligrams': serializer.toJson<int?>(weightMilligrams),
       'estimatedValueCents': serializer.toJson<int>(estimatedValueCents),
       'photoUri': serializer.toJson<String?>(photoUri),
       'photoHash': serializer.toJson<String?>(photoHash),
@@ -5613,9 +5669,9 @@ class CollateralItemEntry extends DataClass
     Value<String?> creditId = const Value.absent(),
     String? itemReferenceId,
     String? category,
-    String? description,
-    String? conditionGrade,
-    int? weightMilligrams,
+    Value<String?> description = const Value.absent(),
+    Value<String?> conditionGrade = const Value.absent(),
+    Value<int?> weightMilligrams = const Value.absent(),
     int? estimatedValueCents,
     Value<String?> photoUri = const Value.absent(),
     Value<String?> photoHash = const Value.absent(),
@@ -5629,9 +5685,13 @@ class CollateralItemEntry extends DataClass
     creditId: creditId.present ? creditId.value : this.creditId,
     itemReferenceId: itemReferenceId ?? this.itemReferenceId,
     category: category ?? this.category,
-    description: description ?? this.description,
-    conditionGrade: conditionGrade ?? this.conditionGrade,
-    weightMilligrams: weightMilligrams ?? this.weightMilligrams,
+    description: description.present ? description.value : this.description,
+    conditionGrade: conditionGrade.present
+        ? conditionGrade.value
+        : this.conditionGrade,
+    weightMilligrams: weightMilligrams.present
+        ? weightMilligrams.value
+        : this.weightMilligrams,
     estimatedValueCents: estimatedValueCents ?? this.estimatedValueCents,
     photoUri: photoUri.present ? photoUri.value : this.photoUri,
     photoHash: photoHash.present ? photoHash.value : this.photoHash,
@@ -5741,9 +5801,9 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
   final Value<String?> creditId;
   final Value<String> itemReferenceId;
   final Value<String> category;
-  final Value<String> description;
-  final Value<String> conditionGrade;
-  final Value<int> weightMilligrams;
+  final Value<String?> description;
+  final Value<String?> conditionGrade;
+  final Value<int?> weightMilligrams;
   final Value<int> estimatedValueCents;
   final Value<String?> photoUri;
   final Value<String?> photoHash;
@@ -5776,9 +5836,9 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
     this.creditId = const Value.absent(),
     required String itemReferenceId,
     required String category,
-    required String description,
-    required String conditionGrade,
-    required int weightMilligrams,
+    this.description = const Value.absent(),
+    this.conditionGrade = const Value.absent(),
+    this.weightMilligrams = const Value.absent(),
     required int estimatedValueCents,
     this.photoUri = const Value.absent(),
     this.photoHash = const Value.absent(),
@@ -5791,9 +5851,6 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
        customerId = Value(customerId),
        itemReferenceId = Value(itemReferenceId),
        category = Value(category),
-       description = Value(description),
-       conditionGrade = Value(conditionGrade),
-       weightMilligrams = Value(weightMilligrams),
        estimatedValueCents = Value(estimatedValueCents),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
@@ -5843,9 +5900,9 @@ class CollateralItemsCompanion extends UpdateCompanion<CollateralItemEntry> {
     Value<String?>? creditId,
     Value<String>? itemReferenceId,
     Value<String>? category,
-    Value<String>? description,
-    Value<String>? conditionGrade,
-    Value<int>? weightMilligrams,
+    Value<String?>? description,
+    Value<String?>? conditionGrade,
+    Value<int?>? weightMilligrams,
     Value<int>? estimatedValueCents,
     Value<String?>? photoUri,
     Value<String?>? photoHash,
@@ -19264,6 +19321,7 @@ typedef $$CreditsTableCreateCompanionBuilder = CreditsCompanion Function({
   required DateTime createdAt,
   Value<DateTime?> settledAt,
   Value<bool> correctionPending,
+  Value<String> creditType,
   Value<String?> documentSnapshotId,
   Value<int> rowid,
 });
@@ -19285,6 +19343,7 @@ typedef $$CreditsTableUpdateCompanionBuilder = CreditsCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime?> settledAt,
   Value<bool> correctionPending,
+  Value<String> creditType,
   Value<String?> documentSnapshotId,
   Value<int> rowid,
 });
@@ -19604,6 +19663,11 @@ class $$CreditsTableFilterComposer
 
   ColumnFilters<bool> get correctionPending => $composableBuilder(
     column: $table.correctionPending,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get creditType => $composableBuilder(
+    column: $table.creditType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19965,6 +20029,11 @@ class $$CreditsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get creditType => $composableBuilder(
+    column: $table.creditType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get documentSnapshotId => $composableBuilder(
     column: $table.documentSnapshotId,
     builder: (column) => ColumnOrderings(column),
@@ -20106,6 +20175,11 @@ class $$CreditsTableAnnotationComposer
 
   GeneratedColumn<bool> get correctionPending => $composableBuilder(
     column: $table.correctionPending,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get creditType => $composableBuilder(
+    column: $table.creditType,
     builder: (column) => column,
   );
 
@@ -20450,6 +20524,7 @@ class $$CreditsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> settledAt = const Value.absent(),
                 Value<bool> correctionPending = const Value.absent(),
+                Value<String> creditType = const Value.absent(),
                 Value<String?> documentSnapshotId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CreditsCompanion(
@@ -20470,6 +20545,7 @@ class $$CreditsTableTableManager
                 createdAt: createdAt,
                 settledAt: settledAt,
                 correctionPending: correctionPending,
+                creditType: creditType,
                 documentSnapshotId: documentSnapshotId,
                 rowid: rowid,
               ),
@@ -20492,6 +20568,7 @@ class $$CreditsTableTableManager
                 required DateTime createdAt,
                 Value<DateTime?> settledAt = const Value.absent(),
                 Value<bool> correctionPending = const Value.absent(),
+                Value<String> creditType = const Value.absent(),
                 Value<String?> documentSnapshotId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CreditsCompanion.insert(
@@ -20512,6 +20589,7 @@ class $$CreditsTableTableManager
                 createdAt: createdAt,
                 settledAt: settledAt,
                 correctionPending: correctionPending,
+                creditType: creditType,
                 documentSnapshotId: documentSnapshotId,
                 rowid: rowid,
               ),
@@ -20806,9 +20884,9 @@ typedef $$CollateralItemsTableCreateCompanionBuilder =
       Value<String?> creditId,
       required String itemReferenceId,
       required String category,
-      required String description,
-      required String conditionGrade,
-      required int weightMilligrams,
+      Value<String?> description,
+      Value<String?> conditionGrade,
+      Value<int?> weightMilligrams,
       required int estimatedValueCents,
       Value<String?> photoUri,
       Value<String?> photoHash,
@@ -20825,9 +20903,9 @@ typedef $$CollateralItemsTableUpdateCompanionBuilder =
       Value<String?> creditId,
       Value<String> itemReferenceId,
       Value<String> category,
-      Value<String> description,
-      Value<String> conditionGrade,
-      Value<int> weightMilligrams,
+      Value<String?> description,
+      Value<String?> conditionGrade,
+      Value<int?> weightMilligrams,
       Value<int> estimatedValueCents,
       Value<String?> photoUri,
       Value<String?> photoHash,
@@ -21600,9 +21678,9 @@ class $$CollateralItemsTableTableManager
                 Value<String?> creditId = const Value.absent(),
                 Value<String> itemReferenceId = const Value.absent(),
                 Value<String> category = const Value.absent(),
-                Value<String> description = const Value.absent(),
-                Value<String> conditionGrade = const Value.absent(),
-                Value<int> weightMilligrams = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String?> conditionGrade = const Value.absent(),
+                Value<int?> weightMilligrams = const Value.absent(),
                 Value<int> estimatedValueCents = const Value.absent(),
                 Value<String?> photoUri = const Value.absent(),
                 Value<String?> photoHash = const Value.absent(),
@@ -21636,9 +21714,9 @@ class $$CollateralItemsTableTableManager
                 Value<String?> creditId = const Value.absent(),
                 required String itemReferenceId,
                 required String category,
-                required String description,
-                required String conditionGrade,
-                required int weightMilligrams,
+                Value<String?> description = const Value.absent(),
+                Value<String?> conditionGrade = const Value.absent(),
+                Value<int?> weightMilligrams = const Value.absent(),
                 required int estimatedValueCents,
                 Value<String?> photoUri = const Value.absent(),
                 Value<String?> photoHash = const Value.absent(),

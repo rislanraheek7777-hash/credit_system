@@ -259,10 +259,10 @@ void main() {
 
       expect(
         readUserVersion(file),
-        equals(22),
+        equals(25),
         reason: 'Opening a version 14 database must migrate it to 15.',
       );
-      expect(db.schemaVersion, equals(22));
+      expect(db.schemaVersion, equals(25));
     });
 
     test(
@@ -278,7 +278,7 @@ void main() {
           db.credits,
         )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
 
-        expect(readUserVersion(file), equals(22));
+        expect(readUserVersion(file), equals(25));
 
         // All existing credits must have documentSnapshotId = NULL.
         // The column is nullable with no default, so old rows get NULL automatically.
@@ -322,7 +322,7 @@ void main() {
         db.credits,
       )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
 
-      expect(readUserVersion(file), equals(22));
+      expect(readUserVersion(file), equals(25));
 
       // Insert a new credit with a documentSnapshotId.
       await db
@@ -366,7 +366,7 @@ void main() {
       )..where((l) => l.id.equals('credit-v14-pending'))).getSingle();
 
       // Verify the migration ran and persisted version 15 on disk.
-      expect(readUserVersion(file), equals(22));
+      expect(readUserVersion(file), equals(25));
 
       await first.close();
 
@@ -374,8 +374,8 @@ void main() {
       final second = openWithDeviceSemantics(file);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(22));
-      expect(readUserVersion(file), equals(22));
+      expect(second.schemaVersion, equals(25));
+      expect(readUserVersion(file), equals(25));
 
       // Data must be intact after close/reopen.
       final credit = await (second.select(

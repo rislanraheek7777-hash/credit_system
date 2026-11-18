@@ -39,12 +39,23 @@ class PaymentScreen extends StatefulWidget {
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
 
+  /// When true, the screen opens in settle mode: the amount field is
+  /// pre-filled to the credit's full outstanding balance, and a successful
+  /// full settlement pops the screen with the committed [Receipt] so the
+  /// caller can return to the customer profile and confirm the settlement.
+  ///
+  /// A partial payment — the staff member lowers the pre-filled amount — is
+  /// recorded exactly as it is today and does not pop the screen, so partial
+  /// payments keep their existing behaviour.
+  final bool settleMode;
+
   const PaymentScreen({
     super.key,
     required this.shopId,
     required this.creditId,
     required this.currentUser,
     this.database,
+    this.settleMode = false,
   });
 
   @override
@@ -97,6 +108,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _credit = credit;
         _isLoading = false;
         _error = credit == null ? 'Credit agreement not found' : null;
+        // Settle mode pre-fills the full outstanding balance so a full
+        // settlement can be reviewed and confirmed without typing the balance.
+        // The field stays editable, so lowering it records an ordinary partial
+        // payment instead.
+        if (widget.settleMode && credit != null && credit.balanceCents > 0) {
+          final balance = Money.fromCents(credit.balanceCents);
+          _amountController.text =
+              '${balance.majorUnits}.${balance.centsPart.toString().padLeft(2, '0')}';
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -213,6 +233,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
           _successMessage = '${_successMessage!} — Credit settled.';
         }
       });
+
+      // A full settlement started from the profile's Settle action returns to
+      // the profile immediately, handing back the committed receipt so the
+      // profile can confirm it. The payment and its receipt row are already
+      // committed, so the receipt remains available from payment history.
+      if (widget.settleMode && receipt.isFullSettlement) {
+        Navigator.of(context).pop(receipt);
+        return;
+      }
 
       // Generate the receipt PDF. Failures are reported separately — the
       // payment itself is preserved.
@@ -376,7 +405,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text('Principal: ${Money.fromCents(credit.principalCents).format()}'),
+                    Text('Amount: ${Money.fromCents(credit.principalCents).format()}'),
                     Text('Outstanding Balance: ${balance.format()}'),
                     Text('Status: ${credit.status.value.toUpperCase()}'),
                     Text('Workflow: ${credit.workflowStatus.value.toUpperCase()}'),

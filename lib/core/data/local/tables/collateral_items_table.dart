@@ -38,19 +38,22 @@ class CollateralItems extends Table {
   /// Unique item reference within the shop (e.g., "COLL-001").
   TextColumn get itemReferenceId => text().withLength(min: 1, max: 100)();
 
-  /// Collateral item category: 'gold', 'electronics', or 'valuables'.
+  /// Collateral item category: 'gold', 'electronics', 'sports', 'dress',
+  /// 'grocery', 'cosmetic', 'medicine', 'valuables', or 'other'.
   TextColumn get category =>
       text().withLength(min: 1, max: 50)();
 
-  /// Human-readable description of the pledged item.
-  TextColumn get description => text().withLength(min: 1, max: 1000)();
+  /// Human-readable description of the pledged item. Optional (Story 3.5).
+  TextColumn get description => text().withLength(max: 1000).nullable()();
 
   /// Condition grade (free text, e.g., "Like New", "Good", "Fair", "Poor").
-  TextColumn get conditionGrade => text().withLength(min: 1, max: 100)();
+  /// Optional (Story 3.5).
+  TextColumn get conditionGrade => text().withLength(max: 100).nullable()();
 
   /// Weight in integer milligrams (e.g., 5.5 g → 5500 mg).
   /// Stored as integer to avoid floating-point precision loss.
-  IntColumn get weightMilligrams => integer()();
+  /// Optional (Story 3.5): NULL means the weight was not recorded.
+  IntColumn get weightMilligrams => integer().nullable()();
 
   /// Estimated collateral value in integer minor units (cents).
   /// Follows [Money] conventions — never Dart `double`.
@@ -85,7 +88,7 @@ class CollateralItems extends Table {
   List<String> get customConstraints => [
     "CHECK (weight_milligrams > 0)",
     "CHECK (estimated_value_cents >= 0)",
-    "CHECK (category IN ('gold', 'electronics', 'valuables'))",
+    "CHECK (category IN ('gold', 'electronics', 'sports', 'dress', 'grocery', 'cosmetic', 'medicine', 'valuables', 'other'))",
     "CHECK (custody_status IN ('in_custody', 'handover_requested', 'handover_reported', 'returned', 'exception_held', 'discrepancy'))",
   ];
 }

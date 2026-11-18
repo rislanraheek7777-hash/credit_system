@@ -20,7 +20,7 @@ void main() {
 
   group('AppDatabase - Local Drift Foundations & Schema v7 Tests', () {
     test('schema version is 20 and all tables exist', () {
-      expect(db.schemaVersion, equals(22));
+      expect(db.schemaVersion, equals(25));
       expect(
         db.allTables.map((t) => t.actualTableName),
         containsAll([
@@ -1009,6 +1009,7 @@ void main() {
           dueDate: now.add(const Duration(days: 30)),
           createdAt: now,
           correctionPending: false,
+        creditType: 'cash',
         ),
       );
 

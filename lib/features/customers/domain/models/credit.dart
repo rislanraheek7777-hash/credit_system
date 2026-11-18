@@ -122,6 +122,38 @@ enum CreditStatus {
   }
 }
 
+/// Type of credit agreement (cash vs items).
+///
+/// A credit originated with only a monetary amount is a [CreditType.cash]
+/// credit. A credit originated with a monetary amount together with one or
+/// more item receipts (collateral items) is a [CreditType.items] credit.
+/// Persisted on the credits row as `'cash'` / `'items'`; set once at
+/// origination and never reclassified afterwards.
+enum CreditType {
+  /// Monetary-amount-only credit.
+  cash('cash', 'Cash'),
+
+  /// Credit backed by item receipts (collateral items pledged at origination).
+  items('items', 'Items');
+
+  final String value;
+
+  /// Human-readable label for display.
+  final String displayLabel;
+
+  const CreditType(this.value, this.displayLabel);
+
+  /// Resolves [CreditType] from raw database text.
+  static CreditType fromValue(String value) {
+    for (final type in CreditType.values) {
+      if (type.value == value) {
+        return type;
+      }
+    }
+    throw ArgumentError.value(value, 'value', 'Invalid CreditType string representation');
+  }
+}
+
 /// Workflow status of a credit agreement (Story 4.1).
 ///
 /// Tracks the disbursement workflow state independently from the financial
@@ -226,6 +258,11 @@ class Credit {
   /// (Story 5.3 AC-3, Story 5.5).
   final bool correctionPending;
 
+  /// Type of this credit agreement: [CreditType.cash] when originated with a
+  /// monetary amount only, [CreditType.items] when one or more item receipts
+  /// were attached at origination.
+  final CreditType creditType;
+
   Credit({
     required this.id,
     required this.shopId,
@@ -244,6 +281,7 @@ class Credit {
     DateTime? cancelledAt,
     this.cancellationReason,
     this.correctionPending = false,
+    this.creditType = CreditType.cash,
   })  : dueDate = DateTime.fromMillisecondsSinceEpoch(dueDate.millisecondsSinceEpoch, isUtc: true),
         createdAt = DateTime.fromMillisecondsSinceEpoch(createdAt.millisecondsSinceEpoch, isUtc: true),
         settledAt = settledAt != null
@@ -580,6 +618,8 @@ class Credit {
       disbursedByUserId: disbursedByUserId,
       cancelledAt: cancelledAt,
       cancellationReason: cancellationReason,
+      correctionPending: correctionPending,
+      creditType: creditType,
     );
   }
 
@@ -602,6 +642,7 @@ class Credit {
     DateTime? cancelledAt,
     String? cancellationReason,
     bool? correctionPending,
+    CreditType? creditType,
   }) {
     return Credit(
       id: id ?? this.id,
@@ -621,6 +662,7 @@ class Credit {
       cancelledAt: cancelledAt ?? this.cancelledAt,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       correctionPending: correctionPending ?? this.correctionPending,
+      creditType: creditType ?? this.creditType,
     );
   }
 
@@ -644,7 +686,8 @@ class Credit {
         other.disbursedByUserId == disbursedByUserId &&
         other.cancelledAt == cancelledAt &&
         other.cancellationReason == cancellationReason &&
-        other.correctionPending == correctionPending;
+        other.correctionPending == correctionPending &&
+        other.creditType == creditType;
   }
 
   @override
@@ -666,6 +709,7 @@ class Credit {
         cancelledAt,
         cancellationReason,
         correctionPending,
+        creditType,
       );
 }
 

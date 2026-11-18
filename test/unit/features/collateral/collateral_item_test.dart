@@ -703,7 +703,25 @@ void main() {
     test('resolves valid categories', () {
       expect(CollateralItemCategory.fromValue('gold'), equals(CollateralItemCategory.gold));
       expect(CollateralItemCategory.fromValue('electronics'), equals(CollateralItemCategory.electronics));
+      expect(CollateralItemCategory.fromValue('sports'), equals(CollateralItemCategory.sports));
+      expect(CollateralItemCategory.fromValue('dress'), equals(CollateralItemCategory.dress));
+      expect(CollateralItemCategory.fromValue('grocery'), equals(CollateralItemCategory.grocery));
+      expect(CollateralItemCategory.fromValue('cosmetic'), equals(CollateralItemCategory.cosmetic));
+      expect(CollateralItemCategory.fromValue('medicine'), equals(CollateralItemCategory.medicine));
       expect(CollateralItemCategory.fromValue('valuables'), equals(CollateralItemCategory.valuables));
+      expect(CollateralItemCategory.fromValue('other'), equals(CollateralItemCategory.other));
+    });
+
+    test('exposes selection-tag labels', () {
+      expect(CollateralItemCategory.gold.label, equals('Gold'));
+      expect(CollateralItemCategory.electronics.label, equals('Electronics'));
+      expect(CollateralItemCategory.sports.label, equals('Sports'));
+      expect(CollateralItemCategory.dress.label, equals('Dress'));
+      expect(CollateralItemCategory.grocery.label, equals('Grocery Item'));
+      expect(CollateralItemCategory.cosmetic.label, equals('Cosmetic'));
+      expect(CollateralItemCategory.medicine.label, equals('Medicine'));
+      expect(CollateralItemCategory.valuables.label, equals('Valuables'));
+      expect(CollateralItemCategory.other.label, equals('Other'));
     });
 
     test('throws on invalid category', () {

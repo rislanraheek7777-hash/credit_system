@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
@@ -9,25 +7,25 @@ import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/data/services/document_generation_service_impl.dart';
 import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/credit_term.dart';
+import 'package:credit_system/features/customers/presentation/credit_draft_agreement_view_screen.dart';
 import 'package:credit_system/features/shop/data/daos/shop_dao.dart';
 import 'package:credit_system/features/shop/domain/models/shop_profile.dart';
-import 'voucher_pdf_viewer_web.dart' if (dart.library.io) 'voucher_pdf_viewer_mobile.dart';
 
-/// Hands a generated document to the user.
+/// The shared "View Draft Agreement" action (Story 4.4).
 ///
-/// Returns the path the document was saved to, or `null` when the platform
-/// took the document itself (a browser download).
-typedef DocumentPresenter = Future<String?> Function(
-  Uint8List bytes,
-  String fileName,
-);
-
-/// The shared "View / Print Draft Agreement" action (Story 4.4).
+/// The draft agreement is offered from every credit list — the customer
+/// profile's credit cards and the shop-wide credit list — so the data access,
+/// the `generate_credit_draft` audit event and the on-screen document review
+/// live here once instead of being copied per surface.
 ///
-/// The draft slip is offered from every credit list — the customer profile's
-/// credit cards and the shop-wide credit list — so the PDF generation, the
-/// `generate_credit_draft` audit event and the document hand-off live here
-/// once instead of being copied per surface.
+/// Tapping the button **shows** the draft agreement on screen: every detail
+/// of the credit is rendered from the same resolved content the PDF renderer
+/// uses (customer identity with document masking, dates, amounts, agreed
+/// term, pledged item receipts, shop branding and the mandatory draft
+/// watermark and disclosures). Nothing is persisted: no PDF is produced, no
+/// file is written, and no print or download hand-off is performed. The
+/// `generate_credit_draft` audit event is still queued so there is a record
+/// that the draft was produced for review.
 ///
 /// The action is only offered for an agreement that has **not** been
 /// disbursed yet and for an actor that holds `createCredits`: a draft slip
@@ -45,13 +43,12 @@ class CreditDraftAgreementAction extends StatefulWidget {
     required this.currentUser,
     this.database,
     this.shopTimeZone,
-    this.documentPresenter,
   });
 
-  /// The agreement the draft slip is generated for.
+  /// The agreement to show the draft of.
   final Credit credit;
 
-  /// The authenticated actor requesting the draft slip.
+  /// The authenticated actor requesting the draft.
   final AppUser currentUser;
 
   /// Optional injected [AppDatabase] for testing.
@@ -63,13 +60,6 @@ class CreditDraftAgreementAction extends StatefulWidget {
   /// back to the approved default for an unresolvable identifier.
   final ShopTimeZone? shopTimeZone;
 
-  /// Optional injected document presenter for testing.
-  ///
-  /// Defaults to [viewVoucherPdf], which waits on a platform channel that
-  /// never resolves under `flutter test`, so the hand-off is only observable
-  /// through an injected presenter.
-  final DocumentPresenter? documentPresenter;
-
   /// The key of the action button offered for [creditId].
   static Key buttonKey(String creditId) =>
       Key('view_draft_agreement_button_$creditId');
@@ -77,17 +67,13 @@ class CreditDraftAgreementAction extends StatefulWidget {
   /// The key of the inline failure message shown for [creditId].
   static Key errorKey(String creditId) => Key('draft_error_display_$creditId');
 
-  /// The key of the confirmation shown after a successful generation.
-  static Key generatedKey(String creditId) =>
-      Key('draft_generated_display_$creditId');
-
-  /// The key of the saved-file path shown for [creditId].
-  static Key savedPathKey(String creditId) =>
-      Key('draft_saved_path_display_$creditId');
+  /// The key of the on-screen draft agreement view for [creditId].
+  static Key viewKey(String creditId) =>
+      Key('credit_draft_agreement_view_$creditId');
 
   /// Whether the draft action may be offered for [credit] to [actor].
   ///
-  /// A draft slip exists only for an agreement that is still awaiting cash
+  /// A draft exists only for an agreement that is still awaiting cash
   /// disbursement, and only an actor holding `createCredits` may request one.
   ///
   /// The permission is evaluated through [AppUser.hasPermission], so a
@@ -105,10 +91,8 @@ class CreditDraftAgreementAction extends StatefulWidget {
 }
 
 class _CreditDraftAgreementActionState extends State<CreditDraftAgreementAction> {
-  bool _isGenerating = false;
-  bool _generated = false;
+  bool _isOpening = false;
   String? _error;
-  String? _filePath;
 
   @override
   void didUpdateWidget(covariant CreditDraftAgreementAction oldWidget) {
@@ -117,34 +101,31 @@ class _CreditDraftAgreementActionState extends State<CreditDraftAgreementAction>
     // The credit list reused this element for a different agreement. Clear
     // the previous agreement's outcome so it is never shown against the new
     // one, and so a leftover spinner cannot disable the new button.
-    _isGenerating = false;
-    _generated = false;
+    _isOpening = false;
     _error = null;
-    _filePath = null;
   }
 
-
-  /// Generates the watermarked draft slip, records the audit event and hands
-  /// the document to the platform viewer.
+  /// Loads the data behind the draft, records the audit event and opens the
+  /// on-screen draft agreement view.
   ///
   /// A refusal — a missing permission, a cross-tenant credit or an agreement
   /// that is no longer awaiting disbursement — is surfaced as an inline
-  /// message; it never crashes the screen and never claims a document was
-  /// produced when it was not.
-  Future<void> _generateDraft() async {
-    if (_isGenerating) return;
+  /// message; it never crashes the screen and never claims the agreement was
+  /// shown when it was not. Nothing is saved or transmitted: the only write
+  /// is the Category 2 sync-queue audit entry.
+  Future<void> _openDraftView() async {
+    if (_isOpening) return;
 
     // Snapshot everything the sequence reads from the widget, so a parent
-    // rebuild mid-generation cannot make the PDF, the file name and the audit
-    // event reference different agreements.
+    // rebuild mid-load cannot make the content, the audit event and the view
+    // reference different agreements.
     final credit = widget.credit;
     final actor = widget.currentUser;
     final database = widget.database;
     final providedTimeZone = widget.shopTimeZone;
-    final presenter = widget.documentPresenter ?? viewVoucherPdf;
 
     setState(() {
-      _isGenerating = true;
+      _isOpening = true;
       _error = null;
     });
 
@@ -166,7 +147,7 @@ class _CreditDraftAgreementActionState extends State<CreditDraftAgreementAction>
       );
 
       final service = DocumentGenerationServiceImpl();
-      final bytes = await service.generateDraftPdf(
+      final content = await service.buildDraftContent(
         credit: credit,
         actor: actor,
         shopTimeZone: _resolveShopTimeZone(providedTimeZone, shop),
@@ -189,44 +170,33 @@ class _CreditDraftAgreementActionState extends State<CreditDraftAgreementAction>
         isDraft: true,
       );
 
-      final fileName = 'draft_agreement_${credit.id}.pdf';
-      // The platform viewer can stall (the mobile path waits on a platform
-      // channel), so the hand-off is bounded: a stall becomes an ordinary
-      // inline failure the staff member can retry from.
-      final savedPath = await presenter(bytes, fileName).timeout(
-        const Duration(seconds: 30),
-      );
-
       if (!mounted) return;
       // The credit list may have reused this element for another agreement
-      // while the document was being generated; the outcome belongs to the
-      // agreement it was produced for, not to the one now on screen.
+      // while the content was being resolved; the outcome belongs to the
+      // agreement it was resolved for, not to the one now on screen.
       if (widget.credit.id != credit.id) return;
 
       setState(() {
-        _isGenerating = false;
-        _generated = true;
-        _filePath = savedPath;
+        _isOpening = false;
       });
 
-      if (savedPath != null) {
-        _showDraftSavedDialog(savedPath);
-      } else {
-        _showDraftDownloadedDialog();
-      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => CreditDraftAgreementViewScreen(
+            key: CreditDraftAgreementAction.viewKey(credit.id),
+            content: content,
+          ),
+        ),
+      );
     } catch (e) {
-      debugPrint('Draft agreement generation failed: $e');
+      debugPrint('Draft agreement view failed: $e');
       if (!mounted) return;
       setState(() {
-        _isGenerating = false;
-        _generated = false;
-        // A failed retry must not leave the previous document's path on
-        // screen next to the new failure message.
-        _filePath = null;
+        _isOpening = false;
         // The raw failure may carry SQL or driver detail, so it is logged
         // rather than shown to staff.
         _error =
-            'The draft agreement could not be generated. Please try again or '
+            'The draft agreement could not be opened. Please try again or '
             'ask the shop owner.';
       });
     }
@@ -247,40 +217,6 @@ class _CreditDraftAgreementActionState extends State<CreditDraftAgreementAction>
     }
   }
 
-  void _showDraftSavedDialog(String path) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Draft Agreement Saved'),
-        content: Text('Draft agreement PDF saved to:\n$path'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDraftDownloadedDialog() {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Draft Agreement Downloaded'),
-        content: const Text(
-          'The draft agreement PDF has been downloaded to your device.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final credit = widget.credit;
@@ -289,7 +225,7 @@ class _CreditDraftAgreementActionState extends State<CreditDraftAgreementAction>
 
     // A refusal must stay visible even when the action itself is no longer
     // offered — the agreement may have been disbursed, or the account
-    // deactivated, while the document was being generated. Hiding the widget
+    // deactivated, while the content was being resolved. Hiding the widget
     // would swallow the failure and leave the staff member with nothing.
     if (!available && _error == null) {
       return const SizedBox.shrink();
@@ -306,32 +242,16 @@ class _CreditDraftAgreementActionState extends State<CreditDraftAgreementAction>
           if (available) ...[
             OutlinedButton.icon(
               key: CreditDraftAgreementAction.buttonKey(credit.id),
-              onPressed: _isGenerating ? null : _generateDraft,
-              icon: _isGenerating
+              onPressed: _isOpening ? null : _openDraftView,
+              icon: _isOpening
                   ? const SizedBox(
                       height: 18,
                       width: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.description_outlined),
-              label: const Text('View / Print Draft Agreement'),
+              label: const Text('View Draft Agreement'),
             ),
-            if (_generated && _error == null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Draft agreement slip generated.',
-                key: CreditDraftAgreementAction.generatedKey(credit.id),
-                style: const TextStyle(color: Colors.green),
-              ),
-            ],
-            if (_filePath != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Saved: $_filePath',
-                key: CreditDraftAgreementAction.savedPathKey(credit.id),
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
           ],
           if (_error != null) ...[
             const SizedBox(height: 4),

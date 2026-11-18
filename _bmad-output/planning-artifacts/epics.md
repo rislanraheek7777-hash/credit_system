@@ -201,7 +201,7 @@ Counter staff and Shop Owners can configure zero-interest credit agreements with
 * **Architecture:** AD-2 (Integer minor units principal), AD-3 (Credit lifecycle state machine), AD-4 (`features/credits`), UX-DR-4, UX-DR-6, AD-6 (Disbursement permissions & audit)
 
 **Epic 5: Payment Processing, Fixed-Point Ledgers & Receipt Snapshots**  
-Counter staff can record partial payments and full settlements with anti-overpayment validation ($Payment \le OutstandingBalance$); calculate exact balances using integer minor units and double-entry ledger formulas ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$); execute atomic transactions with UUID idempotency keys and optimistic concurrency locks; generate immutable receipt snapshots with reprint watermarking (`*** REPRINT ***`); request payment corrections with automatic credit-scoped payment locks (`LockedForCorrection`); process Shop Owner approval/rejection with compensating reversal entries; log all financial and reprint audit events; and satisfy all 7 financial verification scenarios.  
+Counter staff can record partial payments and full settlements with anti-overpayment validation ($Payment \le OutstandingBalance$); calculate exact balances using integer minor units and double-entry ledger formulas ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$); execute atomic transactions with UUID idempotency keys and optimistic concurrency locks; generate immutable receipt snapshots with reprint watermarking (`*** REPRINT ***`); request payment corrections with automatic credit-scoped payment locks (`LockedForCorrection`); process Shop Owner approval/rejection with compensating reversal entries; propose and (Shop Owner) approve staff-initiated balance adjustments for partial forgiveness (Story 5.6); log all financial and reprint audit events; and satisfy all 7 financial verification scenarios.  
 * **FRs covered:** FR-21, FR-22, FR-23, FR-24, FR-31, FR-33  
 * **Architecture:** AD-1 (ACID transactions, offline sync queue), AD-2 (Money Value Object & cents ledger math), AD-3 (Payment lock), AD-4 (`features/payments`), UX-DR-5, UX-DR-6, UX-DR-7, AD-6 (Correction permissions & audit logging)
 
@@ -1059,7 +1059,7 @@ So that customers receive unambiguous, official physical agreements only after c
 
 ## Epic 5: Payment Processing, Fixed-Point Ledgers & Receipt Snapshots
 
-Counter staff can record partial payments and full settlements with anti-overpayment validation ($Payment \le OutstandingBalance$); calculate exact balances using integer minor units and double-entry ledger formulas ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$); execute atomic transactions with UUID idempotency keys and optimistic concurrency locks; generate immutable receipt snapshots with reprint watermarking (`*** REPRINT ***`); request payment corrections with automatic credit-scoped payment locks (`LockedForCorrection`); process Shop Owner approval/rejection with compensating reversal entries; log all financial and reprint audit events; and satisfy all 7 financial verification scenarios.
+Counter staff can record partial payments and full settlements with anti-overpayment validation ($Payment \le OutstandingBalance$); calculate exact balances using integer minor units and double-entry ledger formulas ($\text{Balance} = \text{Principal} - \sum\text{Payments} + \sum\text{Reversals} \pm \sum\text{Adjustments}$); execute atomic transactions with UUID idempotency keys and optimistic concurrency locks; generate immutable receipt snapshots with reprint watermarking (`*** REPRINT ***`); request payment corrections with automatic credit-scoped payment locks (`LockedForCorrection`); process Shop Owner approval/rejection with compensating reversal entries; propose and (Shop Owner) approve staff-initiated balance adjustments for partial forgiveness (Story 5.6); log all financial and reprint audit events; and satisfy all 7 financial verification scenarios.
 
 ### Story 5.1: Payment Submission, Anti-Overpayment Validation & Settlement Transition
 
@@ -1225,6 +1225,46 @@ So that typographical counter errors are corrected transparently without silent 
 * **Traceability:** FR-6, FR-22, FR-23, FR-31 (Events #6, #7), AD-1, AD-6
 * **Dependencies:** Story 5.2 (Ledger math), Story 5.3 (Correction lock), Story 1.7 (Shop Owner role)
 * **Testing Guidance:** Integration test for correction request lifecycle; test verifying compensating entry ledger arithmetic; security test asserting counter staff cannot approve reversals; test verifying rejection lifts payment lock.
+* **Amendment:** Staff-proposed, owner-approved balance adjustments are governed by Story 5.6 (partial forgiveness). This story's owner-direct adjustment AC remains in force.
+
+---
+
+### Story 5.6: Staff-Proposed, Owner-Approved Balance Adjustments (Partial Forgiveness)
+
+As a Counter Staff member and Shop Owner,  
+I want staff to propose a debit or credit balance adjustment with a mandatory reason, with the Shop Owner holding exclusive approval authority before anything posts,  
+So that a customer who cannot pay in full can have part of their balance forgiven at settlement in a controlled, auditable way, without staff being able to alter balances silently or without owner authorization.
+
+**Acceptance Criteria:**
+
+**Given** an active disbursed credit with a positive outstanding balance and Counter Staff holding `requestCorrections` (or a Shop Owner)  
+**When** the staff member selects *Request Balance Adjustment* on a credit card (customer profile) or from the payment/settlement screen  
+**Then** the system requires a mandatory, non-empty business explanation, an adjustment direction (`debit`/`credit`) and a positive amount in integer minor units, and records the proposal as `pending_approval`, activating the correction-pending lock on that credit.
+
+**Given** a pending adjustment proposal  
+**When** evaluated by a user with only Counter Staff (or Manager) permissions  
+**Then** the user is strictly blocked from approving it.
+
+**Given** a Shop Owner reviewing the pending correction/adjustment queue  
+**When** the Shop Owner approves the proposal  
+**Then** the system posts an immutable `adjustment_credit` (forgiveness) or `adjustment_debit` ledger entry linked to the credit, recalculates the valid outstanding balance atomically, lifts the correction-pending lock, and logs an audit event (Category 7) with actor IDs, target credit, pre/post balance, and the mandatory justification.
+
+**Given** a Shop Owner reviewing a pending adjustment proposal  
+**When** the Shop Owner rejects it with a mandatory rejection reason  
+**Then** the proposal transitions to `Rejected`, the balance remains unchanged, the correction-pending lock lifts, and an audit event is logged.
+
+**Given** a pending adjustment proposal on a credit  
+**When** any user attempts to record a payment on that credit  
+**Then** the payment is blocked with the existing correction-pending error; other credits remain unaffected.
+
+**Given** either a debit or a credit adjustment proposal is approved  
+**When** the ledger entry posts  
+**Then** the resulting balance equals `Balance_current + Adjustment` (debit) or `Balance_current − Adjustment` (credit), computed in integer minor units, and an adjustment exceeding the balance in the credit direction is rejected per existing money rules (no negative balances unless explicitly modeled).
+
+* **Traceability:** FR-6, FR-22, FR-23, FR-31 (Category 7), AD-1, AD-2, AD-6
+* **Dependencies:** Story 5.2 (Ledger math), Story 5.3 (Correction lock), Story 5.5 (Correction request/approval pattern), Story 1.7 (Shop Owner role)
+* **Testing Guidance:** Integration test for proposal → approval → ledger post → lock lift lifecycle; rejection path test; security test asserting staff cannot approve; idempotency test on double-tap approve; balance arithmetic tests for credit and debit directions; settlement-forgiveness end-to-end test (propose partial forgiveness → approve → settle remainder).
+* **Implementation notes:** The `credit_corrections` table already supports non-payment adjustments (`originalPaymentId` nullable) but has no adjustment-direction column and its approval path always applies `balance_cents += amount`. Story 5.6 will either add a `direction` column (Drift migration) or introduce a sibling `adjustment_requests` table. The Shop Owner direct-adjustment path (`recordAdjustment`) stays unchanged. The unreferenced duplicate `correction_adjustment_screen_temp.dart` is deleted as part of this story.
 
 ---
 

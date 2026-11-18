@@ -28,10 +28,40 @@ class CollateralCustodyTransitionException implements Exception {
 enum CollateralItemCategory {
   gold('gold'),
   electronics('electronics'),
-  valuables('valuables');
+  sports('sports'),
+  dress('dress'),
+  grocery('grocery'),
+  cosmetic('cosmetic'),
+  medicine('medicine'),
+  valuables('valuables'),
+  other('other');
 
   final String value;
   const CollateralItemCategory(this.value);
+
+  /// Human-readable label used by the selection UI.
+  String get label {
+    switch (this) {
+      case CollateralItemCategory.gold:
+        return 'Gold';
+      case CollateralItemCategory.electronics:
+        return 'Electronics';
+      case CollateralItemCategory.sports:
+        return 'Sports';
+      case CollateralItemCategory.dress:
+        return 'Dress';
+      case CollateralItemCategory.grocery:
+        return 'Grocery Item';
+      case CollateralItemCategory.cosmetic:
+        return 'Cosmetic';
+      case CollateralItemCategory.medicine:
+        return 'Medicine';
+      case CollateralItemCategory.valuables:
+        return 'Valuables';
+      case CollateralItemCategory.other:
+        return 'Other';
+    }
+  }
 
   /// Resolves [CollateralItemCategory] from raw database text.
   static CollateralItemCategory fromValue(String value) {
@@ -137,14 +167,15 @@ class CollateralItem {
   /// Item category.
   final CollateralItemCategory category;
 
-  /// Human-readable description.
-  final String description;
+  /// Human-readable description. Optional.
+  final String? description;
 
-  /// Condition grade.
-  final String conditionGrade;
+  /// Condition grade. Optional.
+  final String? conditionGrade;
 
-  /// Weight in integer milligrams (e.g., 5.5 g → 5500 mg).
-  final int weightMilligrams;
+  /// Weight in integer milligrams (e.g., 5.5 g → 5500 mg). Optional:
+  /// `null` means the weight was not recorded.
+  final int? weightMilligrams;
 
   /// Estimated collateral value in integer minor units (cents).
   final int estimatedValueCents;
@@ -171,9 +202,9 @@ class CollateralItem {
     this.creditId,
     required this.itemReferenceId,
     required this.category,
-    required this.description,
-    required this.conditionGrade,
-    required this.weightMilligrams,
+    this.description,
+    this.conditionGrade,
+    this.weightMilligrams,
     required this.estimatedValueCents,
     this.photoUri,
     this.photoHash,
@@ -187,7 +218,7 @@ class CollateralItem {
   }
 
   void _validateWeightAndValue() {
-    if (weightMilligrams <= 0) {
+    if (weightMilligrams != null && weightMilligrams! <= 0) {
       throw CollateralItemValidationException(
         'Weight must be positive (milligrams)',
       );
@@ -286,7 +317,12 @@ class CollateralItem {
   }
 
   /// Formats integer milligrams into a decimal gram string (e.g., 5500 → "5.500 g").
-  static String formatWeightMilligrams(int milligrams) {
+  ///
+  /// Returns `'Not recorded'` when [milligrams] is `null` (weight is optional).
+  static String formatWeightMilligrams(int? milligrams) {
+    if (milligrams == null) {
+      return 'Not recorded';
+    }
     final absMg = milligrams.abs();
     final sign = milligrams < 0 ? '-' : '';
     final grams = absMg / 1000;
@@ -306,10 +342,12 @@ class CollateralItem {
     if (itemReferenceId.trim().isEmpty) {
       throw CollateralItemValidationException('Item reference ID cannot be empty');
     }
-    if (description.trim().isEmpty) {
+    final description = this.description;
+    if (description != null && description.trim().isEmpty) {
       throw CollateralItemValidationException('Description cannot be empty');
     }
-    if (conditionGrade.trim().isEmpty) {
+    final conditionGrade = this.conditionGrade;
+    if (conditionGrade != null && conditionGrade.trim().isEmpty) {
       throw CollateralItemValidationException('Condition grade cannot be empty');
     }
     if (estimatedValueCents < 0) {

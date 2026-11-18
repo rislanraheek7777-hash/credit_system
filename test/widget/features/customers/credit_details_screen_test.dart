@@ -6,6 +6,8 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
+import 'package:credit_system/features/customers/presentation/credit_draft_agreement_view_screen.dart';
+import 'package:credit_system/features/customers/domain/models/credit_document_content.dart';
 import 'package:credit_system/features/customers/presentation/credit_details_screen.dart';
 
 import '../../../support/customers_test_support.dart';
@@ -18,7 +20,6 @@ void main() {
     Set<AppPermission>? customPermissions,
     bool isActive = true,
     String? actorShopId,
-    DocumentPresenter? documentPresenter,
   }) {
     return MaterialApp(
       home: CreditDetailsScreen(
@@ -33,7 +34,6 @@ void main() {
           customPermissions: customPermissions,
         ),
         database: db,
-        documentPresenter: documentPresenter,
       ),
     );
   }
@@ -86,7 +86,8 @@ void main() {
 
     expect(find.text('Credit Details'), findsOneWidget);
     expect(find.textContaining('Sunil Perera'), findsOneWidget);
-    expect(find.textContaining('Principal: Rs.'), findsOneWidget);
+    expect(find.textContaining('Amount: Rs.'), findsOneWidget);
+    expect(find.text('Type: Cash'), findsOneWidget);
     expect(find.textContaining('Balance: Rs.'), findsOneWidget);
     expect(find.text('ACTIVE'), findsOneWidget);
 
@@ -145,16 +146,14 @@ void main() {
     }
 
     testWidgets('a pending-disbursement credit offers the draft action, '
-        'records a generate_credit_draft audit event and hands the document '
-        'over', (WidgetTester tester) async {
+        'records a generate_credit_draft audit event and shows the agreement '
+        'on screen without saving anything', (WidgetTester tester) async {
       final db = await seedPendingCredit(tester);
-      final presenter = RecordingDocumentPresenter();
 
       await tester.pumpWidget(
         creditDetails(
           db: db,
           shopId: shopId,
-          documentPresenter: presenter.call,
         ),
       );
       await tester.pumpAndSettle();
@@ -164,25 +163,24 @@ void main() {
         findsOneWidget,
       );
 
-      await generateDraftAgreement(tester, pendingCreditId);
+      await openDraftAgreement(tester, pendingCreditId);
 
-      // The document was handed over as a PDF.
-      expect(presenter.bytes, isNotNull);
-      expect(pdfText(presenter.bytes!), startsWith('%PDF'));
-      expect(presenter.fileName, equals('draft_agreement_$pendingCreditId.pdf'));
-
-      // The slip is confirmed, the saved path is surfaced and the platform
-      // hand-off is confirmed.
+      // The agreement is shown on screen: title, draft reference, watermark
+      // and the pending-disbursement disclosures are all visible.
       expect(
-        find.byKey(CreditDraftAgreementAction.generatedKey(pendingCreditId)),
+        find.byKey(CreditDraftAgreementAction.viewKey(pendingCreditId)),
         findsOneWidget,
       );
       expect(
-        find.byKey(CreditDraftAgreementAction.savedPathKey(pendingCreditId)),
+        find.text('CREDIT AGREEMENT - DRAFT (PENDING DISBURSEMENT)'),
         findsOneWidget,
       );
-      expect(find.text('Draft Agreement Saved'), findsOneWidget);
-      expect(find.textContaining(presenter.savedPath!), findsWidgets);
+      expect(find.textContaining('DRAFT-'), findsWidgets);
+      expect(find.text(kDraftWatermark), findsWidgets);
+
+      // No document was saved or handed over: no file path is surfaced
+      // anywhere on the view.
+      expect(find.textContaining('Saved'), findsNothing);
 
       // The Category 2 audit event was queued in the sync queue.
       final syncEntries = await db.select(db.syncQueue).get();
@@ -192,33 +190,9 @@ void main() {
       expect(draftEvents, isNotEmpty);
       expect(draftEvents.first.entityId, equals(pendingCreditId));
 
-      await db.close();
-    });
-
-    testWidgets('a presenter that takes the document reports a download and '
-        'saves no path', (WidgetTester tester) async {
-      final db = await seedPendingCredit(tester);
-      // A null path is what the platform reports when it took the document
-      // itself (a browser download).
-      final presenter = RecordingDocumentPresenter()..savedPath = null;
-
-      await tester.pumpWidget(
-        creditDetails(
-          db: db,
-          shopId: shopId,
-          documentPresenter: presenter.call,
-        ),
-      );
+      // Back out of the view; the credit list is unchanged.
+      await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
-
-      await generateDraftAgreement(tester, pendingCreditId);
-
-      expect(presenter.bytes, isNotNull);
-      expect(find.text('Draft Agreement Downloaded'), findsOneWidget);
-      expect(
-        find.byKey(CreditDraftAgreementAction.savedPathKey(pendingCreditId)),
-        findsNothing,
-      );
 
       await db.close();
     });
@@ -263,25 +237,23 @@ void main() {
         ),
       );
 
-      final presenter = RecordingDocumentPresenter();
       await tester.pumpWidget(
         creditDetails(
           db: db,
           shopId: shopId,
-          documentPresenter: presenter.call,
         ),
       );
       await tester.pumpAndSettle();
 
-      // Generate the slip of the agreement in the first slot.
-      await generateDraftAgreement(tester, firstCreditId);
+      // View the draft of the agreement in the first slot.
+      await openDraftAgreement(tester, firstCreditId);
       expect(
-        find.byKey(CreditDraftAgreementAction.generatedKey(firstCreditId)),
+        find.byKey(CreditDraftAgreementAction.viewKey(firstCreditId)),
         findsOneWidget,
       );
 
-      // Dismiss the hand-off confirmation.
-      Navigator.of(tester.element(find.byType(AlertDialog))).pop();
+      // Back out of the view.
+      await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
 
       // Move the other agreement ahead of the first one, so the list reuses
@@ -303,13 +275,10 @@ void main() {
         return tester.getTopLeft(second).dy < tester.getTopLeft(first).dy;
       });
 
-      // The agreement now in the first slot shows no outcome of its own.
+      // The agreement now in the first slot shows no leftover error of its
+      // own from the other agreement's view.
       expect(
-        find.byKey(CreditDraftAgreementAction.generatedKey(secondCreditId)),
-        findsNothing,
-      );
-      expect(
-        find.byKey(CreditDraftAgreementAction.savedPathKey(secondCreditId)),
+        find.byKey(CreditDraftAgreementAction.errorKey(secondCreditId)),
         findsNothing,
       );
       expect(
@@ -354,7 +323,7 @@ void main() {
         find.byKey(CreditDraftAgreementAction.buttonKey('credit-disbursed-1')),
         findsNothing,
       );
-      expect(find.text('View / Print Draft Agreement'), findsNothing);
+      expect(find.text('View Draft Agreement'), findsNothing);
 
       await db.close();
     });
@@ -378,7 +347,7 @@ void main() {
         find.byKey(CreditDraftAgreementAction.buttonKey(pendingCreditId)),
         findsNothing,
       );
-      expect(find.text('View / Print Draft Agreement'), findsNothing);
+      expect(find.text('View Draft Agreement'), findsNothing);
 
       await db.close();
     });
@@ -402,25 +371,23 @@ void main() {
         find.byKey(CreditDraftAgreementAction.buttonKey(pendingCreditId)),
         findsNothing,
       );
-      expect(find.text('View / Print Draft Agreement'), findsNothing);
+      expect(find.text('View Draft Agreement'), findsNothing);
 
       await db.close();
     });
 
-    testWidgets('a refusal is surfaced inline and claims no document', (
+    testWidgets('a refusal is surfaced inline and opens nothing', (
       WidgetTester tester,
     ) async {
       final db = await seedPendingCredit(tester);
-      final presenter = RecordingDocumentPresenter();
 
       await tester.pumpWidget(
         creditDetails(
           db: db,
           shopId: shopId,
           // Staff of another tenant may hold createCredits, but the service
-          // refuses to generate a slip for a credit outside their shop.
+          // refuses to resolve the content for a credit outside their shop.
           actorShopId: 'shop-other-tenant',
-          documentPresenter: presenter.call,
         ),
       );
       await tester.pumpAndSettle();
@@ -443,11 +410,11 @@ void main() {
       final error = tester.widget<Text>(
         find.byKey(CreditDraftAgreementAction.errorKey(pendingCreditId)),
       );
-      expect(error.data, contains('could not be generated'));
+      expect(error.data, contains('could not be opened'));
       expect(error.data, isNot(contains('PermissionDeniedException')));
 
-      // No document was handed over and no draft audit event was queued.
-      expect(presenter.bytes, isNull);
+      // The view was never opened and no draft audit event was queued.
+      expect(find.byType(CreditDraftAgreementViewScreen), findsNothing);
       final syncEntries = await db.select(db.syncQueue).get();
       expect(
         syncEntries.where((e) => e.actionType == 'generate_credit_draft'),

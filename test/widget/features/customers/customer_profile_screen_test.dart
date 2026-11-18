@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
@@ -9,7 +10,11 @@ import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
 import 'package:credit_system/features/customers/presentation/credit_origination_screen.dart';
+import 'package:credit_system/features/customers/presentation/credit_draft_agreement_view_screen.dart';
+import 'package:credit_system/features/customers/domain/models/credit_document_content.dart';
+import 'package:credit_system/features/customers/presentation/credit_settle_action.dart';
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
+import 'package:credit_system/features/customers/presentation/payment_screen.dart';
 
 import '../../../support/customers_test_support.dart';
 
@@ -31,7 +36,6 @@ void main() {
     bool isActive = true,
     String? actorShopId,
     bool canViewSensitive = false,
-    DocumentPresenter? documentPresenter,
   }) {
     return MaterialApp(
       home: CustomerProfileScreen(
@@ -39,7 +43,6 @@ void main() {
         customerId: customerId,
         canViewSensitive: canViewSensitive,
         database: db,
-        documentPresenter: documentPresenter,
         currentUser: AppUser(
           id: testUserId,
           shopId: actorShopId ?? shopId,
@@ -663,17 +666,15 @@ void main() {
     }
 
     testWidgets('a pending-disbursement credit offers the draft action, '
-        'records a generate_credit_draft audit event and hands the document '
-        'over', (WidgetTester tester) async {
+        'records a generate_credit_draft audit event and shows the agreement '
+        'on screen without saving anything', (WidgetTester tester) async {
       final db = await seedPendingCredit(tester);
-      final presenter = RecordingDocumentPresenter();
 
       await tester.pumpWidget(
         profileScreen(
           db: db,
           shopId: shopId,
           customerId: customerId,
-          documentPresenter: presenter.call,
         ),
       );
       await tester.pumpAndSettle();
@@ -683,20 +684,26 @@ void main() {
         findsOneWidget,
       );
 
-      await generateDraftAgreement(tester, pendingCreditId);
+      await openDraftAgreement(tester, pendingCreditId);
 
-      // The document was handed over as a PDF.
-      expect(presenter.bytes, isNotNull);
-      expect(pdfText(presenter.bytes!), startsWith('%PDF'));
-      expect(presenter.fileName, equals('draft_agreement_$pendingCreditId.pdf'));
-
-      // The saved path is surfaced and the platform hand-off is confirmed.
+      // The agreement is shown on screen: title, draft reference, watermark
+      // and the pending-disbursement disclosures are all visible.
       expect(
-        find.byKey(CreditDraftAgreementAction.savedPathKey(pendingCreditId)),
+        find.byKey(CreditDraftAgreementAction.viewKey(pendingCreditId)),
         findsOneWidget,
       );
-      expect(find.text('Draft Agreement Saved'), findsOneWidget);
-      expect(find.textContaining(presenter.savedPath!), findsWidgets);
+      expect(
+        find.text('CREDIT AGREEMENT - DRAFT (PENDING DISBURSEMENT)'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('DRAFT-'), findsWidgets);
+      expect(find.text(kDraftWatermark), findsWidgets);
+      expect(find.text(kDraftSignatureLabel), findsOneWidget);
+      expect(find.textContaining('Rs. 5,000.00'), findsWidgets);
+
+      // No document was saved or handed over: no file path is surfaced
+      // anywhere on the view.
+      expect(find.textContaining('Saved'), findsNothing);
 
       // The Category 2 audit event was queued in the sync queue.
       final syncEntries = await db.select(db.syncQueue).get();
@@ -706,18 +713,21 @@ void main() {
       expect(draftEvents, isNotEmpty);
       expect(draftEvents.first.entityId, equals(pendingCreditId));
 
+      // Back out of the view; the credit list is unchanged.
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+
       await db.close();
     });
 
-    testWidgets('the slip lists only the items pledged to this credit', (
+    testWidgets('the view lists only the items pledged to this credit', (
       WidgetTester tester,
     ) async {
       final db = await seedPendingCredit(tester);
-      final presenter = RecordingDocumentPresenter();
 
       final collateralDao = CollateralDao(db);
       // The other item receipt is pledged to a different agreement, so the
-      // slip must not list it.
+      // view must not list it.
       await insertCredit(db,
         Credit(
           id: 'credit-other-1',
@@ -761,23 +771,21 @@ void main() {
           db: db,
           shopId: shopId,
           customerId: customerId,
-          documentPresenter: presenter.call,
         ),
       );
       await tester.pumpAndSettle();
 
-      await generateDraftAgreement(tester, pendingCreditId);
+      await openDraftAgreement(tester, pendingCreditId);
 
-      final text = pdfText(presenter.bytes!);
       expect(
-        text,
-        contains('COLL-PLEDGED-777'),
-        reason: 'The slip must list the items pledged to this agreement.',
+        find.textContaining('COLL-PLEDGED-777'),
+        findsOneWidget,
+        reason: 'The view must list the items pledged to this agreement.',
       );
       expect(
-        text,
-        isNot(contains('COLL-OTHER-888')),
-        reason: "The slip must not list the borrower's other item receipts.",
+        find.textContaining('COLL-OTHER-888'),
+        findsNothing,
+        reason: "The view must not list the borrower's other item receipts.",
       );
 
       await db.close();
@@ -814,7 +822,7 @@ void main() {
         find.byKey(CreditDraftAgreementAction.buttonKey('credit-disbursed-1')),
         findsNothing,
       );
-      expect(find.text('View / Print Draft Agreement'), findsNothing);
+      expect(find.text('View Draft Agreement'), findsNothing);
 
       await db.close();
     });
@@ -839,7 +847,7 @@ void main() {
         find.byKey(CreditDraftAgreementAction.buttonKey(pendingCreditId)),
         findsNothing,
       );
-      expect(find.text('View / Print Draft Agreement'), findsNothing);
+      expect(find.text('View Draft Agreement'), findsNothing);
 
       await db.close();
     });
@@ -864,24 +872,22 @@ void main() {
         find.byKey(CreditDraftAgreementAction.buttonKey(pendingCreditId)),
         findsNothing,
       );
-      expect(find.text('View / Print Draft Agreement'), findsNothing);
+      expect(find.text('View Draft Agreement'), findsNothing);
 
       await db.close();
     });
 
-    testWidgets('an agreement created through the profile can be printed from '
+    testWidgets('an agreement created through the profile can be viewed from '
         'the same profile', (WidgetTester tester) async {
       final db = await openTestDatabase();
       useLargeSurface(tester);
       await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
-      final presenter = RecordingDocumentPresenter();
 
       await tester.pumpWidget(
         profileScreen(
           db: db,
           shopId: shopId,
           customerId: customerId,
-          documentPresenter: presenter.call,
         ),
       );
       await tester.pumpAndSettle();
@@ -914,10 +920,12 @@ void main() {
         findsOneWidget,
       );
 
-      await generateDraftAgreement(tester, createdCreditId);
+      await openDraftAgreement(tester, createdCreditId);
 
-      expect(presenter.bytes, isNotNull);
-      expect(pdfText(presenter.bytes!), startsWith('%PDF'));
+      expect(
+        find.byType(CreditDraftAgreementViewScreen),
+        findsOneWidget,
+      );
 
       final draftEvents = (await db.select(db.syncQueue).get())
           .where((e) => e.actionType == 'generate_credit_draft')
@@ -928,11 +936,10 @@ void main() {
       await db.close();
     });
 
-    testWidgets('a refusal is surfaced inline and claims no document', (
+    testWidgets('a refusal is surfaced inline and opens nothing', (
       WidgetTester tester,
     ) async {
       final db = await seedPendingCredit(tester);
-      final presenter = RecordingDocumentPresenter();
 
       await tester.pumpWidget(
         profileScreen(
@@ -940,9 +947,8 @@ void main() {
           shopId: shopId,
           customerId: customerId,
           // Staff of another tenant may hold createCredits, but the service
-          // refuses to generate a slip for a credit outside their shop.
+          // refuses to resolve the content for a credit outside their shop.
           actorShopId: 'shop-other-tenant',
-          documentPresenter: presenter.call,
         ),
       );
       await tester.pumpAndSettle();
@@ -965,16 +971,399 @@ void main() {
       final error = tester.widget<Text>(
         find.byKey(CreditDraftAgreementAction.errorKey(pendingCreditId)),
       );
-      expect(error.data, contains('could not be generated'));
+      expect(error.data, contains('could not be opened'));
       expect(error.data, isNot(contains('PermissionDeniedException')));
 
-      // No document was handed over and no draft audit event was queued.
-      expect(presenter.bytes, isNull);
+      // The view was never opened and no draft audit event was queued.
+      expect(find.byType(CreditDraftAgreementViewScreen), findsNothing);
       final syncEntries = await db.select(db.syncQueue).get();
       expect(
         syncEntries.where((e) => e.actionType == 'generate_credit_draft'),
         isEmpty,
       );
+
+      await db.close();
+    });
+  });
+
+  group('CustomerProfileScreen - settle action', () {
+    const shopId = 'shop-123';
+    const customerId = 456;
+    const settleCreditId = 'credit-settle-1';
+
+    /// Seeds a shop, a borrower and one disbursed, payment-eligible credit.
+    Future<AppDatabase> seedDisbursedCredit(
+      WidgetTester tester, {
+      String creditId = settleCreditId,
+      int principalCents = 500000,
+      int balanceCents = 300000,
+    }) async {
+      final db = await openTestDatabase();
+      useLargeSurface(tester);
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      final now = DateTime.now().toUtc();
+      // The payment path snapshots the recording actor and the payments table
+      // holds a foreign key to the actor row, so the actor must exist.
+      await db.into(db.appUsers).insert(
+        AppUserEntry(
+          id: testUserId,
+          shopId: shopId,
+          username: 'testuser',
+          fullName: 'Test User',
+          role: 'manager',
+          isActive: true,
+          sessionVersion: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await insertCredit(db,
+        Credit(
+          id: creditId,
+          shopId: shopId,
+          customerId: customerId,
+          principalCents: principalCents,
+          balanceCents: balanceCents,
+          status: CreditStatus.active,
+          workflowStatus: CreditWorkflowStatus.disbursed,
+          dueDate: now.add(const Duration(days: 30)),
+          createdAt: now,
+        ),
+      );
+      return db;
+    }
+
+    testWidgets('an eligible credit offers the Settle action', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+        findsOneWidget,
+      );
+      expect(find.text('Settle'), findsOneWidget);
+
+      await db.close();
+    });
+
+    testWidgets('tapping Settle opens the payment screen pre-filled to the full '
+        'balance, and a full settlement returns to the profile', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(CreditSettleAction.buttonKey(settleCreditId)));
+      await pumpUntil(tester,
+          () => find.byKey(const Key('payment_amount_input')).evaluate().isNotEmpty);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PaymentScreen), findsOneWidget);
+      final amountField = tester.widget<TextField>(
+        find.byKey(const Key('payment_amount_input')),
+      );
+      expect(
+        amountField.controller!.text,
+        equals('3000.00'),
+        reason: 'The full outstanding balance must be pre-filled.',
+      );
+
+      await tester.tap(find.byKey(const Key('record_payment_button')));
+      await pumpUntil(tester, () => find.byType(PaymentScreen).evaluate().isEmpty);
+      await tester.pumpAndSettle();
+
+      // Back on the profile with a confirmation.
+      expect(find.byType(CustomerProfileScreen), findsOneWidget);
+      await pumpUntil(tester,
+          () => find.textContaining('Credit settled').evaluate().isNotEmpty);
+
+      // The credit list was refreshed: balance 0 and Settled.
+      final row = await (db.select(db.credits)
+            ..where((c) => c.id.equals(settleCreditId)))
+          .getSingle();
+      expect(row.balanceCents, equals(0));
+      expect(row.status, equals('settled'));
+      expect(find.text('Settled (1)'), findsOneWidget);
+      expect(find.text('Balance: Rs. 0.00'), findsOneWidget);
+
+      // The receipt row is committed and remains available from history.
+      final payments = await db.select(db.payments).get();
+      expect(payments, hasLength(1));
+      expect(payments.single.paymentType, equals('full_settlement'));
+
+      await db.close();
+    });
+
+    testWidgets('ineligible credits offer no Settle action', (
+      WidgetTester tester,
+    ) async {
+      final db = await openTestDatabase();
+      useLargeSurface(tester);
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      final now = DateTime.now().toUtc();
+      // Pending disbursement.
+      await insertCredit(db,
+        Credit(
+          id: 'credit-pending',
+          shopId: shopId,
+          customerId: customerId,
+          principalCents: 500000,
+          balanceCents: 500000,
+          status: CreditStatus.active,
+          workflowStatus: CreditWorkflowStatus.pendingDisbursement,
+          dueDate: now.add(const Duration(days: 30)),
+          createdAt: now,
+        ),
+      );
+      // Settled.
+      await insertCredit(db,
+        Credit(
+          id: 'credit-settled',
+          shopId: shopId,
+          customerId: customerId,
+          principalCents: 500000,
+          balanceCents: 0,
+          status: CreditStatus.settled,
+          workflowStatus: CreditWorkflowStatus.disbursed,
+          dueDate: now.subtract(const Duration(days: 5)),
+          createdAt: now,
+          settledAt: now,
+        ),
+      );
+      // Disbursed but zero balance.
+      await insertCredit(db,
+        Credit(
+          id: 'credit-zero-balance',
+          shopId: shopId,
+          customerId: customerId,
+          principalCents: 500000,
+          balanceCents: 0,
+          status: CreditStatus.active,
+          workflowStatus: CreditWorkflowStatus.disbursed,
+          dueDate: now.add(const Duration(days: 30)),
+          createdAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(CreditSettleAction.buttonKey('credit-pending')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(CreditSettleAction.buttonKey('credit-settled')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(CreditSettleAction.buttonKey('credit-zero-balance')),
+        findsNothing,
+      );
+      expect(find.text('Settle'), findsNothing);
+
+      await db.close();
+    });
+
+    testWidgets('an actor without recordPayments is offered no Settle action', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.custom,
+          customPermissions: {AppPermission.viewCustomers},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+        findsNothing,
+      );
+      expect(find.text('Settle'), findsNothing);
+
+      await db.close();
+    });
+
+    testWidgets('a deactivated account is offered no Settle action', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.shopOwner,
+          isActive: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+        findsNothing,
+      );
+      expect(find.text('Settle'), findsNothing);
+
+      await db.close();
+    });
+
+    testWidgets('lowering the pre-filled amount records a partial payment and '
+        'does not return to the profile', (WidgetTester tester) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(CreditSettleAction.buttonKey(settleCreditId)));
+      await pumpUntil(tester,
+          () => find.byKey(const Key('payment_amount_input')).evaluate().isNotEmpty);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('payment_amount_input')),
+        '1000.00',
+      );
+      await tester.tap(find.byKey(const Key('record_payment_button')));
+      await pumpUntil(tester,
+          () => find.byKey(const Key('payment_success_display')).evaluate().isNotEmpty);
+
+      // The payment screen stays open — a partial payment never auto-returns.
+      expect(find.byType(PaymentScreen), findsOneWidget);
+
+      final row = await (db.select(db.credits)
+            ..where((c) => c.id.equals(settleCreditId)))
+          .getSingle();
+      expect(row.balanceCents, equals(200000));
+      expect(row.status, equals('active'));
+      expect((await db.select(db.payments).get()).single.paymentType,
+          equals('partial'));
+
+      await db.close();
+    });
+
+    testWidgets('a balance changed after render is blocked by the overpayment '
+        'guard', (WidgetTester tester) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(CreditSettleAction.buttonKey(settleCreditId)));
+      await pumpUntil(tester,
+          () => find.byKey(const Key('payment_amount_input')).evaluate().isNotEmpty);
+      await tester.pumpAndSettle();
+
+      // The balance drops after the screen was rendered and pre-filled.
+      await (db.update(db.credits)
+            ..where((c) => c.id.equals(settleCreditId)))
+          .write(const CreditsCompanion(balanceCents: Value(100000)));
+
+      await tester.tap(find.byKey(const Key('record_payment_button')));
+      await pumpUntil(tester,
+          () => find
+              .byKey(const Key('payment_validation_error_display'))
+              .evaluate()
+              .isNotEmpty);
+
+      final error = tester.widget<Text>(
+        find.byKey(const Key('payment_validation_error_display')),
+      );
+      expect(error.data, contains('exceeds the outstanding balance'));
+
+      // Nothing was recorded and the screen stayed open.
+      expect(await db.select(db.payments).get(), isEmpty);
+      expect(find.byType(PaymentScreen), findsOneWidget);
+
+      await db.close();
+    });
+
+    testWidgets('a pending correction blocks settlement with the existing '
+        'correction-pending error', (WidgetTester tester) async {
+      final db = await seedDisbursedCredit(tester);
+
+      // Activate the Story 5.5 correction lock on the credit.
+      await (db.update(db.credits)
+            ..where((c) => c.id.equals(settleCreditId)))
+          .write(const CreditsCompanion(correctionPending: Value(true)));
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(CreditSettleAction.buttonKey(settleCreditId)));
+      await pumpUntil(tester,
+          () => find.byKey(const Key('payment_amount_input')).evaluate().isNotEmpty);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('record_payment_button')));
+      await pumpUntil(tester,
+          () => find.byKey(const Key('payment_error_display')).evaluate().isNotEmpty);
+
+      final error = tester.widget<Text>(
+        find.byKey(const Key('payment_error_display')),
+      );
+      expect(error.data, contains('pending correction'));
+
+      // Nothing was recorded and the screen stayed open.
+      expect(await db.select(db.payments).get(), isEmpty);
+      expect(find.byType(PaymentScreen), findsOneWidget);
 
       await db.close();
     });

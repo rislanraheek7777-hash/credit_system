@@ -480,7 +480,11 @@ All monetary calculations for credit principal, payments, adjustments, and outst
       $$\text{Balance}_{\text{new}} = \text{Balance}_{\text{current}} + \text{Adjustment Amount}$$
     - An adjustment marked as **Credit** decreases the borrower's debt obligation:
       $$\text{Balance}_{\text{new}} = \text{Balance}_{\text{current}} - \text{Adjustment Amount}$$
-    - **Authorization & Governance:** Manual adjustments are **restricted exclusively to the Shop Owner role** and require a mandatory recorded business reason.
+    - **Authorization & Governance:** Manual balance adjustments follow the same two-step control as payment reversals:
+      - **Staff-proposed, owner-approved adjustment:** Counter Staff holding `requestCorrections` may *propose* a debit or credit adjustment (e.g., forgiving part of the balance during settlement — negotiated concession, dispute settlement, rounding reconciliation). The proposal is recorded as `pending_approval` with a mandatory business reason, activates the correction-pending lock on the credit (payments blocked on that credit only), and posts only upon **explicit Shop Owner approval** (`approveCorrections`). On approval the system posts an immutable `adjustment_debit` / `adjustment_credit` ledger entry; on rejection the balance is unchanged and the lock lifts. Staff can never approve their own proposal.
+      - **Owner-direct adjustment (existing):** A Shop Owner may still execute an adjustment directly without a prior staff request.
+      - The balance is never edited in place; every adjustment is posted as a ledger delta entry derived from an explicit input, preserving full transaction history.
+    - **Input affordance:** the actor enters the adjustment amount and direction (debit/credit), or the desired new effective balance from which the system derives the delta; the delta is what posts.
     - Historical Integrity: Adjustments are recorded as immutable standalone ledger entries linked to the credit, preserving all prior transaction history.
 * **Consequences (testable):**
   - Calculations use integer minor units (e.g., cents) or arbitrary-precision decimals with a consistent scale (2 decimal places for `LKR`) to eliminate floating-point rounding discrepancies.
@@ -493,7 +497,8 @@ All monetary calculations for credit principal, payments, adjustments, and outst
     5. *Approved Credit Adjustment:* Valid balance 25,000.00 LKR; owner approves credit adjustment of -500.00 LKR with reason -> Valid balance recalculates to exactly 24,500.00 LKR.
     6. *Duplicate Submission (Idempotency):* Identical payment payload submitted multiple times with the same idempotency key -> Exactly one transaction is committed; duplicate requests return the original transaction receipt without deducting funds twice.
     7. *Concurrent Payments:* Two simultaneous payment requests of 30,000.00 LKR against a 50,000.00 LKR balance -> Concurrency controls (optimistic locking / row locking) process one request successfully (leaving 20,000.00 LKR) and immediately evaluate the second request against the updated balance, blocking it with an overpayment error.
-* **Business Rules & Permissions:** Enforced system-wide across all financial services. Reversals require `Request Corrections` (staff) and `Approve Corrections` (owner); manual adjustments require Shop Owner role.
+     8. *Staff-Proposed Credit Adjustment with Owner Approval:* Valid balance 25,000.00 LKR; staff proposes a credit adjustment of -5,000.00 LKR (partial forgiveness) with mandatory reason -> proposal recorded `pending_approval`, correction-pending lock activates, payments blocked on that credit; Shop Owner approves -> balance recalculates to exactly 20,000.00 LKR, immutable `adjustment_credit` entry posted, lock lifts, audit event logged. Rejection path: balance unchanged at 25,000.00 LKR, lock lifts, rejection reason mandatory.
+* **Business Rules & Permissions:** Enforced system-wide across all financial services. Reversals require `Request Corrections` (staff) and `Approve Corrections` (owner); staff-proposed adjustments require `Request Corrections` (staff proposal) and `Approve Corrections` (owner approval, or Shop Owner direct execution); manual adjustments executed directly by a Shop Owner require the Shop Owner role.
 * **Audit Requirements:** Any arithmetic discrepancy between transaction sums and stored balance triggers a high-severity financial integrity alert in the append-only, tamper-resistant audit trail. All reversals and adjustments log actor IDs, approver ID, target credit, pre/post balance, timestamps, and mandatory business justifications.
 * **Out of Scope:** Multi-currency floating FX ledgers in Version 1.
 
@@ -503,7 +508,7 @@ The system must prevent duplicate financial postings arising from concurrent cou
 * **Consequences (testable):**
   - Each payment submission requires a client-generated idempotency token. If a request is received with an already-processed token, the server returns the existing confirmed transaction and receipt without re-posting.
   - Optimistic concurrency locking blocks simultaneous payments on the same credit from overpaying the balance.
-  - **Correction-Pending Lock:** While a financial correction request on a specific credit is pending approval, new payment submissions are temporarily blocked strictly on that affected credit. Other credits in the shop remain fully operational.
+  - **Correction-Pending Lock:** While a financial correction request on a specific credit is pending approval, new payment submissions are temporarily blocked strictly on that affected credit. The same lock applies while a staff-proposed balance adjustment (FR-22) is pending Shop Owner approval. Other credits in the shop remain fully operational in both cases.
 * **Business Rules & Permissions:** System concurrency guard.
 * **Audit Requirements:** Duplicate submission attempts and blocked concurrent requests are logged in the append-only, tamper-resistant audit trail.
 * **Out of Scope:** Distributed multi-region two-phase commit consensus protocols.

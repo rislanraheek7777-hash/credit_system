@@ -59,6 +59,7 @@ void main() {
           dueDate: now.add(const Duration(days: 30)),
           createdAt: now,
           correctionPending: false,
+        creditType: 'cash',
         ),
       );
       await db.into(db.appUsers).insert(

@@ -63,6 +63,7 @@ void main() {
         dueDate: now.add(const Duration(days: 30)),
         createdAt: now,
         correctionPending: false,
+        creditType: 'cash',
       ),
     );
     // Seed staff/owner users for custody-transition authorization (FK target
@@ -508,6 +509,7 @@ void main() {
           dueDate: DateTime.now().toUtc().add(const Duration(days: 60)),
           createdAt: DateTime.now().toUtc(),
           correctionPending: false,
+        creditType: 'cash',
         ),
       );
 
@@ -618,6 +620,7 @@ void main() {
           dueDate: now.add(const Duration(days: 30)),
           createdAt: now,
           correctionPending: false,
+        creditType: 'cash',
         ),
       );
       await db.into(db.appUsers).insert(

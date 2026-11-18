@@ -131,7 +131,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -325,6 +325,11 @@ class AppDatabase extends _$AppDatabase {
                 // during this rebuild (defaulting to `false`) instead of trying
                 // to copy it from the old `credits` table, which predates it.
                 credits.correctionPending,
+                // credit_type (v23) is part of the current `credits` definition.
+                // Listing it here lets Drift add it as a new column during this
+                // historical rebuild (defaulting to `cash`) instead of trying to
+                // copy it from the old `credits` table, which predates it.
+                credits.creditType,
               ],
             ));
             await _createCreditIndexes();
@@ -346,6 +351,11 @@ class AppDatabase extends _$AppDatabase {
                 // default `false`) instead of drift trying to `SELECT` it from
                 // the old `credits` table, which predates it.
                 credits.correctionPending,
+                // Same forward-compatibility guard as the v13 rebuild:
+                // `credit_type` is part of the current `credits` definition,
+                // so an older database rebuilt through this step must add it
+                // as a new column rather than copy it from the old table.
+                credits.creditType,
               ],
             ));
             await _createCreditIndexes();
@@ -629,7 +639,14 @@ class AppDatabase extends _$AppDatabase {
                     'WHERE "old_id" = "credits"."customer_id");',
               );
               if (await _columnHasTextType('credits', 'customer_id')) {
-                await m.alterTable(TableMigration(credits));
+                await m.alterTable(TableMigration(
+                  credits,
+                  // `credit_type` (v23) is part of the current `credits`
+                  // definition but predates neither this rebuild nor the old
+                  // table, so Drift must add it as a default-backed column
+                  // rather than copy it from the old table.
+                  newColumns: [credits.creditType],
+                ));
                 await _createCreditIndexes();
               }
             }
@@ -772,6 +789,227 @@ class AppDatabase extends _$AppDatabase {
                 'CREATE INDEX IF NOT EXISTS "idx_customers_shop_phone" '
                 'ON "customers" ("shop_id", "phone");',
               );
+            });
+          } finally {
+            await customStatement('PRAGMA legacy_alter_table = OFF;');
+            await customStatement('PRAGMA foreign_keys = ON;');
+          }
+        }
+      }
+      if (from < 23) {
+        // Upgrade from Schema Version 22 to Version 23:
+        // Add credit_type to credits so the agreement type is persisted at
+        // origination: a monetary-amount-only credit is 'cash'; a credit with
+        // one or more item receipts attached is 'items'.
+        //
+        // Rebuild the table so the CHECK constraint applies at the
+        // persistence boundary. Earlier upgrade paths that already rebuilt
+        // `credits` from the current definition carry the column (and its
+        // CHECK) already, so the rebuild is guarded by PRAGMA table_info.
+        final creditColumns =
+            await customSelect('PRAGMA table_info("credits")').get();
+        if (creditColumns.isNotEmpty) {
+          final hasCreditType = creditColumns.any(
+            (row) => row.read<String>('name') == 'credit_type',
+          );
+          if (!hasCreditType) {
+            await m.alterTable(TableMigration(
+              credits,
+              newColumns: [credits.creditType],
+            ));
+            await _createCreditIndexes();
+          }
+          // Backfill existing rows: a credit with at least one pledge-bound
+          // item receipt is an items credit; everything else stays 'cash'.
+          // Guarded: minimal historical fixture databases may not carry a
+          // collateral_items table at all.
+          final collateralTable = await customSelect(
+            "SELECT name FROM sqlite_master "
+            "WHERE type = 'table' AND name = 'collateral_items'",
+          ).get();
+          if (collateralTable.isNotEmpty) {
+            final collateralColumns =
+                await customSelect('PRAGMA table_info("collateral_items")').get();
+            final hasCreditId = collateralColumns.any(
+              (row) => row.read<String>('name') == 'credit_id',
+            );
+            if (hasCreditId) {
+              await customStatement(
+                "UPDATE credits SET credit_type = 'items' "
+                "WHERE id IN ("
+                "SELECT DISTINCT credit_id FROM collateral_items "
+                "WHERE credit_id IS NOT NULL)",
+              );
+            }
+          }
+        }
+      }
+      if (from < 24) {
+        // Upgrade from Schema Version 23 to 24:
+        // Make the collateral description, condition grade and weight
+        // optional. SQLite cannot drop a NOT NULL in place, so the table
+        // is rebuilt following the v22-style safe rebuild procedure
+        // (foreign keys off + legacy_alter_table so child tables'
+        // REFERENCES clauses keep pointing at `collateral_items`).
+        //
+        // Guarded by PRAGMA table_info so upgrade paths that already
+        // rebuilt the table from the current definition (or freshly
+        // created it) are left alone. Fresh databases created by
+        // onCreate carry the nullable columns by definition.
+        //
+        // The CHECK constraint on weight_milligrams keeps rejecting
+        // zero/negative values; NULL (weight not recorded) is accepted.
+        final collateralInfo = await customSelect(
+          'PRAGMA table_info("collateral_items")',
+        ).get();
+        bool notNull(String column) => collateralInfo.any(
+              (row) =>
+                  row.read<String>('name') == column &&
+                  row.read<int>('notnull') == 1,
+            );
+        if (collateralInfo.isNotEmpty &&
+            (notNull('description') ||
+                notNull('condition_grade') ||
+                notNull('weight_milligrams'))) {
+          await customStatement('PRAGMA foreign_keys = OFF;');
+          await customStatement('PRAGMA legacy_alter_table = ON;');
+          try {
+            await transaction(() async {
+              await customStatement(
+                'DROP TABLE IF EXISTS "collateral_items_v24";',
+              );
+              await customStatement(
+                'ALTER TABLE "collateral_items" '
+                'RENAME TO "collateral_items_v24";',
+              );
+              await customStatement('''
+                CREATE TABLE "collateral_items" (
+                  "id" TEXT NOT NULL,
+                  "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
+                  "customer_id" INTEGER NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
+                  "credit_id" TEXT REFERENCES "credits" ("id") ON DELETE RESTRICT,
+                  "item_reference_id" TEXT NOT NULL,
+                  "category" TEXT NOT NULL,
+                  "description" TEXT,
+                  "condition_grade" TEXT,
+                  "weight_milligrams" INTEGER,
+                  "estimated_value_cents" INTEGER NOT NULL,
+                  "photo_uri" TEXT,
+                  "photo_hash" TEXT,
+                  "custody_status" TEXT NOT NULL DEFAULT 'in_custody',
+                  "created_at" INTEGER NOT NULL,
+                  "updated_at" INTEGER NOT NULL,
+                  UNIQUE ("shop_id", "item_reference_id"),
+                  PRIMARY KEY ("id"),
+                  CHECK (weight_milligrams > 0),
+                  CHECK (estimated_value_cents >= 0),
+                  CHECK (category IN ('gold', 'electronics', 'valuables')),
+                  CHECK (custody_status IN ('in_custody', 'handover_requested', 'handover_reported', 'returned', 'exception_held', 'discrepancy'))
+                );
+              ''');
+              await customStatement('''
+                INSERT INTO "collateral_items" (
+                  "id", "shop_id", "customer_id", "credit_id",
+                  "item_reference_id", "category",
+                  "description", "condition_grade", "weight_milligrams",
+                  "estimated_value_cents", "photo_uri", "photo_hash",
+                  "custody_status", "created_at", "updated_at"
+                )
+                SELECT
+                  "id", "shop_id", "customer_id", "credit_id",
+                  "item_reference_id", "category",
+                  "description", "condition_grade", "weight_milligrams",
+                  "estimated_value_cents", "photo_uri", "photo_hash",
+                  "custody_status", "created_at", "updated_at"
+                FROM "collateral_items_v24";
+              ''');
+              await customStatement(
+                'DROP TABLE "collateral_items_v24";',
+              );
+              await _createCollateralIndexes();
+            });
+          } finally {
+            await customStatement('PRAGMA legacy_alter_table = OFF;');
+            await customStatement('PRAGMA foreign_keys = ON;');
+          }
+        }
+      }
+      if (from < 25) {
+        // Upgrade from Schema Version 24 to 25:
+        // Widen the collateral category vocabulary for the selection-tag UI:
+        // gold, electronics, sports, dress, grocery, cosmetic, medicine,
+        // valuables, other. SQLite cannot alter a CHECK constraint in place,
+        // so the table is rebuilt following the v24-style safe rebuild
+        // procedure (foreign keys off + legacy_alter_table so child tables'
+        // REFERENCES clauses keep pointing at `collateral_items`).
+        //
+        // Guarded by the stored table definition: upgrade paths that already
+        // rebuilt the table from the current definition (or freshly created
+        // it) carry the widened CHECK already and are left alone.
+        final collateralSql = await customSelect(
+          "SELECT sql FROM sqlite_master "
+          "WHERE type = 'table' AND name = 'collateral_items'",
+        ).get();
+        final createSql = collateralSql.isNotEmpty
+            ? collateralSql.first.read<String?>('sql') ?? ''
+            : '';
+        if (collateralSql.isNotEmpty && !createSql.contains('sports')) {
+          await customStatement('PRAGMA foreign_keys = OFF;');
+          await customStatement('PRAGMA legacy_alter_table = ON;');
+          try {
+            await transaction(() async {
+              await customStatement(
+                'DROP TABLE IF EXISTS "collateral_items_v25";',
+              );
+              await customStatement(
+                'ALTER TABLE "collateral_items" '
+                'RENAME TO "collateral_items_v25";',
+              );
+              await customStatement('''
+                CREATE TABLE "collateral_items" (
+                  "id" TEXT NOT NULL,
+                  "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
+                  "customer_id" INTEGER NOT NULL REFERENCES "customers" ("id") ON DELETE RESTRICT,
+                  "credit_id" TEXT REFERENCES "credits" ("id") ON DELETE RESTRICT,
+                  "item_reference_id" TEXT NOT NULL,
+                  "category" TEXT NOT NULL,
+                  "description" TEXT,
+                  "condition_grade" TEXT,
+                  "weight_milligrams" INTEGER,
+                  "estimated_value_cents" INTEGER NOT NULL,
+                  "photo_uri" TEXT,
+                  "photo_hash" TEXT,
+                  "custody_status" TEXT NOT NULL DEFAULT 'in_custody',
+                  "created_at" INTEGER NOT NULL,
+                  "updated_at" INTEGER NOT NULL,
+                  UNIQUE ("shop_id", "item_reference_id"),
+                  PRIMARY KEY ("id"),
+                  CHECK (weight_milligrams > 0),
+                  CHECK (estimated_value_cents >= 0),
+                  CHECK (category IN ('gold', 'electronics', 'sports', 'dress', 'grocery', 'cosmetic', 'medicine', 'valuables', 'other')),
+                  CHECK (custody_status IN ('in_custody', 'handover_requested', 'handover_reported', 'returned', 'exception_held', 'discrepancy'))
+                );
+              ''');
+              await customStatement('''
+                INSERT INTO "collateral_items" (
+                  "id", "shop_id", "customer_id", "credit_id",
+                  "item_reference_id", "category",
+                  "description", "condition_grade", "weight_milligrams",
+                  "estimated_value_cents", "photo_uri", "photo_hash",
+                  "custody_status", "created_at", "updated_at"
+                )
+                SELECT
+                  "id", "shop_id", "customer_id", "credit_id",
+                  "item_reference_id", "category",
+                  "description", "condition_grade", "weight_milligrams",
+                  "estimated_value_cents", "photo_uri", "photo_hash",
+                  "custody_status", "created_at", "updated_at"
+                FROM "collateral_items_v25";
+              ''');
+              await customStatement(
+                'DROP TABLE "collateral_items_v25";',
+              );
+              await _createCollateralIndexes();
             });
           } finally {
             await customStatement('PRAGMA legacy_alter_table = OFF;');

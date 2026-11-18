@@ -1060,11 +1060,11 @@ class _CollateralCustodyReturnScreenState
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          'Description: ${item.description}',
+                                          'Description: ${item.description ?? 'Unspecified'}',
                                           style: const TextStyle(fontSize: 13),
                                         ),
                                         Text(
-                                          'Condition: ${item.conditionGrade}',
+                                          'Condition: ${item.conditionGrade ?? 'Unspecified'}',
                                           style: const TextStyle(fontSize: 13),
                                         ),
                                         const SizedBox(height: 8),

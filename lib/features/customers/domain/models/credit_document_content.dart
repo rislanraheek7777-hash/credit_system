@@ -128,7 +128,8 @@ CreditDocumentContent buildDraftDocumentContent({
           '${_formatCalendarDate(credit.dueDate, shopTimeZone)}',
       kPreliminaryDueDateDisclosure,
       kDraftCashNotDisbursedDisclosure,
-      'Principal Amount: ${_money(credit.principalCents)}',
+      'Amount: ${_money(credit.principalCents)}',
+      'Credit Type: ${credit.creditType.displayLabel}',
       'Current Outstanding Balance: ${_money(credit.balanceCents)}',
       'Agreed Term: ${_agreedTerm(credit, shopTimeZone)}',
       'Item Receipt Summary:',
@@ -202,7 +203,8 @@ CreditDocumentContent buildOfficialVoucherContent({
       'Disbursing Staff ID: ${_orNotRecorded(disbursingStaffId)}',
       'Official Confirmed Due Date: '
           '${_formatCalendarDate(confirmedDueDate, shopTimeZone)}',
-      'Disbursed Principal Amount: ${_money(credit.principalCents)}',
+      'Disbursed Amount: ${_money(credit.principalCents)}',
+      'Credit Type: ${credit.creditType.displayLabel}',
       'Initial Outstanding Balance: ${_money(credit.balanceCents)}',
       'Agreed Term: ${_agreedTerm(credit, shopTimeZone)}',
       'Item Receipt Details:',
@@ -236,8 +238,8 @@ List<String> _collateralLines(List<CollateralItem> items) {
     return const ['No item receipts recorded.'];
   }
   return items.map((item) {
-    return '${item.itemReferenceId}: ${item.description} '
-        '(${item.category.value}, condition ${item.conditionGrade}) - '
+    return '${item.itemReferenceId}: ${item.description ?? 'Unspecified'} '
+        '(${item.category.value}, condition ${item.conditionGrade ?? 'Unspecified'}) - '
         '${CollateralItem.formatWeightMilligrams(item.weightMilligrams)} - '
         '${item.estimatedValue.format()}';
   }).toList(growable: false);

@@ -162,11 +162,13 @@ class CreditOriginationScreen extends StatefulWidget {
   });
 
   @override
-  State<CreditOriginationScreen> createState() => _CreditOriginationScreenState();
+  State<CreditOriginationScreen> createState() =>
+      _CreditOriginationScreenState();
 }
 
 class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   final _principalController = TextEditingController();
   final _customDateController = TextEditingController();
 
@@ -248,7 +250,7 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
 
   String get _currencyCode => _shop?.currencyCode ?? Money.defaultCurrency;
 
-  /// The parsed principal amount, or `null` when absent/invalid.
+  /// The parsed amount, or `null` when absent/invalid.
   Money? get _principal {
     final text = _principalController.text.trim();
     if (text.isEmpty) return null;
@@ -338,16 +340,19 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
   }
 
   /// Opens the [CollateralRegistrationScreen] so staff can register a new item
-  /// receipt for this customer. When the registration screen is closed, the
-  /// item list is reloaded so a newly registered receipt appears in the
-  /// selection list and can be pledged to the agreement.
+  /// receipt for this customer. When the registration route closes with the
+  /// created [CollateralItem] as its result, the receipt list is reloaded from
+  /// the database and the registration is confirmed with a SnackBar naming the
+  /// item. Backing out of the registration route returns no result, so no
+  /// confirmation is shown. The new receipt is never auto-selected.
   Future<void> _addItemReceipt() async {
     if (_isLoading || _isSubmitting) return;
 
-    await Navigator.of(context).push(
+    final result = await Navigator.of(context).push<CollateralItem>(
       MaterialPageRoute(
         builder: (_) => CollateralRegistrationScreen(
           currentUser: widget.currentUser,
+          customerId: widget.customerId,
           database: widget.database,
         ),
       ),
@@ -355,6 +360,15 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
 
     if (!mounted) return;
     await _load();
+
+    if (!mounted) return;
+    if (result == null) return;
+    _messengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text('Item Receipt "${result.itemReferenceId}" registered.'),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   /// Submits the agreement through [CreditDao.createCreditAgreement].
@@ -368,8 +382,9 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
   /// inline; a failure is never reported as a success.
   Future<void> _submit() async {
     if (_loadFailed) {
-      setState(() => _error =
-          'Item receipts could not be loaded. Reload before creating an agreement.');
+      setState(
+        () => _error = 'Item receipts could not be loaded. Reload before creating an agreement.',
+      );
       return;
     }
 
@@ -384,12 +399,14 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
       return;
     }
     if (principal == null || !principal.isPositive) {
-      setState(() => _error = 'Enter a valid positive principal amount.');
+      setState(() => _error = 'Enter a valid positive amount.');
       return;
     }
     if (dueDate == null) {
-      setState(() =>
-          _error = 'The selected term does not yield a valid preliminary due date.');
+      setState(
+        () => _error =
+            'The selected term does not yield a valid preliminary due date.',
+      );
       return;
     }
     setState(() {
@@ -448,170 +465,188 @@ class _CreditOriginationScreenState extends State<CreditOriginationScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return ScaffoldMessenger(
+        key: _messengerKey,
+        child: const Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Credit Origination')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_error != null) ...[
-                Text(
-                  _error!,
-                  key: const Key('origination_error_display'),
-                  style: const TextStyle(color: Colors.red),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              // --- Principal ---
-              const Text(
-                'Principal Amount',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                key: const Key('principal_amount_field'),
-                controller: _principalController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Principal Amount ($_currencyCode)',
-                  border: const OutlineInputBorder(),
-                ),
-                onChanged: (_) => setState(() {}),
-                validator: (value) {
-                  final text = value?.trim() ?? '';
-                  if (text.isEmpty) return 'Principal amount is required';
-                  final money = Money.tryParse(text, currency: _currencyCode);
-                  if (money == null) return 'Invalid monetary amount';
-                  if (!money.isPositive) {
-                    return 'Principal amount must be a positive amount';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // --- Term selection ---
-              const Text(
-                'Credit Term',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final preset in CreditTermPreset.values)
-                    ChoiceChip(
-                      key: Key('term_preset_${preset.calendarDays}'),
-                      label: Text(preset.label),
-                      selected: _term?.preset == preset,
-                      onSelected: (_) => _selectPreset(preset),
-                    ),
-                  ChoiceChip(
-                    key: const Key('term_custom'),
-                    label: const Text('Custom Date'),
-                    selected: _term?.isCustom ?? false,
-                    onSelected: (_) => _pickCustomDate(),
+    return ScaffoldMessenger(
+      key: _messengerKey,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Credit Origination')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_error != null) ...[
+                  Text(
+                    _error!,
+                    key: const Key('origination_error_display'),
+                    style: const TextStyle(color: Colors.red),
                   ),
+                  const SizedBox(height: 12),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      key: const Key('custom_due_date_field'),
-                      controller: _customDateController,
-                      decoration: const InputDecoration(
-                        labelText: 'Custom Due Date (YYYY-MM-DD)',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    key: const Key('apply_custom_due_date_button'),
-                    onPressed: _applyTypedCustomDate,
-                    child: const Text('Apply'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
 
-              // --- Item receipt selection ---
-              const Text(
-                'Item Receipts',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  key: const Key('add_item_receipt_button'),
-                  onPressed: (_isLoading || _isSubmitting) ? null : _addItemReceipt,
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: const Text('Add Item Receipt'),
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (_collateralItems.isEmpty)
+                // --- Principal ---
                 const Text(
-                  'No item receipts recorded for this customer. '
-                  'Item receipts are optional.',
+                  'Amount',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-              for (final item in _collateralItems)
-                CheckboxListTile(
-                  key: Key('collateral_item_${item.id}'),
-                  dense: true,
-                  value: _selectedCollateralIds.contains(item.id),
-                  onChanged: (_) => _toggleCollateral(item.id),
-                  title: Text(item.itemReferenceId),
-                  subtitle: Text(
-                    '${item.description} — '
-                    '${Money(item.estimatedValueCents, currency: _currencyCode).format()}',
+                const SizedBox(height: 8),
+                TextFormField(
+                  key: const Key('principal_amount_field'),
+                  controller: _principalController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Amount ($_currencyCode)',
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                  validator: (value) {
+                    final text = value?.trim() ?? '';
+                    if (text.isEmpty) return 'Amount is required';
+                    final money = Money.tryParse(text, currency: _currencyCode);
+                    if (money == null) return 'Invalid monetary amount';
+                    if (!money.isPositive) {
+                      return 'Amount must be a positive amount';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // --- Term selection ---
+                const Text(
+                  'Credit Term',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final preset in CreditTermPreset.values)
+                      ChoiceChip(
+                        key: Key('term_preset_${preset.calendarDays}'),
+                        label: Text(preset.label),
+                        selected: _term?.preset == preset,
+                        onSelected: (_) => _selectPreset(preset),
+                      ),
+                    ChoiceChip(
+                      key: const Key('term_custom'),
+                      label: const Text('Custom Date'),
+                      selected: _term?.isCustom ?? false,
+                      onSelected: (_) => _pickCustomDate(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        key: const Key('custom_due_date_field'),
+                        controller: _customDateController,
+                        decoration: const InputDecoration(
+                          labelText: 'Custom Due Date (YYYY-MM-DD)',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      key: const Key('apply_custom_due_date_button'),
+                      onPressed: _applyTypedCustomDate,
+                      child: const Text('Apply'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // --- Item receipt selection ---
+                const Text(
+                  'Item Receipts',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    key: const Key('add_item_receipt_button'),
+                    onPressed: (_isLoading || _isSubmitting)
+                        ? null
+                        : _addItemReceipt,
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: const Text('Add Item Receipt'),
                   ),
                 ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                if (_collateralItems.isEmpty)
+                  const Text(
+                    'No item receipts recorded for this customer. '
+                    'Item receipts are optional.',
+                  ),
+                for (final item in _collateralItems)
+                  CheckboxListTile(
+                    key: Key('collateral_item_${item.id}'),
+                    dense: true,
+                    value: _selectedCollateralIds.contains(item.id),
+                    onChanged: (_) => _toggleCollateral(item.id),
+                    title: Text(item.itemReferenceId),
+                    subtitle: Text(
+                      '${item.description ?? 'Unspecified item'} - '
+                      '${Money(item.estimatedValueCents, currency: _currencyCode).format()}',
+                    ),
+                  ),
+                const SizedBox(height: 16),
 
-              // --- Live summary (AC-3 / UX-DR-4) ---
-              CreditOriginationSummary(
-                term: _term,
-                preliminaryDueDate: _preliminaryDueDate,
-                totalCollateralValueCents: _totalCollateralValueCents,
-                currencyCode: _currencyCode,
-                timeZoneIdentifier: _shop?.timezone ??
-                    ShopTimeZone.defaultIdentifier,
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  key: const Key('submit_credit_button'),
-                  onPressed: _isSubmitting ? null : _submit,
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Create Credit Agreement'),
+                // --- Live credit type ---
+                const Text(
+                  'Credit Type',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  _selectedCollateralIds.isEmpty ? 'Cash' : 'Items',
+                  key: const Key('credit_type_display'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Live summary (AC-3 / UX-DR-4) ---
+                CreditOriginationSummary(
+                  term: _term,
+                  preliminaryDueDate: _preliminaryDueDate,
+                  totalCollateralValueCents: _totalCollateralValueCents,
+                  currencyCode: _currencyCode,
+                  timeZoneIdentifier:
+                      _shop?.timezone ?? ShopTimeZone.defaultIdentifier,
+                ),
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    key: const Key('submit_credit_button'),
+                    onPressed: _isSubmitting ? null : _submit,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Create Credit Agreement'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-

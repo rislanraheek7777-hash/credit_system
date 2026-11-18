@@ -448,6 +448,25 @@ void main() {
       expect(credit.settledAt, isNull);
     });
 
+    test('marks an amount-only agreement as a cash credit', () async {
+      final credit = await createAgreement(collateralItemIds: const []);
+
+      expect(credit.creditType, equals(CreditType.cash));
+
+      // The type round-trips through persistence.
+      final persisted = await creditDao.getCreditById(shopAlphaId, credit.id);
+      expect(persisted?.creditType, equals(CreditType.cash));
+    });
+
+    test('marks an agreement with item receipts as an items credit', () async {
+      final credit = await createAgreement(collateralItemIds: const [itemId]);
+
+      expect(credit.creditType, equals(CreditType.items));
+
+      final persisted = await creditDao.getCreditById(shopAlphaId, credit.id);
+      expect(persisted?.creditType, equals(CreditType.items));
+    });
+
     test('binds the pledged collateral items to the new credit', () async {
       final credit = await createAgreement(
         collateralItemIds: const [itemId, secondItemId],
@@ -486,7 +505,7 @@ void main() {
       // PRD FR-31 category 2 is "Credit agreement origination".
       expect(payload['auditCategory'], equals(2));
       expect(payload['auditEvent'], equals('credit_agreement_origination'));
-      // The actor, credit reference, principal amount and timestamp are preserved.
+      // The actor, credit reference, amount and timestamp are preserved.
       expect(payload['actorId'], equals(cashier.id));
       expect(payload['creditId'], equals(credit.id));
       expect(payload['principalCents'], equals(750000));

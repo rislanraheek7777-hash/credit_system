@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<!--
+  Credit Details — Web counter terminal key screen (Flutter Web, light)
+  Governing spine sections:
+    EXPERIENCE.md → Information Architecture (Credit Details row), Component Patterns
+      (Payment, Overdue queue notes), State Patterns, Responsive & Platform (web counter:
+      two-column, max 1200px), Permission-Aware UI (PII masked, actions RBAC-gated)
+    DESIGN.md → Colors, Typography, Components, Layout & Spacing (two-column web), Elevation & Depth
+  Spine wins on conflict. Canonical state shown: Active credit, items In Custody, one follow-up note.
+  PII shown masked per permission-aware UI rules for non-owner staff.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Credit Details — #LN-1042 (Web Counter)</title>
+<style>
+  :root{
+    --surface-base:#F5F7FA; --surface-raised:#FFFFFF; --surface-sunken:#EEF1F5;
+    --ink-primary:#1A2332; --ink-secondary:#5B6573; --ink-disabled:#9AA3AF;
+    --accent:#1565C0; --accent-hover:#0D47A1; --accent-soft:#E3ECF7;
+    --border-hairline:#D9DEE5; --border-strong:#B0B8C4;
+    --success:#2E7D32; --success-soft:#E8F5E9;
+    --warning:#EF6C00; --warning-soft:#FFF3E0;
+    --danger:#C62828; --danger-soft:#FFEBEE;
+    --mono:'JetBrains Mono','Roboto Mono',monospace;
+    --sans:Inter,Roboto,system-ui,sans-serif;
+    --sh:0 2px 8px rgba(0,0,0,.06);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:var(--sans);}
+  body{background:var(--surface-base);min-height:100vh;}
+  /* Top app bar */
+  .appbar{background:var(--accent);color:#fff;display:flex;align-items:center;gap:16px;padding:0 24px;height:56px;}
+  .appbar .brand{font-size:15px;font-weight:600;}
+  .appbar .brand span{font-weight:400;opacity:.85;font-size:12px;margin-left:8px;}
+  .appbar .staff{margin-left:auto;font-size:13px;opacity:.95;display:flex;align-items:center;gap:10px;}
+  .avatar-sm{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+  .layout{display:flex;min-height:calc(100vh - 56px);}
+  /* Sidebar */
+  .sidebar{width:220px;background:var(--surface-raised);border-right:1px solid var(--border-hairline);padding:16px 12px;display:flex;flex-direction:column;gap:2px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;font-size:14px;color:var(--ink-secondary);text-decoration:none;min-height:44px;}
+  .nav-item:hover{background:var(--surface-sunken);}
+  .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+  .nav-item .ic{width:20px;text-align:center;}
+  /* Main */
+  .main{flex:1;padding:24px;max-width:1200px;margin:0 auto;width:100%;}
+  .crumbs{font-size:12px;color:var(--ink-secondary);margin-bottom:8px;}
+  .crumbs a{color:var(--accent);text-decoration:none;}
+  .title-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  h1{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--ink-primary);}
+  .spacer{margin-left:auto;display:flex;gap:8px;}
+  .badge{display:inline-flex;align-items:center;gap:6px;border-radius:9999px;padding:4px 12px;font-size:12px;font-weight:600;}
+  .badge.success{background:var(--success-soft);color:var(--success);}
+  .badge.warning{background:var(--warning-soft);color:var(--warning);}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;min-height:44px;padding:10px 20px;font-size:14px;font-weight:600;border:none;cursor:pointer;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-secondary{background:#fff;color:var(--accent);border:1px solid var(--border-hairline);}
+  .btn-danger{background:#fff;color:var(--danger);border:1px solid var(--danger);}
+  .grid{display:grid;grid-template-columns:7fr 5fr;gap:20px;}
+  .col{display:flex;flex-direction:column;gap:20px;}
+  .card{background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:16px;padding:20px;box-shadow:var(--sh);}
+  .card h2{font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-secondary);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+  .card h2 .count{background:var(--surface-sunken);border-radius:9999px;padding:1px 10px;font-size:11px;color:var(--ink-primary);letter-spacing:0;text-transform:none;}
+  /* Hero */
+  .hero .amount{font-family:var(--mono);font-size:40px;font-weight:700;color:var(--ink-primary);margin:4px 0 10px;}
+  .hero .amount small{font-size:16px;color:var(--ink-secondary);font-weight:400;}
+  .progress{height:8px;background:var(--surface-sunken);border-radius:9999px;overflow:hidden;}
+  .progress > div{height:100%;width:55%;background:var(--accent);border-radius:9999px;}
+  .paid{font-size:12px;color:var(--ink-secondary);margin:6px 0 14px;}
+  .meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-top:1px solid var(--border-hairline);padding-top:14px;}
+  .meta-grid span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-disabled);margin-bottom:2px;}
+  .meta-grid strong{font-size:13px;font-family:var(--mono);font-weight:500;color:var(--ink-primary);}
+  /* Item receipts */
+  .items{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .item{border:1px solid var(--border-hairline);border-radius:12px;padding:12px;display:flex;gap:12px;}
+  .thumb{width:64px;height:64px;border-radius:12px;background:#E8E2D4;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+  .item .t{font-size:13px;font-weight:600;color:var(--ink-primary);}
+  .item .d{font-size:11px;color:var(--ink-secondary);margin:2px 0 6px;line-height:1.4;}
+  .item .val{font-family:var(--mono);font-size:12px;margin-bottom:6px;}
+  /* Payments table */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-disabled);padding:6px 8px;border-bottom:1px solid var(--border-hairline);}
+  th.r,td.r{text-align:right;font-family:var(--mono);}
+  td{padding:10px 8px;border-bottom:1px solid var(--border-hairline);color:var(--ink-primary);}
+  tr:last-child td{border-bottom:none;}
+  td .rcp{font-family:var(--mono);font-size:11px;color:var(--ink-secondary);}
+  /* Notes */
+  .note{border:1px solid var(--border-hairline);border-radius:12px;padding:12px;background:var(--surface-sunken);}
+  .note p{font-size:13px;color:var(--ink-primary);line-height:1.5;}
+  .note .src{font-size:11px;color:var(--ink-secondary);margin-top:6px;font-family:var(--mono);}
+  /* Fine print */
+  .fineprint{font-size:11px;color:var(--ink-disabled);text-align:center;font-family:var(--mono);padding:4px 0 8px;}
+  .disclosure{background:var(--accent-soft);border-radius:12px;padding:10px 14px;font-size:12px;color:var(--accent-hover);}
+</style>
+</head>
+<body>
+<div class="appbar">
+  <div class="brand">Perera Jewellers <span>Credit System</span></div>
+  <div class="staff"><div class="avatar-sm">KA</div> Kasun &middot; Counter Staff</div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar" aria-label="Main navigation">
+    <a class="nav-item" href="#"><span class="ic">&#128202;</span>Dashboard</a>
+    <a class="nav-item" href="#"><span class="ic">&#128100;</span>Customers</a>
+    <a class="nav-item active" href="#" aria-current="page"><span class="ic">&#128179;</span>Credits</a>
+    <a class="nav-item" href="#"><span class="ic">&#9200;</span>Overdue</a>
+    <a class="nav-item" href="#"><span class="ic">&#128196;</span>Reports</a>
+    <a class="nav-item" href="#"><span class="ic">&#9881;</span>Settings</a>
+  </nav>
+
+  <main class="main">
+    <div class="crumbs"><a href="#">Customers</a> / <a href="#">Sunil Fernando</a> / <strong>#LN-1042</strong></div>
+
+    <div class="title-row">
+      <h1>Credit #LN-1042</h1>
+      <span class="badge success">&#9679; Active</span>
+      <span class="badge warning">Due in 16 days &middot; 02 Dec 2026</span>
+      <div class="spacer">
+        <button class="btn btn-secondary">Reprint Ticket</button>
+        <button class="btn btn-primary">Record Payment</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="col">
+        <div class="card hero">
+          <h2>Outstanding Balance</h2>
+          <div class="amount">22,500.00 <small>LKR</small></div>
+          <div class="progress" role="progressbar" aria-valuenow="55" aria-valuemin="0" aria-valuemax="100"><div></div></div>
+          <div class="paid">Paid 27,500.00 of 50,000.00 total principal &middot; zero interest</div>
+          <div class="meta-grid">
+            <div><span>Principal</span><strong>50,000.00</strong></div>
+            <div><span>Disbursed</span><strong>18 Oct 2026</strong></div>
+            <div><span>Disbursed by</span><strong>Kasun</strong></div>
+            <div><span>Created by</span><strong>Kasun &middot; 17 Oct</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Collateral / Item Receipts <span class="count">2 items In Custody</span></h2>
+          <div class="items">
+            <div class="item">
+              <div class="thumb">&#128141;</div>
+              <div>
+                <div class="t">22K Sovereign Necklace</div>
+                <div class="d">Gold/Jewelry &middot; Rope design<br>12.40 g &middot; Good, minor clasp wear</div>
+                <div class="val">Est. 75,000.00 LKR</div>
+                <span class="badge success">&#9679; In Custody</span>
+              </div>
+            </div>
+            <div class="item">
+              <div class="thumb">&#128241;</div>
+              <div>
+                <div class="t">Samsung Galaxy A55</div>
+                <div class="d">Consumer Electronics<br>128 GB &middot; Good, boxed &middot; IMEI on file</div>
+                <div class="val">Est. 120,000.00 LKR</div>
+                <span class="badge success">&#9679; In Custody</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="disclosure">Zero-interest principal tracking. Amounts in LKR, shown from integer minor units. All actions are audit-logged.</div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="col">
+        <div class="card">
+          <h2>Payment History <span class="count">2 receipts</span></h2>
+          <table>
+            <thead><tr><th>Receipt</th><th>Date</th><th class="r">Amount</th><th>By</th><th class="r">Balance</th></tr></thead>
+            <tbody>
+              <tr><td><span class="rcp">#RCP-0088</span></td><td>12 Nov 2026</td><td class="r">&minus;20,000.00</td><td>Kasun</td><td class="r">22,500.00</td></tr>
+              <tr><td><span class="rcp">#RCP-0071</span></td><td>28 Oct 2026</td><td class="r">&minus;7,500.00</td><td>Kasun</td><td class="r">42,500.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Follow-up Notes <span class="count">1</span></h2>
+          <div class="note">
+            <p>&ldquo;Called borrower &mdash; promises settlement by 30 Nov. Reminder set for 29 Nov.&rdquo;</p>
+            <div class="src">16 Nov 2026 &middot; Mr. Perera (Owner)</div>
+          </div>
+        </div>
+
+        <div class="fineprint">Created 17 Oct 2026 &middot; Disbursed 18 Oct 2026 &middot; Audit-logged &middot; #LN-1042</div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

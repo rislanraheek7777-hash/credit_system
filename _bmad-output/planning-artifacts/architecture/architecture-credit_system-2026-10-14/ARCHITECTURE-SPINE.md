@@ -54,6 +54,7 @@ The codebase is structured into isolated, testable layers:
   3. **Atomic Financial Transactions (ACID):**
      - All balance updates, payment postings, reversals, and adjustments must execute within single atomic database transactions.
      - Partial commits are strictly prohibited; any failure rolls back the entire transaction.
+     - Balance adjustments may only be posted from an approved request (staff-proposed → Shop Owner-approved, `approveCorrections`) or by direct Shop Owner execution. Both paths write an immutable `adjustment_debit` / `adjustment_credit` ledger entry in the same atomic transaction as the correction-lock lift; the stored balance is never mutated in place.
   4. **Offline Synchronization & Acknowledgement Semantics:**
      - Every local write operation assigns a client-generated `client_operation_id` (UUIDv4) and unique idempotency key.
      - Local mutations are flagged with a synchronization state: `PendingServerAck` vs. `ConfirmedByServer`.
@@ -69,7 +70,7 @@ The codebase is structured into isolated, testable layers:
      - Customer NIC numbers, residential addresses, and photographic blobs are protected by server-side role-based access control and encrypted in transit (TLS 1.3). Direct unauthenticated media URLs are forbidden.
    8. **Offline Audit Durability (R2 — approved, not yet implemented):**
      - Offline durability is provided by a local, append-only, hash-chained journal in Drift SQLite (see AD-6 rule 7). The journal is a durability mechanism, not a second authority: the central cloud PostgreSQL `audit_events` table remains the authoritative, cryptographically verified record of truth, and every journal entry is reconciled to it on synchronization.
-     - Cash disbursement and cancellation of an undisbursed agreement are **permitted while offline**: the business mutation and its journal entry are written in the same local ACID transaction; the agreement state transitions immediately in the local database and the event is marked `Pending Server Confirmation` until server acknowledgement. Other high-risk administrative actions (approving corrections, due-date extensions, administrative closures) remain locked offline per AD-6 rule 8.
+     - Cash disbursement and cancellation of an undisbursed agreement are **permitted while offline**: the business mutation and its journal entry are written in the same local ACID transaction; the agreement state transitions immediately in the local database and the event is marked `Pending Server Confirmation` until server acknowledgement. Other high-risk administrative actions (approving corrections, approving balance adjustments, due-date extensions, administrative closures) remain locked offline per AD-6 rule 8.
      - Reconciliation: on connectivity, each `PendingServerAck` journal entry is appended to `audit_events` by the server-side audit writer (Story 1.3 / 1.8); a rejected entry is surfaced as `failed` with `lastError` and is never silently dropped; an entry is removed from the local journal only after server acknowledgement. A device lost before synchronization leaves a permanent gap, which FR-32's RPO does not cover; this is an accepted risk of the offline-first model.
 
 ### AD-2 — Integer Minor Units with Immutable Money Value Object [ADOPTED]
@@ -168,7 +169,7 @@ The codebase is structured into isolated, testable layers:
      - Action buttons triggering financial operations (credit creation, disbursement, payment) must observe `AsyncValue.isLoading`.
      - Submissions generate a client-side idempotency UUID on first tap and lock the UI controller until confirmed or rejected.
   5. **Credit Correction Lock:**
-     - When a credit has an active correction pending owner review, the credit detail controller must expose a `isPaymentLocked` state that blocks payment inputs specifically for that credit.
+     - When a credit has an active correction pending owner review, the credit detail controller must expose a `isPaymentLocked` state that blocks payment inputs specifically for that credit. The same `isPaymentLocked` state applies while a staff-proposed balance adjustment (FR-22) is pending Shop Owner approval, and approving an adjustment is a high-risk administrative action locked while offline (AD-6 rule 8).
 
 ### AD-4 — Feature-First Clean Architecture & Inward Dependency Rules [ADOPTED]
 

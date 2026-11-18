@@ -7,15 +7,11 @@ import 'package:credit_system/features/customers/presentation/customer_search_sc
 import 'package:credit_system/features/customers/presentation/credit_details_screen.dart';
 import 'package:credit_system/features/dashboard/data/services/dashboard_metrics_service.dart';
 import 'package:credit_system/features/dashboard/domain/models/dashboard_metrics.dart';
-import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
-import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
-import 'package:credit_system/features/customers/domain/models/credit.dart';
-import 'package:credit_system/features/customers/domain/models/customer.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
-import 'package:credit_system/core/money/money.dart';
-import 'package:credit_system/core/presentation/loading_screen.dart';
 import 'package:credit_system/core/data/remote/postgres_executor.dart';
 import 'package:credit_system/core/data/secure_storage.dart';
+import 'package:credit_system/core/money/money.dart';
+import 'package:credit_system/core/presentation/loading_screen.dart';
 import 'package:credit_system/features/auth/data/daos/user_dao.dart';
 import 'package:credit_system/features/auth/data/services/auth_service.dart';
 import 'package:credit_system/features/auth/data/services/jwt_service.dart';
@@ -155,10 +151,6 @@ class _DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<_DashboardPage> {
   late final DashboardMetricsService _metricsService;
   late Stream<DashboardMetrics> _metricsStream;
-  late final CreditDao _creditDao;
-  late final CustomerDao _customerDao;
-  late Stream<List<Credit>> _creditsStream;
-  Map<int, Customer> _customersById = {};
 
   @override
   void initState() {
@@ -166,18 +158,6 @@ class _DashboardPageState extends State<_DashboardPage> {
     final database = widget.database ?? AppDatabase();
     _metricsService = DashboardMetricsService(database);
     _metricsStream = _metricsService.watchMetrics(widget.shopId);
-    _creditDao = CreditDao(database);
-    _customerDao = CustomerDao(database);
-    _creditsStream = _creditDao.watchCreditsByShopId(widget.shopId);
-    _loadCustomers();
-  }
-
-  Future<void> _loadCustomers() async {
-    final customers = await _customerDao.getCustomersByShopId(widget.shopId);
-    if (!mounted) return;
-    setState(() {
-      _customersById = {for (var c in customers) c.id: c};
-    });
   }
 
   @override
@@ -349,84 +329,6 @@ class _DashboardPageState extends State<_DashboardPage> {
                           const SizedBox(height: 12),
                       ],
                     ],
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Active Credits',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  StreamBuilder<List<Credit>>(
-                    stream: _creditsStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Text('Error: ${snapshot.error}');
-                      }
-                      if (!snapshot.hasData) {
-                        return const SizedBox.shrink();
-                      }
-                      final allCredits = snapshot.data!;
-                      final activeCredits = allCredits
-                          .where(
-                            (c) =>
-                                (c.status == CreditStatus.active ||
-                                    c.status == CreditStatus.overdue) &&
-                                (c.workflowStatus ==
-                                        CreditWorkflowStatus.pendingDisbursement ||
-                                    c.workflowStatus ==
-                                        CreditWorkflowStatus.disbursed ||
-                                    c.workflowStatus ==
-                                        CreditWorkflowStatus.overdue),
-                          )
-                          .toList()
-                        ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
-                      if (activeCredits.isEmpty) {
-                        return const Text(
-                          'No active credits',
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
-                        );
-                      }
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (final credit in activeCredits) ...[
-                            Card(
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  child: Text(
-                                    credit.id.substring(0, 2).toUpperCase(),
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                                title: Text(
-                                  _customersById[credit.customerId]?.fullName ??
-                                      'Customer ${credit.customerId}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                        'Principal: ${formatCurrency(credit.principalCents)}'),
-                                    Text(
-                                        'Balance: ${formatCurrency(credit.balanceCents)}'),
-                                    Text(
-                                        'Status: ${credit.status.value}'),
-                                    Text(
-                                        'Due: ${credit.dueDate.toLocal().toString().substring(0, 10)}'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        ],
-                      );
-                    },
                   ),
                 ],
               ),
