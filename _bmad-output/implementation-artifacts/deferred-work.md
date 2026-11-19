@@ -182,22 +182,67 @@
   summary: `AdjustmentProposalScreen`/`CorrectionDao.requestCorrection` for a credit-adjustment proposal accepts cancellation-state credits and pending-disbursement workflows as "forgivable"; see also the zero-balance-at-full-forgiveness edge.
   evidence: Edge-case review of the in-flight Story 5.6 change-set surfaced during the soft-delete review (`correction_dao.dart:543-556`); full-forgiveness proposals must settle, never strand, the credit.
 
-- source_spec: \spec-settings-bottom-navigation.md\
-  summary: The Audit Log Viewer (\lib/features/audit/presentation/audit_trail_viewer_screen.dart\, gated by AppPermission.viewAuditLogs) still has no entry point from the Settings hub, though the UX spine routes it through Settings (permission-gated).
+
+- source_spec: `spec-settings-bottom-navigation.md`
+  summary: The Audit Log Viewer (`lib/features/audit/presentation/audit_trail_viewer_screen.dart`, gated by AppPermission.viewAuditLogs) still has no entry point from the Settings hub, though the UX spine routes it through Settings (permission-gated).
   evidence: Blind-hunter review of the Settings bottom-nav change; pre-existing omission, not caused by the change. Adding it is a new permission-gated tile + wiring, beyond the approved scope.
 
-- source_spec: \spec-settings-bottom-navigation.md\
-  summary: MainApp rebuilds \pages[_selectedIndex]\ on every tab switch, destroying tab state (e.g. Customers search text/scroll); consider IndexedStack/keep-alive and hoisting per-tab page construction out of build().
+- source_spec: `spec-settings-bottom-navigation.md`
+  summary: MainApp rebuilds `pages[_selectedIndex]` on every tab switch, destroying tab state (e.g. Customers search text/scroll); consider IndexedStack/keep-alive and hoisting per-tab page construction out of build().
   evidence: Blind-hunter review; pre-existing mount policy shared by all four tabs. Switching to keep-alive changes eager-load behavior (e.g. customers list would load before first visit) and needs an explicit decision, not a drive-by fix.
 
-- source_spec: \spec-settings-bottom-navigation.md\
+- source_spec: `spec-settings-bottom-navigation.md`
   summary: The Settings dark-mode toggle (appThemeMode ValueNotifier) is session-only and resets to light on restart; persist the choice (e.g. via shop settings or preferences storage).
   evidence: Blind-hunter review; pre-existing. Persistence is a small feature needing a storage decision and is out of scope for the bottom-nav move.
 
-- source_spec: \spec-settings-bottom-navigation.md\
-  summary: Verify the 4-destination NavigationBar (long \Credit Details\ label) renders acceptably at ~320px widths and with large text scaling; destinations now carry stable ValueKeys for selection.
+- source_spec: `spec-settings-bottom-navigation.md`
+  summary: Verify the 4-destination NavigationBar (long `Credit Details` label) renders acceptably at ~320px widths and with large text scaling; destinations now carry stable ValueKeys for selection.
   evidence: Blind-hunter review (low); no release-blocker evidence either way; needs a small widget test or manual check on a narrow viewport.
 
-- source_spec: \spec-settings-bottom-navigation.md\
+- source_spec: `spec-settings-bottom-navigation.md`
   summary: AGENTS.md's project-structure map and features/ listing omit the settings/ feature module (now a first-class bottom-nav destination).
   evidence: Blind-hunter review; AGENTS.md is maintained by bmad-project-context, so the refresh belongs there rather than in this change.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: The UX spine (`EXPERIENCE.md` IA row `Balance Adjustment Proposal`, `Credit Details / settle flow`) promises an adjustment-proposal entry point on profile credit cards and/or Credit Details, but entry points exist only in the payment screen and the settle sheet.
+  evidence: Blind-hunter finding in the settle-button review; this build's frozen intent does not cover it. Route to the Story 5.6 review: add the entry as part of 5.6's UI or amend the IA row.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: FR-22's amended promise ("amount and direction ... or the desired new effective balance from which the system derives the delta") is only half-implemented: `AdjustmentProposalScreen` supports amount + direction; the derive-delta input exists nowhere.
+  evidence: Blind-hunter finding in the settle-button review; PRD vs code divergence for Story 5.6. Implement the derived-delta input in 5.6 or amend FR-22 before it ships.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: Customer search shows a stale name/phone after an in-place customer edit until a soft-delete refreshes the list - the search screen reloads only on a `true` pop (soft-delete), ignoring edits made deeper in the stack.
+  evidence: Blind-hunter finding in the settle-button review; pre-existing pop-contract from the soft-delete story. Fix requires a refresh contract decision (e.g. profile pops `true` after any save) spanning search and profile.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: Dashboard quick-action cards (New Credit / Record Payment) are not permission-gated; under-privileged staff (or a deactivated owner) are routed into flows they cannot complete.
+  evidence: Edge-case finding in the settle-button review; pre-existing gap in the dashboard quick-action surface added with dashboard live metrics. Gate each card by `hasPermission`/`isActive` as a scoped follow-up.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: Migration steps v23-v27 silently skip constraint work (or the leg mortar entirely) when legacy tables are absent or unreadable, and the v25 `ALTER TABLE ADD COLUMN direction` carries no CHECK constraint on upgraded databases (fresh installs get `CHECK (direction IN ('debit','credit'))`).
+  evidence: Edge-case findings in the settle-button review; direction drift documented at the workaround site (`app_database.dart`). Silent skips mark the schema v27 with invariants unenforced; a fail-fast abort is the correct posture but belongs to a migration-hardening change, not this story.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: `requestCorrection` accepts a proposal whose amount exceeds the credit's outstanding balance; failure surfaces only at owner approval via `resulting_balance_cents < 0`.
+  evidence: Edge-case finding in the settle-button review; the proposal path should reject over-balance proposals at submit time (or prefill max = outstanding) so the owner never sees an impossible approval.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: `CreditType.fromValue` throws `ArgumentError` on any unknown legacy/foreign stored `credit_type`, crashing every credit read (lists, dashboard SQL companions, pickers) wholesale for affected tenants.
+  evidence: Edge-case finding in the settle-button review; upgraded databases carrying out-of-catalog values have no tolerant fallback. A log + `unknown` fallback (or column-level clamp) belongs in the migration story's scope.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: `CollateralRegistrationScreen` lacks a `mounted` guard in its catch path and has no guard against popping mid-insert - a back-out during `createCollateralItem` can leave a committed item with no result, silently orphaned (no confirmation, no receipt).
+  evidence: Edge-case findings in the settle-button review; files owned by the collateral-return story (bbfb913), pre-existing, not touched by this build. Needs a `mounted` guard plus `PopScope`-style confirmation as a small standalone fix.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: `Amount (LKR)` label (and `Rs.` formats generally) ignore the shop's configured `currencyCode`; amounts render `Money.format()` at `LKR` everywhere regardless of shop settings.
+  evidence: Blind-hunter finding in the settle-button review; needs an app-wide currency-threading decision (a single-screen fix creates a locally-correct, globally-inconsistent surface).
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: "Principal" was renamed to "Amount" across ~10 surfaces (payment screen, origination, dashboard, profile cards, document content, settle copy) while PRD, epics, the UX spine and mockups still say "Principal" - terminology drift with no artifact amendment.
+  evidence: Blind-hunter finding in the settle-button review; correct-course (PRD/epics/UX/glossary) must either ratify the rename or revert the code to canonical terms.
+
+- source_spec: `spec-credit-settle-button-customer-profile.md`
+  summary: The multi-credit selection dialog was deleted from the customer profile without a spine amendment; `EXPERIENCE.md` still mandates "Multi-select credit: explicit selection dialog when >1 actionable credit", and tapping any card now routes straight to `PaymentScreen` for that card.
+  evidence: Blind-hunter finding in the settle-button review; change staged "per human instruction" (bbfb913 commit message) but no artifact renegotiates the spine rule. Needs a correct-course decision: amend the spine to "per-card routing" or restore the dialog for >1 actionable credits.

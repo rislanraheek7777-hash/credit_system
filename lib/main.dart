@@ -25,6 +25,7 @@ import 'package:credit_system/features/settings/presentation/settings_screen.dar
 const int _dashboardTabIndex = 0;
 const int _customersTabIndex = 1;
 const int _creditDetailsTabIndex = 2;
+const int _settingsTabIndex = 3;
 
 /// Main application shell shown after authentication.
 /// Uses a scaffold with a bottom navigation bar for switching between
@@ -106,8 +107,12 @@ class _MainAppState extends State<MainApp> {
       dashboardPage, // _dashboardTabIndex
       customersPage, // _customersTabIndex
       creditDetailsPage, // _creditDetailsTabIndex
-      settingsPage, // index 3 (Settings)
+      settingsPage, // _settingsTabIndex
     ];
+
+    // Settings ships as the trailing bottom-nav destination tied to
+    // _settingsTabIndex; fail fast in debug if the lists drift apart.
+    assert(_settingsTabIndex == pages.length - 1);
 
     return Scaffold(
       body: pages[_selectedIndex],

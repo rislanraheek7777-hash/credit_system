@@ -214,8 +214,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
 
+    // Reset the double-tap guard unconditionally; if the route unmounted
+    // while the dialog was open, setState would be illegal but the guard
+    // must not stay latched.
+    _logoutInFlight = false;
     if (!context.mounted) return;
-    setState(() => _logoutInFlight = false);
     if (confirmed != true) return;
 
     // Leave settings before the session is cleared so the login screen is

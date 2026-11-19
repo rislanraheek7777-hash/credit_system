@@ -7,6 +7,7 @@ import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
+import 'package:credit_system/features/customers/presentation/payment_screen.dart';
 
 Future<void> insertCredit(AppDatabase db, Credit credit) async {
   await db.into(db.credits).insert(CreditsCompanion(
@@ -30,12 +31,10 @@ Future<void> insertCredit(AppDatabase db, Credit credit) async {
 }
 
 void main() {
-  testWidgets('Multi-credit selection dialog appears for multiple credits', (
-    WidgetTester tester,
-  ) async {
-    final inMemoryExecutor = AppDatabaseConnection.openInMemoryConnection();
-    final db = AppDatabase.forTesting(inMemoryExecutor);
-
+  Future<AppDatabase> seedTwoCredits({String role = 'manager'}) async {
+    final db = AppDatabase.forTesting(
+      AppDatabaseConnection.openInMemoryConnection(),
+    );
     const shopId = 'shop-123';
     const customerId = 1;
 
@@ -68,7 +67,7 @@ void main() {
         shopId: shopId,
         username: 'testuser',
         fullName: 'Test User',
-        role: 'manager',
+        role: role,
         isActive: true,
         sessionVersion: 1,
         createdAt: now,
@@ -103,137 +102,92 @@ void main() {
         createdAt: now,
       ),
     );
+    return db;
+  }
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CustomerProfileScreen(
-          shopId: shopId,
-          customerId: customerId,
-          database: db,
-          currentUser: AppUser(
-            id: 'user-1',
-            shopId: shopId,
-            username: 'testuser',
-            fullName: 'Test User',
-            role: AppRole.manager,
-            isActive: true,
-          ),
+  Widget profileFor(AppDatabase db, String role) {
+    return MaterialApp(
+      home: CustomerProfileScreen(
+        shopId: 'shop-123',
+        customerId: 1,
+        database: db,
+        currentUser: AppUser(
+          id: 'user-1',
+          shopId: 'shop-123',
+          username: 'testuser',
+          fullName: 'Test User',
+          role: AppRole.values.byName(role),
+          isActive: true,
         ),
       ),
     );
+  }
+
+  testWidgets('tapping an eligible credit card opens payment recording for that card', (
+    WidgetTester tester,
+  ) async {
+    final db = await seedTwoCredits();
+
+    await tester.pumpWidget(profileFor(db, 'manager'));
     await tester.pumpAndSettle();
 
     expect(find.text('Active (1)'), findsOneWidget);
     expect(find.text('Overdue (1)'), findsOneWidget);
 
-    // Tap on the active credit - should open selection dialog since there are
-    // multiple actionable credits
-    await tester.tap(find.text('Credit credit-1...').first);
+    // Tap the overdue card - payment recording opens for credit-2, not credit-1.
+    await tester.ensureVisible(find.text('Credit credit-2...').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Credit credit-2...').first);
     await tester.pumpAndSettle();
 
-    // Selection dialog should appear
-    expect(find.text('Select Credit'), findsOneWidget);
-    expect(find.text('Credit credit-1...'), findsAtLeast(1));
-    expect(find.text('Credit credit-2...'), findsAtLeast(1));
-
-    // Tap cancel - should dismiss dialog without action
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Select Credit'), findsNothing);
+    expect(find.byType(PaymentScreen), findsOneWidget);
+    expect(
+      tester.widget<PaymentScreen>(find.byType(PaymentScreen)).creditId,
+      'credit-2',
+    );
 
     await db.close();
   });
 
-  testWidgets('Single credit does not show selection dialog', (
+  testWidgets('tapping the active card opens payment recording for that card', (
     WidgetTester tester,
   ) async {
-    final inMemoryExecutor = AppDatabaseConnection.openInMemoryConnection();
-    final db = AppDatabase.forTesting(inMemoryExecutor);
+    final db = await seedTwoCredits();
 
-    const shopId = 'shop-123';
-    const customerId = 1;
-
-    final now = DateTime.now().toUtc();
-    await db.into(db.shops).insert(
-      ShopEntry(
-        id: shopId,
-        name: 'Test Shop',
-        currencyCode: 'LKR',
-        timezone: 'Asia/Colombo',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    await db.into(db.customers).insert(
-      CustomerEntry(
-        id: customerId,
-        shopId: shopId,
-        fullName: 'Sunil Perera',
-        nic: '851234567V',
-        phone: '0771234567',
-        address: '1 Main St, Colombo',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    await db.into(db.appUsers).insert(
-      AppUserEntry(
-        id: 'user-1',
-        shopId: shopId,
-        username: 'testuser',
-        fullName: 'Test User',
-        role: 'manager',
-        isActive: true,
-        sessionVersion: 1,
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    await insertCredit(db,
-      Credit(
-        id: 'credit-1',
-        shopId: shopId,
-        customerId: customerId,
-        principalCents: 500000,
-        balanceCents: 300000,
-        status: CreditStatus.active,
-        // Story 4.1: only disbursed credits are payment-actionable.
-        workflowStatus: CreditWorkflowStatus.disbursed,
-        dueDate: now.add(const Duration(days: 30)),
-        createdAt: now,
-      ),
-    );
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CustomerProfileScreen(
-          shopId: shopId,
-          customerId: customerId,
-          database: db,
-          currentUser: AppUser(
-            id: 'user-1',
-            shopId: shopId,
-            username: 'testuser',
-            fullName: 'Test User',
-            role: AppRole.manager,
-            isActive: true,
-          ),
-        ),
-      ),
-    );
+    await tester.pumpWidget(profileFor(db, 'manager'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Active (1)'), findsOneWidget);
-
-    // Tap on the single credit - no selection dialog should appear
-    await tester.tap(find.text('Credit credit-1...'));
+    await tester.tap(find.text('Credit credit-1...').first);
     await tester.pumpAndSettle();
 
-    // Selection dialog should NOT appear
-    expect(find.text('Select Credit'), findsNothing);
+    expect(find.byType(PaymentScreen), findsOneWidget);
+    expect(
+      tester.widget<PaymentScreen>(find.byType(PaymentScreen)).creditId,
+      'credit-1',
+    );
+
+    await db.close();
+  });
+
+  testWidgets('a recordPayments-less actor is told why the tile is inert', (
+    WidgetTester tester,
+  ) async {
+    final db = await seedTwoCredits(role: 'custom');
+
+    await tester.pumpWidget(profileFor(db, 'custom'));
+    await tester.pumpAndSettle();
+
+    // Custom role holds no permissions; the tile gives feedback rather than
+    // navigating or dead-ending silently.
+    await tester.tap(find.text('Credit credit-1...').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaymentScreen), findsNothing);
+    expect(
+      find.text('You do not have permission to record payments.'),
+      findsOneWidget,
+    );
 
     await db.close();
   });
 }
-

@@ -11,6 +11,7 @@ import 'package:credit_system/features/dashboard/data/services/dashboard_metrics
 import 'package:credit_system/features/dashboard/domain/models/dashboard_metrics.dart';
 import 'package:credit_system/features/shop/data/daos/shop_dao.dart';
 import 'package:credit_system/features/shop/domain/models/shop_profile.dart';
+import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -304,6 +305,39 @@ void main() {
 
       final metrics = await service.loadMetrics(shopAlphaId);
       expect(metrics.overdueCents, 30000 + 12000);
+    });
+
+    test('overdue boundary: due at local midnight today is not yet overdue', () async {
+      final zone = ShopTimeZone.defaultTimeZone();
+      final nowUtc = DateTime.now().toUtc();
+      final dueToday = zone.instantAtStartOfDay(zone.localDateOf(nowUtc));
+      final dueYesterday = dueToday.subtract(const Duration(days: 1));
+
+      await addCredit(
+        id: 'alpha-boundary-today',
+        shopId: shopAlphaId,
+        customerId: alphaCustomerOneId,
+        principalCents: 20000,
+        balanceCents: 20000,
+        status: CreditStatus.active,
+        workflowStatus: CreditWorkflowStatus.disbursed,
+        dueDate: dueToday,
+      );
+      await addCredit(
+        id: 'alpha-boundary-yesterday',
+        shopId: shopAlphaId,
+        customerId: alphaCustomerOneId,
+        principalCents: 15000,
+        balanceCents: 15000,
+        status: CreditStatus.active,
+        workflowStatus: CreditWorkflowStatus.disbursed,
+        dueDate: dueYesterday,
+      );
+
+      final metrics = await service.loadMetrics(shopAlphaId);
+      // Baseline (30000 from alpha-overdue) counts the past-due credit only;
+      // the credit due exactly at local midnight today is not overdue.
+      expect(metrics.overdueCents, 30000 + 15000);
     });
 
     test('re-emits when customers, staff, and credits are added', () async {

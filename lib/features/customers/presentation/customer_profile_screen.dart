@@ -288,6 +288,22 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
   }
 
+  /// Routes a credit-card tap to payment recording, or explains why the
+  /// actor cannot record payments. Gives feedback either way; an inert tile
+  /// with no splash would look interactive but dead-end silently.
+  void _creditTileTap(BuildContext context, Credit credit) {
+    if (!widget.currentUser.hasPermission(AppPermission.recordPayments)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You do not have permission to record payments.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    _proceedToCreditAction(context, credit);
+  }
+
   void _proceedToCreditAction(BuildContext context, Credit credit) {
     // Navigate to payment screen for eligible credits (disbursed, active/overdue,
     // balance > 0). For other credit states, show a snackbar.
@@ -365,7 +381,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   /// SnackBar. Backing out without submitting returns no result, so no
   /// confirmation is shown.
   Future<void> _openAddCredit() async {
-    // ignore: unused_local_variable
     final created = await Navigator.of(context).push<Credit>(
       MaterialPageRoute(
         builder: (context) => CreditOriginationScreen(
@@ -385,41 +400,65 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     if (!mounted) return;
 
     // No result means the user backed out without creating anything.
+    if (created == null) return;
+
+    // Confirm the creation so the staff member knows the agreement exists.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Credit agreement created. Preliminary due date: '
+          '${created.dueDateAsCalendarDate(_shopTimeZone)}.',
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   /// Opens the customer edit screen for profile updates.
   /// Available when the staff member has [registerCustomers] permission.
   Future<void> _openEditCustomer() async {
+    // Prefer the injected database; close it ourselves only if we opened it.
+    final openedByMe = widget.database == null;
     final db = widget.database ?? AppDatabase();
     final customerDao = CustomerDao(db);
-    final customer = await customerDao.getCustomerById(
-      widget.shopId,
-      widget.customerId,
-    );
+    try {
+      final customer = await customerDao.getCustomerById(
+        widget.shopId,
+        widget.customerId,
+      );
 
-    if (customer == null) {
+      if (customer == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Customer not found'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Customer not found'),
-          duration: Duration(seconds: 2),
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => CustomerEditScreen(
+            shopId: widget.shopId,
+            customer: customer,
+            currentUser: widget.currentUser,
+            database: widget.database,
+          ),
         ),
       );
-      return;
+
+      // The edit form may have saved new details; reload so they render.
+      if (!mounted) return;
+      await _loadProfile(showLoading: false);
+    } finally {
+      if (openedByMe) {
+        await db.close();
+      }
     }
-
-    if (!mounted) return;
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => CustomerEditScreen(
-          shopId: widget.shopId,
-          customer: customer,
-          currentUser: widget.currentUser,
-          database: widget.database,
-        ),
-      ),
-    );
   }
 
   /// Shows a confirmation dialog and, if confirmed, soft-deletes this
@@ -684,9 +723,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 credits: activeCredits,
                 color: Colors.green,
                 shopTimeZone: _shopTimeZone,
-                onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
-                    ? _proceedToCreditAction(context, credit)
-                    : null,
+                onTap: (credit) => _creditTileTap(context, credit),
                 onSettle: (credit) => _settleCredit(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
@@ -698,9 +735,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 credits: overdueCredits,
                 color: Colors.orange,
                 shopTimeZone: _shopTimeZone,
-                onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
-                    ? _proceedToCreditAction(context, credit)
-                    : null,
+                onTap: (credit) => _creditTileTap(context, credit),
                 onSettle: (credit) => _settleCredit(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
@@ -712,9 +747,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 credits: settledCredits,
                 color: Colors.grey,
                 shopTimeZone: _shopTimeZone,
-                onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
-                    ? _proceedToCreditAction(context, credit)
-                    : null,
+                onTap: (credit) => _creditTileTap(context, credit),
                 onSettle: (credit) => _settleCredit(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,

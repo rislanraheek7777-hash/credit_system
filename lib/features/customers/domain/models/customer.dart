@@ -29,7 +29,7 @@ class SharedPhoneDuplicateException implements Exception {
 
 /// Clean architecture domain entity representing a borrower customer profile (Story 2.1).
 ///
-/// A soft-deleted customer (see `deletedAt`) retains its row for audit/FX
+/// A soft-deleted customer (see `deletedAt`) retains its row for audit
 /// integrity but is hidden from all lists, search and pickers, and can no
 /// longer register or mutate through this entity. The NIC it holds cannot be
 /// reused.

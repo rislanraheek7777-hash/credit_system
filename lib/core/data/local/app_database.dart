@@ -1034,6 +1034,12 @@ class AppDatabase extends _$AppDatabase {
           (row) => row.read<String>('name') == 'direction',
         );
         if (tableExists && !hasDirection) {
+          // Intentional constraint drift on the upgrade path: fresh
+          // installs carry CHECK (direction IN ('debit', 'credit')) via the
+          // table definition, but ALTER TABLE ADD COLUMN cannot attach a
+          // CHECK here. Direction values are enforced at the app layer
+          // (CorrectionDao / proposal validation); do not "fix" this by
+          // adding the constraint inline.
           await customStatement(
             'ALTER TABLE "credit_corrections" '
             "ADD COLUMN \"direction\" TEXT NOT NULL DEFAULT 'debit'",

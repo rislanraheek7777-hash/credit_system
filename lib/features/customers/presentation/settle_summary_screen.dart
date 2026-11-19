@@ -203,15 +203,9 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
       widget.currentUser.effectivePermissions
           .contains(AppPermission.requestCorrections);
 
-  /// Whether the actor may review (approve/reject) corrections.
-  bool get _canReviewCorrections =>
-      widget.currentUser.isActive &&
-      widget.currentUser.role == AppRole.shopOwner &&
-      widget.currentUser.effectivePermissions
-          .contains(AppPermission.approveCorrections);
-
-  /// Whether the actor may adjust credit balances.
-  bool get _canAdjustBalance =>
+  /// Whether the actor may approve (or directly execute) balance adjustments
+  /// and correction resolutions.
+  bool get _canApproveCorrections =>
       widget.currentUser.isActive &&
       widget.currentUser.role == AppRole.shopOwner &&
       widget.currentUser.effectivePermissions
@@ -926,7 +920,7 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
                         ),
                         const SizedBox(height: 12),
                       ],
-                      if (_canReviewCorrections) ...[
+                      if (_canApproveCorrections) ...[
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
@@ -948,7 +942,7 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
                         ),
                         const SizedBox(height: 12),
                       ],
-                      if (_canAdjustBalance) ...[
+                      if (_canApproveCorrections) ...[
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
