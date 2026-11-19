@@ -39,7 +39,6 @@ void main() {
     bool isActive = true,
     String? actorShopId,
     bool canViewSensitive = false,
-    bool isOfflineOnly = false,
   }) {
     return MaterialApp(
       home: CustomerProfileScreen(
@@ -47,7 +46,6 @@ void main() {
         customerId: customerId,
         canViewSensitive: canViewSensitive,
         database: db,
-        isOfflineOnly: isOfflineOnly,
         currentUser: AppUser(
           id: testUserId,
           shopId: actorShopId ?? shopId,
@@ -2000,8 +1998,8 @@ void main() {
       await db.close();
     });
 
-    testWidgets('offline owner is blocked with an offline message and nothing '
-        'is written', (WidgetTester tester) async {
+    testWidgets('owner can delete while offline; the delete is applied '
+        'locally and queued for server sync', (WidgetTester tester) async {
       final db = await openTestDatabase();
       await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
 
@@ -2011,27 +2009,25 @@ void main() {
           shopId: shopId,
           customerId: customerId,
           role: AppRole.shopOwner,
-          isOfflineOnly: true,
         ),
       );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('delete_customer_button')));
       await tester.pumpAndSettle();
+      expect(find.text('Delete Customer'), findsOneWidget);
 
-      expect(
-        find.text(
-          'Offline session. Please log in online to delete a customer.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Delete Customer'), findsNothing);
+      await tester.tap(find.byKey(const Key('delete_customer_confirm_button')));
+      await tester.pumpAndSettle();
+
       final row = await (db.select(
         db.customers,
       )..where((c) => c.id.equals(customerId))).getSingle();
-      expect(row.deletedAt, isNull);
+      expect(row.deletedAt, isNotNull);
       final queue = await db.select(db.syncQueue).get();
-      expect(queue, isEmpty);
+      expect(queue, hasLength(1));
+      expect(queue.single.actionType, 'customer_soft_deleted');
+      expect(queue.single.status, 'pending_server_ack');
 
       await db.close();
     });

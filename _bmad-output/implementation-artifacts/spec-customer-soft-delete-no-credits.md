@@ -25,7 +25,7 @@ context: []
 - Delete action is re-checked server-of-truth style in the DAO/handler layer via `AuthorizationGuard` (owner-administrative pattern), not only by hiding the button in the UI.
 - Audit record written on delete: category 1 (Customer creation and profile edits), `actionType` such as `customer_soft_deleted`, `targetEntityType: customer`, with shop/customer scope — mirror the CreditDao audit + `sync_queue` (`pending_server_ack`) pattern.
 - Deleted customers are excluded from `CustomerDao.searchCustomers`, `getCustomersByShopId`, duplicate-phone/NIC reuse checks as applicable, and any list/picker that reads customers.
-- Delete is blocked while offline (sensitive administrative action; mirror the `requireOnlineSession` / offline-blocked pattern used for corrections).
+- Delete is a local-first write that works offline: the soft delete is applied in the local Drift database and queued in `sync_queue` as `pending_server_ack` (audit category 1, `customer_soft_deleted`), syncing on the next connection. (Renegotiated 2026-11-19 by the human — see Decisions.)
 - After a successful delete, the UI pops back to the search screen (callers pass no result) and the deleted customer no longer appears there.
 
 **Never:**
@@ -41,7 +41,7 @@ context: []
 | Happy path | Owner views customer with zero credits | "Delete customer" button visible; confirm dialog → soft delete succeeds; audit event recorded; navigates back; customer absent from search | N/A |
 | Customer has credits | Any credit row exists (any status) | Delete button disabled or shows blocking explanation; no deletion path reachable | Blocking snackbar/dialog naming the restriction |
 | Non-owner staff | Manager/cashier/custom role | Delete button not rendered | N/A |
-| Offline | Owner, offline session | Delete blocked with an offline message; no local-only destructive write | `requireOnlineSession`-style failure surfaced to UI |
+| Offline | Owner, offline session | Soft delete applied locally; customer gone from local search; audit entry queued `pending_server_ack`; syncs on reconnect | N/A |
 | Already deleted | `deleted_at != null` | Customer never appears in search/lists/pickers | N/A |
 | Confirmation declined | Owner taps delete, cancels | Nothing changes | N/A |
 
@@ -50,6 +50,7 @@ context: []
 1. **Eligibility — A:** Zero credits ever, of any status. Only customers with no financial footprint can be soft-deleted.
 2. **Gate — A:** Shop Owner only, enforced via `AuthorizationGuard.checkOwnerAdministrativeAction` (owner-administrative pattern); no new permission.
 3. **Visibility — A:** Soft-deleted customers are excluded from search, lists, and pickers everywhere; the profile is unreachable in-app.
+4. **Offline behavior — V1 (renegotiated 2026-11-19):** The original decision blocked deletion offline (sensitive-administrative-action rule). The human re-negotiated: deletion now works offline as a local-first write — applied in local Drift immediately, audit entry queued `pending_server_ack`, server syncs on reconnect. The owner gate and zero-credit eligibility still hold; the confirmation dialog now states the sync behavior. Concurrent-credit-on-another-device before sync ack is an accepted limitation (no server-side customers enforcement exists yet).
 
 </frozen-after-approval>
 
@@ -82,7 +83,7 @@ context: []
 - Given a shop owner viewing a customer with zero credit rows of any status, when they tap "Delete customer" and confirm, then the customer row is soft-deleted (`deleted_at` set), an audit event (category 1) is recorded, and the customer no longer appears in search.
 - Given a customer with at least one credit row of any status, when any user opens the profile, then deletion is not possible.
 - Given a non-owner authenticated staff member, when they open any customer profile, then no delete action is rendered.
-- Given an offline session, when the owner attempts deletion, then the operation is blocked with an offline error and nothing is written.
+- Given an offline session, when the owner confirms deletion, then the customer is soft-deleted locally, an audit entry is queued `pending_server_ack`, and the customer no longer appears in local search.
 - Given an existing database at schema v26, when the app upgrades to v27, then the migration applies cleanly and prior data is intact.
 
 ## Implementation Notes
@@ -94,6 +95,7 @@ context: []
 - Implementation subagent accidentally ran `dart format` mid-task and re-styled in-flight 5.6 code, then fully recovered (format-only hunks reverted file-by-file; tree verified identical: full suite +1076 ~7 -6 as before the accident).
 - Review patches (2026-11-19): 4 new DAO/credit/dashboard soft-delete unit tests, mounted search→profile→delete refresh test (search now reloads only when the profile pops `true`), delete button requires `role.isOwner && isActive`, `isOfflineOnly` defaults to `true` (fail-closed), deterministic UUIDv5 sync_queue `entityId`, schema doc comment attribution fixed, option-B NIC fix (domain `Customer.deletedAt` plumbed; duplicate-NIC error/dialog distinguish deleted holders; PII hidden for deleted records; unit test pins it).
 - Final verification: `flutter analyze` → No issues found; full suite `+1084 ~7 -6` (the 6 failures are the same pre-existing HEAD-red tests listed above; +8 new passing tests from the patch round).
+- Offline re-negotiation (2026-11-19): removed the UI offline block, the `isOfflineOnly` plumbing in CustomerSearchScreen/MainApp `_CustomersPage`/CustomerProfileScreen, and the fail-closed default (no longer needed — offline is now supported). Confirmation dialog states the sync behavior. Offline widget test rewritten to assert local soft-delete + `pending_server_ack` queue entry. Known accepted limitation: no server-side customers enforcement yet, so a credit issued on another device before sync ack is not reconciled.
 - Pre-existing failures (NOT this work; all expect UI that HEAD removed, verified: HEAD's customer_profile_screen.dart has 0 matches for 'Credit agreement created' while the test file expects it): 3 failures in test/widget/features/customers/customer_profile_screen_test.dart (credit origination SnackBar x2, Edit action), plus customer_photo_capture_test.dart, multi_credit_selection_test.dart, dashboard_live_metrics_test.dart. `flutter analyze`: No issues found.
 - `drift_migration_v26_test.dart` (untracked, in-flight 5.6) assertions bumped 26->27 with a clarifying note; other prior migration tests bumped mechanically.
 
@@ -139,6 +141,7 @@ context: []
 | E5 | `isOfflineOnly` defaults to `false` — fail-open for any future caller (ECH) | patch | Flip default to `true`; test helper passes `false` to keep online-path tests; threaded production call sites unchanged. |
 | E6 | `_reloadAfterPayment` swallows re-query failure (ECH duplicate of H7) | defer | Story 5.6 in-flight work; appended to deferred-work.md. |
 | E7 | `direction='credit'` + non-null `originalPaymentId` ledgers `compensating_debit` while reducing balance (ECH) | defer | Story 5.6 in-flight work; appended to deferred-work.md. |
+| R-reneg | Human re-negotiated the offline decision (2026-11-19): deletion now allowed offline as a local-first `pending_server_ack` write | patch | The owner gate, confirm dialog, and zero-credit eligibility are unchanged; fail-closed `isOfflineOnly` plumbing removed; offline-block test rewritten to assert local apply + queued sync. |
 
 ## Design Notes
 

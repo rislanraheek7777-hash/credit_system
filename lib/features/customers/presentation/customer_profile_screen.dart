@@ -182,7 +182,6 @@ class CustomerProfileScreen extends StatefulWidget {
     required this.currentUser,
     this.canViewSensitive,
     this.database,
-    this.isOfflineOnly = true,
   });
 
   final String shopId;
@@ -197,12 +196,6 @@ class CustomerProfileScreen extends StatefulWidget {
 
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
-
-  /// Whether the current session was established offline. Sensitive
-  /// administrative actions (such as deleting a customer) are blocked while
-  /// offline. Defaults to `true` so callers that forget to thread the flag
-  /// fail closed instead of silently allowing offline deletes.
-  final bool isOfflineOnly;
 
   @override
   State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
@@ -432,23 +425,12 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   /// Shows a confirmation dialog and, if confirmed, soft-deletes this
   /// customer. The dialog explains the effect before committing, mirroring
   /// the destructive-confirm pattern in `correction_review_screen.dart`.
-  ///
-  /// Blocked while offline (sensitive administrative action): an offline
-  /// message is surfaced and nothing is written. A customer with at least one
-  /// credit row of any status is not eligible and cannot be deleted.
+  /// The soft delete is written locally and queued in `sync_queue`
+  /// (`pending_server_ack`, audit category 1, `customer_soft_deleted`); it
+  /// works offline like every other local-first write and syncs on the next
+  /// connection. A customer with at least one credit row of any status is
+  /// not eligible and cannot be deleted.
   Future<void> _deleteCustomer() async {
-    if (widget.isOfflineOnly) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Offline session. Please log in online to delete a customer.',
-          ),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-
     if (_credits.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -484,6 +466,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               ),
               const Text(
                 'Record an audit event (category 1: customer_soft_deleted).',
+              ),
+              const Text(
+                'Apply locally now and sync to the server on the next '
+                'connection — this works offline.',
               ),
               const SizedBox(height: 12),
               const Text(

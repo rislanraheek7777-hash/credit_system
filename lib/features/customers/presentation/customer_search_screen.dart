@@ -26,7 +26,6 @@ class CustomerSearchScreen extends StatefulWidget {
     required this.currentUser,
     this.database,
     this.onLogout,
-    this.isOfflineOnly = false,
   });
 
   /// The active shop tenant UUID.
@@ -40,11 +39,6 @@ class CustomerSearchScreen extends StatefulWidget {
 
   /// Invoked when the user chooses to log out from the settings screen.
   final VoidCallback? onLogout;
-
-  /// Whether the current session was established offline. Forwarded to the
-  /// customer profile so sensitive administrative actions (soft delete) are
-  /// blocked while offline.
-  final bool isOfflineOnly;
 
   @override
   State<CustomerSearchScreen> createState() => _CustomerSearchScreenState();
@@ -399,7 +393,6 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
                                                 customerId: result.id,
                                                 currentUser: widget.currentUser,
                                                 database: widget.database,
-                                                isOfflineOnly: widget.isOfflineOnly,
                                               ),
                                         ),
                                       ).then((deleted) {

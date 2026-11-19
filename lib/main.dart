@@ -77,7 +77,6 @@ class _MainAppState extends State<MainApp> {
     final customersPage = _CustomersPage(
       shopId: widget.shopId,
       currentUser: widget.currentUser,
-      isOfflineOnly: widget.isOfflineOnly,
       onLogout: _handleLogout,
       database: widget.database,
     );
@@ -539,14 +538,12 @@ class _QuickActionCard extends StatelessWidget {
 class _CustomersPage extends StatelessWidget {
   final String shopId;
   final AppUser currentUser;
-  final bool isOfflineOnly;
   final VoidCallback? onLogout;
   final AppDatabase? database;
 
   const _CustomersPage({
     required this.shopId,
     required this.currentUser,
-    this.isOfflineOnly = false,
     this.onLogout,
     this.database,
   });
@@ -558,7 +555,6 @@ class _CustomersPage extends StatelessWidget {
       currentUser: currentUser,
       onLogout: onLogout,
       database: database,
-      isOfflineOnly: isOfflineOnly,
     );
   }
 }
