@@ -24,11 +24,10 @@ import 'shops_table.dart';
 /// Binds: PRD FR-6, FR-22, FR-23, FR-31; AD-1 (tenant isolation);
 /// AD-2 (integer minor units); Story 5.3 (correction lock).
 ///
-/// NOTE (accounting decision pending): The exact business-rule semantics of
-/// `correctionAmountCents` — whether it represents the full original payment
-/// amount or only the excess over the correct amount — has not been approved.
-/// No compensating financial ledger entry is posted outside this table until
-/// that decision is made. See the Story 5.5 open-decisions record.
+/// NOTE (Story 5.6): For payment-correction reversals the exact meaning of
+/// `correctionAmountCents` (full original payment vs. excess only) is open;
+/// the `direction` column always resolves which way the approved adjustment
+/// moves the balance (`debit` increases it, `credit` decreases it).
 @DataClassName('CreditCorrectionEntry')
 @TableIndex(name: 'idx_credit_corrections_shop_id', columns: {#shopId})
 @TableIndex(name: 'idx_credit_corrections_shop_status', columns: {#shopId, #status})
@@ -58,9 +57,22 @@ class CreditCorrections extends Table {
 
   /// Requested adjustment amount in minor units (cents), strictly positive.
   ///
-  /// Recorded explicitly; the precise business-rule meaning (full original
-  /// payment vs. excess only) is an open accounting decision.
+  /// The direction of the balance movement is recorded explicitly in
+  /// [direction] (resolved by Story 5.6; the Story 5.5 open decision about the
+  /// meaning of this amount is closed for adjustments).
   IntColumn get correctionAmountCents => integer()();
+
+  /// Direction the approved adjustment moves the credit balance.
+  ///
+  /// - `debit`: increases the outstanding balance (a payment-reversal
+  ///   correction, or an owner/staff proposal to charge more, e.g. an
+  ///   undercharge).
+  /// - `credit`: decreases the outstanding balance (a partial forgiveness
+  ///   write-down requested because the customer cannot pay in full).
+  ///
+  /// Legacy rows default to `debit`, preserving the pre-Story-5.6 behaviour
+  /// where approval applied `balance += amount`.
+  TextColumn get direction => text().withDefault(const Constant('debit'))();
 
   /// Mandatory, non-empty business explanation for the correction.
   TextColumn get reason => text().withLength(min: 1)();
@@ -107,6 +119,7 @@ class CreditCorrections extends Table {
   @override
   List<String> get customConstraints => [
     'CHECK (correction_amount_cents > 0)',
+    "CHECK (direction IN ('debit', 'credit'))",
     "CHECK (status IN ('pending_approval', 'approved', 'rejected'))",
     // A mandatory non-empty business explanation is required to request a
     // correction (Story 5.5 AC-1).

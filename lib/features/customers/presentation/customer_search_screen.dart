@@ -26,6 +26,7 @@ class CustomerSearchScreen extends StatefulWidget {
     required this.currentUser,
     this.database,
     this.onLogout,
+    this.isOfflineOnly = false,
   });
 
   /// The active shop tenant UUID.
@@ -39,6 +40,11 @@ class CustomerSearchScreen extends StatefulWidget {
 
   /// Invoked when the user chooses to log out from the settings screen.
   final VoidCallback? onLogout;
+
+  /// Whether the current session was established offline. Forwarded to the
+  /// customer profile so sensitive administrative actions (soft delete) are
+  /// blocked while offline.
+  final bool isOfflineOnly;
 
   @override
   State<CustomerSearchScreen> createState() => _CustomerSearchScreenState();
@@ -386,16 +392,24 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
                                     trailing: const Icon(Icons.chevron_right),
                                     onTap: () {
                                       Navigator.of(context).push(
-                                        MaterialPageRoute(
+                                        MaterialPageRoute<bool?>(
                                           builder: (context) =>
                                               CustomerProfileScreen(
                                                 shopId: widget.shopId,
                                                 customerId: result.id,
                                                 currentUser: widget.currentUser,
                                                 database: widget.database,
+                                                isOfflineOnly: widget.isOfflineOnly,
                                               ),
                                         ),
-                                      );
+                                      ).then((deleted) {
+                                        // The profile pops with `true` only
+                                        // after a successful soft delete;
+                                        // reload then, not on every visit.
+                                        if (deleted == true && mounted) {
+                                          _loadCustomers(showLoading: false);
+                                        }
+                                      });
                                     },
                                   ),
                                 );

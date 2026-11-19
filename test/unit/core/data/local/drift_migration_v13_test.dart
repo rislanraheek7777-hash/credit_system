@@ -150,14 +150,14 @@ void main() {
       await first.close();
 
       // The migration must have recorded the new schema version on disk.
-      expect(readUserVersion(dbFile), equals(25));
+      expect(readUserVersion(dbFile), equals(27));
 
       // Second launch on the same file: the migration must not run again and
       // the database must open cleanly.
       final second = openWithDeviceSemantics(dbFile);
       addTearDown(() async => second.close());
 
-      expect(second.schemaVersion, equals(25));
+      expect(second.schemaVersion, equals(27));
       final credit = await (second.select(second.credits)
             ..where((l) => l.id.equals('credit-v12')))
           .getSingle();
@@ -178,7 +178,7 @@ void main() {
       expect(await first.select(first.credits).get(), hasLength(1));
       await first.close();
 
-      expect(readUserVersion(dbFile), equals(25),
+      expect(readUserVersion(dbFile), equals(27),
           reason: 'Drift must record the new schema version after the '
               'migration committed.');
 
@@ -187,7 +187,7 @@ void main() {
 
       expect(await second.select(second.credits).get(), hasLength(1));
       expect(await second.select(second.collateralItems).get(), hasLength(3));
-      expect(readUserVersion(dbFile), equals(25));
+      expect(readUserVersion(dbFile), equals(27));
     });
 
     test('repairs a database left half-migrated by a failed attempt',

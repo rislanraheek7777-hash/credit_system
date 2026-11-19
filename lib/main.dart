@@ -4,6 +4,7 @@ import 'package:credit_system/core/theme/theme_controller.dart';
 import 'package:credit_system/features/auth/presentation/login_screen.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/presentation/customer_search_screen.dart';
+import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
 import 'package:credit_system/features/customers/presentation/credit_details_screen.dart';
 import 'package:credit_system/features/dashboard/data/services/dashboard_metrics_service.dart';
 import 'package:credit_system/features/dashboard/domain/models/dashboard_metrics.dart';
@@ -70,11 +71,13 @@ class _MainAppState extends State<MainApp> {
       currentUser: widget.currentUser,
       isOfflineOnly: widget.isOfflineOnly,
       database: widget.database,
+      onSelectTab: (index) => setState(() => _selectedIndex = index),
     );
 
     final customersPage = _CustomersPage(
       shopId: widget.shopId,
       currentUser: widget.currentUser,
+      isOfflineOnly: widget.isOfflineOnly,
       onLogout: _handleLogout,
       database: widget.database,
     );
@@ -137,10 +140,16 @@ class _DashboardPage extends StatefulWidget {
   final bool isOfflineOnly;
   final AppDatabase? database;
 
+  /// Switches the bottom navigation to the tab at [index]. Used by the
+  /// quick-action shortcuts for flows that require a customer or credit
+  /// context (credit origination, payment recording).
+  final ValueChanged<int> onSelectTab;
+
   const _DashboardPage({
     required this.shopId,
     required this.currentUser,
     required this.isOfflineOnly,
+    required this.onSelectTab,
     this.database,
   });
 
@@ -222,11 +231,11 @@ class _DashboardPageState extends State<_DashboardPage> {
               color: Color(0xFF0EA5E9),
             ),
             _MetricCard(
-              key: const ValueKey('metric-outstanding'),
-              icon: Icons.account_balance_wallet,
-              label: 'Outstanding',
-              value: formatCurrency(metrics.outstandingCents),
-              color: Color(0xFFEF4444),
+              key: const ValueKey('metric-overdue'),
+              icon: Icons.warning_amber_rounded,
+              label: 'Overdue',
+              value: formatCurrency(metrics.overdueCents),
+              color: Color(0xFFF97316),
             ),
             _MetricCard(
               key: const ValueKey('metric-collected'),
@@ -234,13 +243,6 @@ class _DashboardPageState extends State<_DashboardPage> {
               label: 'Collected',
               value: formatCurrency(metrics.collectedCents),
               color: Color(0xFF10B981),
-            ),
-            _MetricCard(
-              key: const ValueKey('metric-ratio'),
-              icon: Icons.percent,
-              label: 'Ratio',
-              value: metrics.ratio.toStringAsFixed(2),
-              color: Color(0xFF8B5CF6),
             ),
           ];
 
@@ -330,12 +332,79 @@ class _DashboardPageState extends State<_DashboardPage> {
                       ],
                     ],
                   ),
+                  const SizedBox(height: 24),
+
+                  // Quick actions — shortcuts to the most common shop-floor
+                  // tasks. Customer registration opens directly; credit
+                  // origination and payment recording require a customer or
+                  // credit context, so they jump to the relevant tab.
+                  Text(
+                    'Quick Actions',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _QuickActionCard(
+                          key: const ValueKey('quick-action-new-customer'),
+                          icon: Icons.person_add_alt_1,
+                          label: 'New Customer',
+                          onTap: _openCustomerRegistration,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _QuickActionCard(
+                          key: const ValueKey('quick-action-new-credit'),
+                          icon: Icons.credit_score,
+                          label: 'New Credit',
+                          onTap: () => _jumpToTabWithHint(
+                            1,
+                            'Pick a customer, then tap Add Credit on their profile.',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _QuickActionCard(
+                          key: const ValueKey('quick-action-record-payment'),
+                          icon: Icons.payments,
+                          label: 'Record Payment',
+                          onTap: () => _jumpToTabWithHint(
+                            2,
+                            'Pick a credit and record the payment from its details.',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
           );
         },
       ),
+    );
+  }
+
+  Future<void> _openCustomerRegistration() async {
+    final database = widget.database ?? AppDatabase();
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => CustomerRegistrationScreen(
+          currentUser: widget.currentUser,
+          database: database,
+        ),
+      ),
+    );
+  }
+
+  void _jumpToTabWithHint(int index, String message) {
+    widget.onSelectTab(index);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
     );
   }
 }
@@ -418,16 +487,66 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
+/// A tappable quick-action shortcut shown below the dashboard metrics grid.
+class _QuickActionCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickActionCard({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.primary.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 26, color: theme.colorScheme.primary),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Customers page shown when Customers is selected in the navigation bar.
 class _CustomersPage extends StatelessWidget {
   final String shopId;
   final AppUser currentUser;
+  final bool isOfflineOnly;
   final VoidCallback? onLogout;
   final AppDatabase? database;
 
   const _CustomersPage({
     required this.shopId,
     required this.currentUser,
+    this.isOfflineOnly = false,
     this.onLogout,
     this.database,
   });
@@ -439,6 +558,7 @@ class _CustomersPage extends StatelessWidget {
       currentUser: currentUser,
       onLogout: onLogout,
       database: database,
+      isOfflineOnly: isOfflineOnly,
     );
   }
 }

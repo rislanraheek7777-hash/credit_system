@@ -121,3 +121,63 @@
 - source_spec: `spec-collateral-registration-returns-to-credit-origination.md`
   summary: Two pre-existing registration-screen concurrency gaps: the DAO-failure catch path calls `setState` without a `mounted` guard, and dismissing the route while `createCollateralItem` is in flight silently drops the route result (the caller reloads too early, or the committed item never appears with no confirmation).
   evidence: `collateral_registration_screen.dart:182-187` catch block unchanged from baseline; `:178-181` commit-then-pop with no dismiss protection while `_isLoading`; the origination reload-after-push pattern races the insert in the dismiss case. Both pre-existing; neither path was changed by this spec.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: AdjustmentProposalScreen's eligibility doc ("disbursed, active or overdue, positive balance, no pending correction") is not enforced - `_creditEligibleForAdjustment` checks only `!correctionPending && balanceCents > 0`, and `CorrectionDao.requestCorrection` never validates status/workflow, so a pending-disbursement or cancelled credit with a positive balance can be proposed for forgiveness.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; neither the screen nor the DAO re-checks disbursed/active/overdue before accepting the proposal.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: `requestCorrection` validates `amount <= balanceCents` on a pre-transaction read; the in-transaction re-read only checks `correctionPending`. A payment/settlement landing between the reads can enqueue an over-balance forgiveness proposal that then fails at approval time.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; re-validate `amount <= currentCredit.balanceCents` inside the transaction.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: v25->v26 migrated databases lack the `CHECK (direction IN ('debit','credit'))` constraint that fresh installs get via customConstraints (the v26 step uses raw ALTER TABLE ... ADD COLUMN), leaving a silent schema drift between upgrade paths.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; at minimum the migration comment should record the intentional drift.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: SettleSummaryScreen strands the user on a stale, already-settled credit when receipt PDF generation fails after a committed full settlement (`_isSubmitting=false`, `_paymentError` set, no reload/pop), and `_reloadAfterPayment` swallows re-query failures leaving a stale pre-payment balance.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review (`settle_summary_screen.dart` `_recordPayment` / `_reloadAfterPayment`); stale balance re-arms the Settle button for an unsettleable credit.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: Dashboard quick actions ("New Customer", "New Credit", "Record Payment") render for every role with no RBAC (`registerCustomers`/`createCredits`/`recordPayments`) and no `isActive` check, dead-ending or redirecting under-privileged staff against the deny-by-default pattern.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review (`main.dart` `_QuickActionCard` rows).
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: The dashboard metric redesign (`outstandingCents`/`ratio` removed, `overdueCents` added, "Overdue" card) is unspec'd and contradicts frozen artifacts: `prd.md` FR (Total Active Credits Count and Aggregate Outstanding Principal), `spec-dashboard-live-metrics.md` and `spec-dashboard-update-when-credit-added.md` still document Outstanding/Ratio.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; needs a correct-course decision (or amendment of those artifacts) before it can ship as intended.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: `DashboardMetricsService.watchMetrics` computes `_overdueCutoff()` once at subscription (never advances across shop-local midnight) and `_overdueCutoff` swallows all errors (including DB read failures), silently falling back to the default time zone and yielding plausible-looking but wrong overdue figures.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; recompute the cutoff per emission and log/surface the fallback instead of swallowing it.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: ~100 lines are duplicated verbatim between PaymentScreen and SettleSummaryScreen (`_openAdjustmentProposal`, `_generateReceiptPdf`, `_viewReceipt`, `_showReceiptSavedDialog`/`_showReceiptDownloadedDialog`, receipt-preview block); the copies will drift independently on the next receipt-format change.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; extract a shared receipt/proposal helper or widget.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: Staff-proposed balance increases ("debit" proposals) exceed Story 5.6's frozen partial-forgiveness intent; the owner-only direct-adjustment path (`recordAdjustment`) is the documented route for increases.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; `AdjustmentProposalScreen` offers the debit path to staff; needs explicit human sign-off in the 5.6 spec change log or the option hidden.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: The correction review dialog renders a nonsense negative post-balance for forgiveness proposals (preBalance + delta, no clamp) before the DAO's `newBalanceCents < 0` guard rejects the approval.
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review (`correction_review_screen.dart` `_confirmApprove`); dialog should pre-validate or clamp so the confirmation never states impossible arithmetic.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: Settle-flow minor warts: `SettleSummaryScreen._load()` re-prefills the amount field to the full balance on every reload (clobbering a prepared partial entry); a "Partial settlement" sheet row at exactly the full balance silently clears the field; no re-entrancy guard on the settle/sheet navigation pushes (double-tap can stack sheets/screens).
+  evidence: Review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; fix by prefilling only on first load, treating entered == balance as the full case, and guarding the pushes.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: `_extendDueDate` in settle_summary_screen.dart passes a device-local midnight DatePicker value to `grantDueDateExtension`, which re-derives the calendar date in the shop timezone - on devices ahead of shop tz the extension persists a day early or is rejected as not-after-today.
+  evidence: Edge-case review of the in-flight Story 5.6 change-set surfaced during the soft-delete review; convert with `_shopTimeZone.instantAtStartOfDay(LocalCalendarDate(picked.year, picked.month, picked.day))`.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: An adjustment-direction correction equal to the outstanding balance posts a zero balance without settling the credit - the credit stays active at zero and no payment path can ever settle it.
+  evidence: Low-risk edge surfaced during edge-case review of the in-flight Story 5.6 change-set (`correction_dao.dart` approveCorrection, isAdjustmentProposal); when `newBalanceCents == 0` write status settled + settled_at alongside the balance/lock/ledger updates.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: A correction proposal with `direction == 'credit'` together with a non-null `originalPaymentId` ledgers a `compensating_debit` entry while decreasing the balance, misstating the movement type.
+  evidence: Edge-case review of the in-flight Story 5.6 change-set surfaced during the soft-delete review (`correction_dao.dart` direction validation / entryType selection); validate the combination and reject it.
+
+- source_spec: `spec-customer-soft-delete-no-credits.md`
+  summary: `AdjustmentProposalScreen`/`CorrectionDao.requestCorrection` for a credit-adjustment proposal accepts cancellation-state credits and pending-disbursement workflows as "forgivable"; see also the zero-balance-at-full-forgiveness edge.
+  evidence: Edge-case review of the in-flight Story 5.6 change-set surfaced during the soft-delete review (`correction_dao.dart:543-556`); full-forgiveness proposals must settle, never strand, the credit.

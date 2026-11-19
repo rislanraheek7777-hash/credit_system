@@ -39,9 +39,8 @@ part 'app_database.g.dart';
 /// Acts as the responsive, offline-capable local storage engine for retail
 /// counters.
 ///
-/// Schema Version: 22 (Epic 8: Stories 8.1 optional item receipts;
-/// Story 5: Payment & Receipt; Story 5.5 Corrections & financial ledger
-/// entries).
+/// Schema Version: 27 (customer soft delete: customers.deleted_at;
+/// before that, Story 5.6 added the credit_corrections.direction column).
 /// Tables:
 /// - [Shops]: Tenant profile, operating timezone, currency preference, contact
 ///   details, receipt notes.
@@ -131,7 +130,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1015,6 +1014,48 @@ class AppDatabase extends _$AppDatabase {
             await customStatement('PRAGMA legacy_alter_table = OFF;');
             await customStatement('PRAGMA foreign_keys = ON;');
           }
+        }
+      }
+      if (from < 26) {
+        // Upgrade from Schema Version 25 to 26 (Story 5.6: Staff-Proposed,
+        // Owner-Approved Balance Adjustments — Partial Forgiveness):
+        // Add the `direction` column to credit_corrections so a proposal can
+        // state whether the approved adjustment increases (`debit`) or
+        // decreases (`credit`, the forgiveness write-down) the credit
+        // balance. Existing rows default to 'debit', preserving the
+        // pre-Story-5.6 approval arithmetic (balance += amount). Guarded by
+        // PRAGMA so upgrade paths that already rebuilt the table from the
+        // current definition (or freshly created it) are left alone.
+        final correctionColumns = await customSelect(
+          'PRAGMA table_info("credit_corrections")',
+        ).get();
+        final tableExists = correctionColumns.isNotEmpty;
+        final hasDirection = correctionColumns.any(
+          (row) => row.read<String>('name') == 'direction',
+        );
+        if (tableExists && !hasDirection) {
+          await customStatement(
+            'ALTER TABLE "credit_corrections" '
+            "ADD COLUMN \"direction\" TEXT NOT NULL DEFAULT 'debit'",
+          );
+        }
+      }
+      if (from < 27) {
+        // Upgrade from Schema Version 26 to 27:
+        // Add the nullable `deleted_at` column to customers so a customer can
+        // be soft-deleted (row retained for audit/FX integrity) instead of
+        // hard-deleted. Existing rows are left untouched; `deleted_at` stays
+        // NULL for every live customer. Guarded by PRAGMA so upgrade paths
+        // that already carry the column (e.g. a database created from the
+        // current definition) are left alone.
+        final customerColumns = await customSelect(
+          'PRAGMA table_info("customers")',
+        ).get();
+        final hasDeletedAt = customerColumns.any(
+          (row) => row.read<String>('name') == 'deleted_at',
+        );
+        if (customerColumns.isNotEmpty && !hasDeletedAt) {
+          await m.addColumn(customers, customers.deletedAt);
         }
       }
     },

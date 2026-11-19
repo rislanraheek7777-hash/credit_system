@@ -249,8 +249,8 @@ void main() {
             ..where((l) => l.id.equals('credit-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(25));
-      expect(db.schemaVersion, equals(25));
+      expect(readUserVersion(file), equals(27));
+      expect(db.schemaVersion, equals(27));
     });
 
     test('preserves existing credit data and sets correctionPending = false after upgrade', () async {
@@ -264,7 +264,7 @@ void main() {
             ..where((l) => l.id.equals('credit-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(25));
+      expect(readUserVersion(file), equals(27));
 
       // Existing credits keep their data and get correctionPending = false.
       final active = await (db.select(db.credits)
@@ -291,7 +291,7 @@ void main() {
             ..where((l) => l.id.equals('credit-v16-active')))
           .getSingle();
 
-      expect(readUserVersion(file), equals(25));
+      expect(readUserVersion(file), equals(27));
 
       // The corrections table exists and is usable.
       await db.into(db.creditCorrections).insertReturningOrNull(

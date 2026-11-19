@@ -2586,6 +2586,17 @@ class $CustomersTable extends Customers
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2598,6 +2609,7 @@ class $CustomersTable extends Customers
     photoHash,
     createdAt,
     updatedAt,
+    deletedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2678,6 +2690,12 @@ class $CustomersTable extends Customers
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -2731,6 +2749,10 @@ class $CustomersTable extends Customers
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -2772,6 +2794,11 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
 
   /// UTC last-update timestamp.
   final DateTime updatedAt;
+
+  /// UTC timestamp when the customer was soft-deleted, or `null` for an
+  /// active customer. Soft-deleted customers are retained for audit integrity
+  /// and hidden from all lists, search and pickers.
+  final DateTime? deletedAt;
   const CustomerEntry({
     required this.id,
     required this.shopId,
@@ -2783,6 +2810,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     this.photoHash,
     required this.createdAt,
     required this.updatedAt,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2805,6 +2833,9 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
     return map;
   }
 
@@ -2826,6 +2857,9 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
           : Value(photoHash),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -2845,6 +2879,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
       photoHash: serializer.fromJson<String?>(json['photoHash']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
     );
   }
   @override
@@ -2861,6 +2896,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
       'photoHash': serializer.toJson<String?>(photoHash),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
     };
   }
 
@@ -2875,6 +2911,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     Value<String?> photoHash = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
   }) => CustomerEntry(
     id: id ?? this.id,
     shopId: shopId ?? this.shopId,
@@ -2886,6 +2923,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     photoHash: photoHash.present ? photoHash.value : this.photoHash,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   CustomerEntry copyWithCompanion(CustomersCompanion data) {
     return CustomerEntry(
@@ -2899,6 +2937,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
       photoHash: data.photoHash.present ? data.photoHash.value : this.photoHash,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -2914,7 +2953,8 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
           ..write('photoUri: $photoUri, ')
           ..write('photoHash: $photoHash, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -2931,6 +2971,7 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
     photoHash,
     createdAt,
     updatedAt,
+    deletedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -2945,7 +2986,8 @@ class CustomerEntry extends DataClass implements Insertable<CustomerEntry> {
           other.photoUri == this.photoUri &&
           other.photoHash == this.photoHash &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
@@ -2959,6 +3001,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
   final Value<String?> photoHash;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
   const CustomersCompanion({
     this.id = const Value.absent(),
     this.shopId = const Value.absent(),
@@ -2970,6 +3013,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     this.photoHash = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
   });
   CustomersCompanion.insert({
     this.id = const Value.absent(),
@@ -2982,6 +3026,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     this.photoHash = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
   }) : shopId = Value(shopId),
        fullName = Value(fullName),
        phone = Value(phone),
@@ -2998,6 +3043,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     Expression<String>? photoHash,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3010,6 +3056,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
       if (photoHash != null) 'photo_hash': photoHash,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
     });
   }
 
@@ -3024,6 +3071,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     Value<String?>? photoHash,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
   }) {
     return CustomersCompanion(
       id: id ?? this.id,
@@ -3036,6 +3084,7 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
       photoHash: photoHash ?? this.photoHash,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -3072,6 +3121,9 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
     return map;
   }
 
@@ -3087,7 +3139,8 @@ class CustomersCompanion extends UpdateCompanion<CustomerEntry> {
           ..write('photoUri: $photoUri, ')
           ..write('photoHash: $photoHash, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -9273,6 +9326,18 @@ class $CreditCorrectionsTable extends CreditCorrections
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _directionMeta = const VerificationMeta(
+    'direction',
+  );
+  @override
+  late final GeneratedColumn<String> direction = GeneratedColumn<String>(
+    'direction',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('debit'),
+  );
   static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
   @override
   late final GeneratedColumn<String> reason = GeneratedColumn<String>(
@@ -9369,6 +9434,7 @@ class $CreditCorrectionsTable extends CreditCorrections
     originalPaymentId,
     requestedByUserId,
     correctionAmountCents,
+    direction,
     reason,
     status,
     reviewedByUserId,
@@ -9441,6 +9507,12 @@ class $CreditCorrectionsTable extends CreditCorrections
       );
     } else if (isInserting) {
       context.missing(_correctionAmountCentsMeta);
+    }
+    if (data.containsKey('direction')) {
+      context.handle(
+        _directionMeta,
+        direction.isAcceptableOrUnknown(data['direction']!, _directionMeta),
+      );
     }
     if (data.containsKey('reason')) {
       context.handle(
@@ -9538,6 +9610,10 @@ class $CreditCorrectionsTable extends CreditCorrections
         DriftSqlType.int,
         data['${effectivePrefix}correction_amount_cents'],
       )!,
+      direction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}direction'],
+      )!,
       reason: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reason'],
@@ -9599,9 +9675,22 @@ class CreditCorrectionEntry extends DataClass
 
   /// Requested adjustment amount in minor units (cents), strictly positive.
   ///
-  /// Recorded explicitly; the precise business-rule meaning (full original
-  /// payment vs. excess only) is an open accounting decision.
+  /// The direction of the balance movement is recorded explicitly in
+  /// [direction] (resolved by Story 5.6; the Story 5.5 open decision about the
+  /// meaning of this amount is closed for adjustments).
   final int correctionAmountCents;
+
+  /// Direction the approved adjustment moves the credit balance.
+  ///
+  /// - `debit`: increases the outstanding balance (a payment-reversal
+  ///   correction, or an owner/staff proposal to charge more, e.g. an
+  ///   undercharge).
+  /// - `credit`: decreases the outstanding balance (a partial forgiveness
+  ///   write-down requested because the customer cannot pay in full).
+  ///
+  /// Legacy rows default to `debit`, preserving the pre-Story-5.6 behaviour
+  /// where approval applied `balance += amount`.
+  final String direction;
 
   /// Mandatory, non-empty business explanation for the correction.
   final String reason;
@@ -9645,6 +9734,7 @@ class CreditCorrectionEntry extends DataClass
     this.originalPaymentId,
     required this.requestedByUserId,
     required this.correctionAmountCents,
+    required this.direction,
     required this.reason,
     required this.status,
     this.reviewedByUserId,
@@ -9665,6 +9755,7 @@ class CreditCorrectionEntry extends DataClass
     }
     map['requested_by_user_id'] = Variable<String>(requestedByUserId);
     map['correction_amount_cents'] = Variable<int>(correctionAmountCents);
+    map['direction'] = Variable<String>(direction);
     map['reason'] = Variable<String>(reason);
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || reviewedByUserId != null) {
@@ -9694,6 +9785,7 @@ class CreditCorrectionEntry extends DataClass
           : Value(originalPaymentId),
       requestedByUserId: Value(requestedByUserId),
       correctionAmountCents: Value(correctionAmountCents),
+      direction: Value(direction),
       reason: Value(reason),
       status: Value(status),
       reviewedByUserId: reviewedByUserId == null && nullToAbsent
@@ -9729,6 +9821,7 @@ class CreditCorrectionEntry extends DataClass
       correctionAmountCents: serializer.fromJson<int>(
         json['correctionAmountCents'],
       ),
+      direction: serializer.fromJson<String>(json['direction']),
       reason: serializer.fromJson<String>(json['reason']),
       status: serializer.fromJson<String>(json['status']),
       reviewedByUserId: serializer.fromJson<String?>(json['reviewedByUserId']),
@@ -9751,6 +9844,7 @@ class CreditCorrectionEntry extends DataClass
       'originalPaymentId': serializer.toJson<String?>(originalPaymentId),
       'requestedByUserId': serializer.toJson<String>(requestedByUserId),
       'correctionAmountCents': serializer.toJson<int>(correctionAmountCents),
+      'direction': serializer.toJson<String>(direction),
       'reason': serializer.toJson<String>(reason),
       'status': serializer.toJson<String>(status),
       'reviewedByUserId': serializer.toJson<String?>(reviewedByUserId),
@@ -9769,6 +9863,7 @@ class CreditCorrectionEntry extends DataClass
     Value<String?> originalPaymentId = const Value.absent(),
     String? requestedByUserId,
     int? correctionAmountCents,
+    String? direction,
     String? reason,
     String? status,
     Value<String?> reviewedByUserId = const Value.absent(),
@@ -9786,6 +9881,7 @@ class CreditCorrectionEntry extends DataClass
         : this.originalPaymentId,
     requestedByUserId: requestedByUserId ?? this.requestedByUserId,
     correctionAmountCents: correctionAmountCents ?? this.correctionAmountCents,
+    direction: direction ?? this.direction,
     reason: reason ?? this.reason,
     status: status ?? this.status,
     reviewedByUserId: reviewedByUserId.present
@@ -9815,6 +9911,7 @@ class CreditCorrectionEntry extends DataClass
       correctionAmountCents: data.correctionAmountCents.present
           ? data.correctionAmountCents.value
           : this.correctionAmountCents,
+      direction: data.direction.present ? data.direction.value : this.direction,
       reason: data.reason.present ? data.reason.value : this.reason,
       status: data.status.present ? data.status.value : this.status,
       reviewedByUserId: data.reviewedByUserId.present
@@ -9843,6 +9940,7 @@ class CreditCorrectionEntry extends DataClass
           ..write('originalPaymentId: $originalPaymentId, ')
           ..write('requestedByUserId: $requestedByUserId, ')
           ..write('correctionAmountCents: $correctionAmountCents, ')
+          ..write('direction: $direction, ')
           ..write('reason: $reason, ')
           ..write('status: $status, ')
           ..write('reviewedByUserId: $reviewedByUserId, ')
@@ -9863,6 +9961,7 @@ class CreditCorrectionEntry extends DataClass
     originalPaymentId,
     requestedByUserId,
     correctionAmountCents,
+    direction,
     reason,
     status,
     reviewedByUserId,
@@ -9882,6 +9981,7 @@ class CreditCorrectionEntry extends DataClass
           other.originalPaymentId == this.originalPaymentId &&
           other.requestedByUserId == this.requestedByUserId &&
           other.correctionAmountCents == this.correctionAmountCents &&
+          other.direction == this.direction &&
           other.reason == this.reason &&
           other.status == this.status &&
           other.reviewedByUserId == this.reviewedByUserId &&
@@ -9900,6 +10000,7 @@ class CreditCorrectionsCompanion
   final Value<String?> originalPaymentId;
   final Value<String> requestedByUserId;
   final Value<int> correctionAmountCents;
+  final Value<String> direction;
   final Value<String> reason;
   final Value<String> status;
   final Value<String?> reviewedByUserId;
@@ -9916,6 +10017,7 @@ class CreditCorrectionsCompanion
     this.originalPaymentId = const Value.absent(),
     this.requestedByUserId = const Value.absent(),
     this.correctionAmountCents = const Value.absent(),
+    this.direction = const Value.absent(),
     this.reason = const Value.absent(),
     this.status = const Value.absent(),
     this.reviewedByUserId = const Value.absent(),
@@ -9933,6 +10035,7 @@ class CreditCorrectionsCompanion
     this.originalPaymentId = const Value.absent(),
     required String requestedByUserId,
     required int correctionAmountCents,
+    this.direction = const Value.absent(),
     required String reason,
     this.status = const Value.absent(),
     this.reviewedByUserId = const Value.absent(),
@@ -9957,6 +10060,7 @@ class CreditCorrectionsCompanion
     Expression<String>? originalPaymentId,
     Expression<String>? requestedByUserId,
     Expression<int>? correctionAmountCents,
+    Expression<String>? direction,
     Expression<String>? reason,
     Expression<String>? status,
     Expression<String>? reviewedByUserId,
@@ -9975,6 +10079,7 @@ class CreditCorrectionsCompanion
       if (requestedByUserId != null) 'requested_by_user_id': requestedByUserId,
       if (correctionAmountCents != null)
         'correction_amount_cents': correctionAmountCents,
+      if (direction != null) 'direction': direction,
       if (reason != null) 'reason': reason,
       if (status != null) 'status': status,
       if (reviewedByUserId != null) 'reviewed_by_user_id': reviewedByUserId,
@@ -9995,6 +10100,7 @@ class CreditCorrectionsCompanion
     Value<String?>? originalPaymentId,
     Value<String>? requestedByUserId,
     Value<int>? correctionAmountCents,
+    Value<String>? direction,
     Value<String>? reason,
     Value<String>? status,
     Value<String?>? reviewedByUserId,
@@ -10013,6 +10119,7 @@ class CreditCorrectionsCompanion
       requestedByUserId: requestedByUserId ?? this.requestedByUserId,
       correctionAmountCents:
           correctionAmountCents ?? this.correctionAmountCents,
+      direction: direction ?? this.direction,
       reason: reason ?? this.reason,
       status: status ?? this.status,
       reviewedByUserId: reviewedByUserId ?? this.reviewedByUserId,
@@ -10048,6 +10155,9 @@ class CreditCorrectionsCompanion
       map['correction_amount_cents'] = Variable<int>(
         correctionAmountCents.value,
       );
+    }
+    if (direction.present) {
+      map['direction'] = Variable<String>(direction.value);
     }
     if (reason.present) {
       map['reason'] = Variable<String>(reason.value);
@@ -10090,6 +10200,7 @@ class CreditCorrectionsCompanion
           ..write('originalPaymentId: $originalPaymentId, ')
           ..write('requestedByUserId: $requestedByUserId, ')
           ..write('correctionAmountCents: $correctionAmountCents, ')
+          ..write('direction: $direction, ')
           ..write('reason: $reason, ')
           ..write('status: $status, ')
           ..write('reviewedByUserId: $reviewedByUserId, ')
@@ -17943,6 +18054,7 @@ typedef $$CustomersTableCreateCompanionBuilder = CustomersCompanion Function({
   Value<String?> photoHash,
   required DateTime createdAt,
   required DateTime updatedAt,
+  Value<DateTime?> deletedAt,
 });
 typedef $$CustomersTableUpdateCompanionBuilder = CustomersCompanion Function({
   Value<int> id,
@@ -17955,6 +18067,7 @@ typedef $$CustomersTableUpdateCompanionBuilder = CustomersCompanion Function({
   Value<String?> photoHash,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
 });
 
 final class $$CustomersTableReferences
@@ -18092,6 +18205,11 @@ class $$CustomersTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18248,6 +18366,11 @@ class $$CustomersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ShopsTableOrderingComposer get shopId {
     final $$ShopsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -18307,6 +18430,9 @@ class $$CustomersTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   $$ShopsTableAnnotationComposer get shopId {
     final $$ShopsTableAnnotationComposer composer = $composerBuilder(
@@ -18451,6 +18577,7 @@ class $$CustomersTableTableManager
                 Value<String?> photoHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
               }) => CustomersCompanion(
                 id: id,
                 shopId: shopId,
@@ -18462,6 +18589,7 @@ class $$CustomersTableTableManager
                 photoHash: photoHash,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                deletedAt: deletedAt,
               ),
           createCompanionCallback:
               ({
@@ -18475,6 +18603,7 @@ class $$CustomersTableTableManager
                 Value<String?> photoHash = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
               }) => CustomersCompanion.insert(
                 id: id,
                 shopId: shopId,
@@ -18486,6 +18615,7 @@ class $$CustomersTableTableManager
                 photoHash: photoHash,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                deletedAt: deletedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -24990,6 +25120,7 @@ typedef $$CreditCorrectionsTableCreateCompanionBuilder =
       Value<String?> originalPaymentId,
       required String requestedByUserId,
       required int correctionAmountCents,
+      Value<String> direction,
       required String reason,
       Value<String> status,
       Value<String?> reviewedByUserId,
@@ -25008,6 +25139,7 @@ typedef $$CreditCorrectionsTableUpdateCompanionBuilder =
       Value<String?> originalPaymentId,
       Value<String> requestedByUserId,
       Value<int> correctionAmountCents,
+      Value<String> direction,
       Value<String> reason,
       Value<String> status,
       Value<String?> reviewedByUserId,
@@ -25160,6 +25292,11 @@ class $$CreditCorrectionsTableFilterComposer
 
   ColumnFilters<int> get correctionAmountCents => $composableBuilder(
     column: $table.correctionAmountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get direction => $composableBuilder(
+    column: $table.direction,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -25358,6 +25495,11 @@ class $$CreditCorrectionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get reason => $composableBuilder(
     column: $table.reason,
     builder: (column) => ColumnOrderings(column),
@@ -25525,6 +25667,9 @@ class $$CreditCorrectionsTableAnnotationComposer
     column: $table.correctionAmountCents,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get direction =>
+      $composableBuilder(column: $table.direction, builder: (column) => column);
 
   GeneratedColumn<String> get reason =>
       $composableBuilder(column: $table.reason, builder: (column) => column);
@@ -25741,6 +25886,7 @@ class $$CreditCorrectionsTableTableManager
                 Value<String?> originalPaymentId = const Value.absent(),
                 Value<String> requestedByUserId = const Value.absent(),
                 Value<int> correctionAmountCents = const Value.absent(),
+                Value<String> direction = const Value.absent(),
                 Value<String> reason = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> reviewedByUserId = const Value.absent(),
@@ -25757,6 +25903,7 @@ class $$CreditCorrectionsTableTableManager
                 originalPaymentId: originalPaymentId,
                 requestedByUserId: requestedByUserId,
                 correctionAmountCents: correctionAmountCents,
+                direction: direction,
                 reason: reason,
                 status: status,
                 reviewedByUserId: reviewedByUserId,
@@ -25775,6 +25922,7 @@ class $$CreditCorrectionsTableTableManager
                 Value<String?> originalPaymentId = const Value.absent(),
                 required String requestedByUserId,
                 required int correctionAmountCents,
+                Value<String> direction = const Value.absent(),
                 required String reason,
                 Value<String> status = const Value.absent(),
                 Value<String?> reviewedByUserId = const Value.absent(),
@@ -25791,6 +25939,7 @@ class $$CreditCorrectionsTableTableManager
                 originalPaymentId: originalPaymentId,
                 requestedByUserId: requestedByUserId,
                 correctionAmountCents: correctionAmountCents,
+                direction: direction,
                 reason: reason,
                 status: status,
                 reviewedByUserId: reviewedByUserId,

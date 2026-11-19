@@ -128,9 +128,8 @@ void main() {
     await _pumpUntilCardValue(tester, 'metric-total-staff', '1');
     await _pumpUntilCardValue(tester, 'metric-total-credits', '1');
     await _pumpUntilCardValue(tester, 'metric-active-credit', 'Rs. 500.00');
-    await _pumpUntilCardValue(tester, 'metric-outstanding', 'Rs. 500.00');
+    await _pumpUntilCardValue(tester, 'metric-overdue', 'Rs. 0.00');
     await _pumpUntilCardValue(tester, 'metric-collected', 'Rs. 0.00');
-    await _pumpUntilCardValue(tester, 'metric-ratio', '0.00');
     await _pumpUntilText(tester, 'No active credits', present: false);
     await _pumpUntilText(tester, 'Customer One', present: true);
 
@@ -147,7 +146,7 @@ void main() {
     );
     await _pumpUntilCardValue(tester, 'metric-total-credits', '2');
     await _pumpUntilCardValue(tester, 'metric-active-credit', 'Rs. 750.00');
-    await _pumpUntilCardValue(tester, 'metric-outstanding', 'Rs. 750.00');
+    await _pumpUntilCardValue(tester, 'metric-overdue', 'Rs. 0.00');
 
     await addCredit(
       id: 'credit-pending',
@@ -157,7 +156,7 @@ void main() {
     );
     await _pumpUntilCardValue(tester, 'metric-total-credits', '3');
     await _pumpUntilCardValue(tester, 'metric-active-credit', 'Rs. 870.00');
-    await _pumpUntilCardValue(tester, 'metric-outstanding', 'Rs. 870.00');
+    await _pumpUntilCardValue(tester, 'metric-overdue', 'Rs. 0.00');
     await _pumpUntilText(tester, 'Principal: Rs. 120.00', present: true);
     await _pumpUntilText(tester, 'Balance: Rs. 120.00', present: true);
   });

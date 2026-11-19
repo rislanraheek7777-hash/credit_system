@@ -9,6 +9,7 @@ import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/data/local/connection/database_connection.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
+import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
 import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
 import 'package:credit_system/features/customers/presentation/customer_search_screen.dart';
 
@@ -57,7 +58,7 @@ void main() {
     );
   }
 
-  Widget customersScreen({AppDatabase? database}) {
+  Widget customersScreen({AppDatabase? database, AppRole role = AppRole.manager}) {
     return MaterialApp(
       home: CustomerSearchScreen(
         shopId: shopId,
@@ -66,7 +67,7 @@ void main() {
           shopId: shopId,
           username: 'testuser',
           fullName: 'Test User',
-          role: AppRole.manager,
+          role: role,
           isActive: true,
         ),
         database: database ?? db,
@@ -376,5 +377,37 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('deleting the customer from the profile refreshes the list in place', (
+    WidgetTester tester,
+  ) async {
+    await seedExistingCustomer();
+    await tester.pumpWidget(customersScreen(role: AppRole.shopOwner));
+    await tester.pumpAndSettle();
+    expect(find.text('Sunil Perera'), findsOneWidget);
+
+    // Open the profile from the search result.
+    await tester.tap(find.text('Sunil Perera'));
+    await pumpUntil(
+      tester,
+      () => find.byType(CustomerProfileScreen).evaluate().isNotEmpty,
+    );
+    await tester.pumpAndSettle();
+
+    // Confirm the soft delete in the profile.
+    await tester.tap(find.byKey(const Key('delete_customer_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('delete_customer_confirm_button')));
+    await pumpUntil(
+      tester,
+      () => find.byType(CustomerProfileScreen).evaluate().isEmpty,
+    );
+    await tester.pumpAndSettle();
+
+    // The list reloaded in place: the deleted customer no longer appears,
+    // with no manual refresh.
+    expect(find.byType(CustomerSearchScreen), findsOneWidget);
+    expect(find.text('Sunil Perera'), findsNothing);
   });
 }

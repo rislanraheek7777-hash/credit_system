@@ -1,6 +1,11 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/data/local/app_database.dart';
 import '../../../../core/data/local/tables/customers_table.dart';
+import '../../../../core/permissions/authorization_guard.dart';
+import '../../../../features/auth/domain/models/app_user.dart';
 import '../../domain/models/customer.dart';
 
 part 'customer_dao.g.dart';
@@ -9,6 +14,19 @@ part 'customer_dao.g.dart';
 @DriftAccessor(tables: [Customers])
 class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin {
   CustomerDao(super.db);
+
+  /// `entity_type` used by the local audit/sync queue for customer events.
+  static const String customerEntityType = 'customer';
+
+  /// `action_type` used when a customer is soft-deleted.
+  static const String softDeleteCustomerActionType = 'customer_soft_deleted';
+
+  /// Audit event name for a customer soft delete (PRD FR-31, category 1:
+  /// Customer creation and profile edits).
+  static const String customerSoftDeleteAuditEvent = 'customer_soft_deleted';
+
+  /// PRD FR-31 audit category for customer creation/profile edits.
+  static const int customerProfileAuditCategory = 1;
 
   /// Converts a Drift [CustomerEntry] row into a domain [Customer].
   Customer _toDomain(CustomerEntry entry) {
@@ -23,6 +41,7 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
       photoHash: entry.photoHash,
       createdAt: entry.createdAt.toUtc(),
       updatedAt: entry.updatedAt.toUtc(),
+      deletedAt: entry.deletedAt?.toUtc(),
     );
   }
 
@@ -99,13 +118,18 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
   }
 
   /// Retrieves all customer profiles belonging strictly to [shopId].
+  ///
+  /// Soft-deleted customers (`deleted_at` set) are excluded.
   Future<List<Customer>> getCustomersByShopId(String shopId) async {
-    final query = select(customers)..where((c) => c.shopId.equals(shopId));
+    final query = select(customers)
+      ..where((c) => c.shopId.equals(shopId) & c.deletedAt.isNull());
     final entries = await query.get();
     return entries.map(_toDomain).toList();
   }
 
   /// Searches for customers within [shopId] matching a search [query] across name, NIC, or phone.
+  ///
+  /// Soft-deleted customers (`deleted_at` set) are excluded.
   Future<List<Customer>> searchCustomers(String shopId, String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
@@ -116,6 +140,7 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
     final dbQuery = select(customers)
       ..where((c) =>
           c.shopId.equals(shopId) &
+          c.deletedAt.isNull() &
           (c.fullName.like('%$trimmed%') |
               c.nic.like('%$normalizedQuery%') |
               c.phone.like('%$trimmed%')));
@@ -158,5 +183,122 @@ class CustomerDao extends DatabaseAccessor<AppDatabase> with _$CustomerDaoMixin 
           ..where((c) => c.shopId.equals(customer.shopId) & c.id.equals(customer.id)))
         .write(companion);
   }
-}
 
+  /// Soft-deletes the customer [customerId] in [shopId].
+  ///
+  /// Sets `deleted_at` to the current UTC instant. The row is retained for
+  /// audit integrity and hidden from all lists, search and pickers; the
+  /// profile is unreachable in-app. No credits, collateral, photos, or audit
+  /// records are touched, and no hard `DELETE` is ever issued.
+  ///
+  /// Shop Owner–gated: the actor is re-checked here (server-of-truth style)
+  /// with [AuthorizationGuard.checkOwnerAdministrativeAction] — the owner-
+  /// administrative pattern — independent of any UI gating.
+  ///
+  /// Eligibility is re-checked here as well: any credit row for the customer,
+  /// in any status (including pending-disbursement workflow agreements),
+  /// blocks the deletion.
+  ///
+  /// Records a local audit/sync queue entry atomically with the update
+  /// (category 1 — Customer creation and profile edits — `customer_soft_deleted`,
+  /// `pending_server_ack`). Throws [PermissionDeniedException] for inactive or
+  /// non-owner actors, and [StateError] when the customer does not exist, is
+  /// already deleted, or has at least one credit row.
+  Future<void> softDeleteCustomer({
+    required AppUser actor,
+    required String shopId,
+    required int customerId,
+  }) async {
+    AuthorizationGuard.checkOwnerAdministrativeAction(
+      isActive: actor.isActive,
+      actorRole: actor.role,
+      actionDescription: 'delete a customer',
+    );
+    if (actor.shopId != shopId) {
+      throw PermissionDeniedException(
+        'Access denied: Actor shop "${actor.shopId}" does not match shop "$shopId".',
+      );
+    }
+
+    final now = DateTime.now().toUtc();
+    await db.transaction(() async {
+      // Re-read everything inside the transaction so a concurrent write
+      // cannot race the soft delete.
+      final row = await (select(customers)
+            ..where(
+                (c) => c.shopId.equals(shopId) & c.id.equals(customerId)))
+          .getSingleOrNull();
+      if (row == null) {
+        throw StateError(
+          'Cannot delete customer: ID "$customerId" not found in shop "$shopId".',
+        );
+      }
+      if (row.deletedAt != null) {
+        throw StateError(
+          'Cannot delete customer: customer ID "$customerId" is already deleted.',
+        );
+      }
+
+      final creditQuery = select(db.credits)
+        ..where((credit) =>
+            credit.shopId.equals(shopId) &
+            credit.customerId.equals(customerId));
+      creditQuery.limit(1);
+      final creditRows = await creditQuery.get();
+      if (creditRows.isNotEmpty) {
+        throw StateError(
+          'Cannot delete customer: customer ID "$customerId" has at least one '
+          'credit agreement (any status). Customers with financial history '
+          'must be retained.',
+        );
+      }
+
+      final affected = await (update(customers)
+            ..where((c) =>
+                c.shopId.equals(shopId) &
+                c.id.equals(customerId) &
+                c.deletedAt.isNull()))
+          .write(CustomersCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ));
+      if (affected == 0) {
+        throw StateError(
+          'Cannot delete customer: customer ID "$customerId" changed '
+          'concurrently. Please retry.',
+        );
+      }
+
+      // Local audit/sync queue entry (PRD FR-31, category 1). `sync_queue`
+      // entity ids are UUIDs server-side. A deterministic v5 UUID keyed to
+      // the shop and customer keeps the queued audit row linkable to the
+      // deleted customer without parsing the payload; the integer customer id
+      // also travels in the payload.
+      await into(db.syncQueue).insert(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          shopId: shopId,
+          idempotencyKey: const Uuid().v4(),
+          entityType: customerEntityType,
+          entityId: const Uuid().v5(
+            Namespace.url.value,
+            'credit-system/customer/$shopId/$customerId',
+          ),
+          actionType: softDeleteCustomerActionType,
+          payloadJson: jsonEncode({
+            'auditCategory': customerProfileAuditCategory,
+            'auditEvent': customerSoftDeleteAuditEvent,
+            'targetEntityType': 'customer',
+            'targetEntityId': customerId.toString(),
+            'actorId': actor.id,
+            'customerId': customerId,
+            'shopId': shopId,
+            'deletedAt': now.toIso8601String(),
+          }),
+          createdAt: now,
+          updatedAt: Value(now),
+        ),
+      );
+    });
+  }
+}

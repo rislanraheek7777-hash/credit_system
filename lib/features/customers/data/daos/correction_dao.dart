@@ -33,14 +33,13 @@ part 'correction_dao.g.dart';
 /// The original payment record referenced by a correction is never overwritten
 /// or deleted (PRD FR-23 / Story 5.5 AC-3).
 ///
-/// NOTE (open accounting decision): The compensating financial entry for an
-/// approved correction is not posted to a separate ledger table. The
-/// `correctionAmountCents` is recorded explicitly on the correction row and
-/// `resultingBalanceCents` snapshots the credit balance after the adjustment.
-/// The exact business-rule meaning of `correctionAmountCents` (full original
-/// payment vs. only the excess) and the placement of an immutable compensating
-/// entry require Product Owner / Architect approval before this path is
-/// considered complete. See the Story 5.5 open-decisions record.
+/// NOTE (Story 5.6): For payment-correction reversals the exact meaning of
+/// `correctionAmountCents` (full original payment vs. only the excess) is an
+/// open accounting decision for the correction workflow. For balance
+/// adjustments (Story 5.6) the `direction` column always resolves which way
+/// the approved adjustment moves the balance (`debit` increases it, `credit`
+/// decreases it — the partial forgiveness write-down), and an approved
+/// credit-direction adjustment exceeding the outstanding balance is rejected.
 @DriftAccessor(
   tables: [Credits, Payments, CreditCorrections, CreditLedgerEntries, SyncQueue, Shops, AppUsers],
 )
@@ -73,6 +72,12 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// Audit event name for correction requests and decisions (PRD FR-31).
   static const String correctionAuditEvent = 'correction_request';
 
+  /// Direction value: the adjustment increases the credit balance.
+  static const String directionDebit = 'debit';
+
+  /// Direction value: the adjustment decreases the credit balance (write-down).
+  static const String directionCredit = 'credit';
+
   /// Converts a Drift [CreditCorrectionEntry] row into a domain [CreditCorrection].
   CreditCorrection _toDomain(CreditCorrectionEntry entry) {
     return CreditCorrection(
@@ -83,6 +88,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       requestedByUserId: entry.requestedByUserId,
       createdAt: entry.createdAt,
       correctionAmountCents: entry.correctionAmountCents,
+      direction: entry.direction,
       reason: entry.reason,
       status: CreditCorrectionStatus.fromValue(entry.status),
       reviewedByUserId: entry.reviewedByUserId,
@@ -133,7 +139,9 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// Throws [PermissionDeniedException] when the actor is deactivated or does
   /// not hold `requestCorrections`.
   /// Throws [ArgumentError] when [idempotencyKey], [creditId], [reason] is
-  /// blank, or [amount] is not positive.
+  /// blank, [amount] is not positive, or [direction] is not 'debit' or
+  /// 'credit'. For a `credit`-direction proposal, [StateError] is also thrown
+  /// when [amount] exceeds the outstanding balance.
   /// Throws [StateError] when the credit does not exist in the actor's shop or
   /// when a correction is already pending for that credit.
   Future<CreditCorrection> requestCorrection({
@@ -144,6 +152,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     required Money amount,
     required String reason,
     required DateTime requestedAt,
+    String direction = directionDebit,
   }) async {
     // --- Authorization: require an active user with requestCorrections ---
     if (!actor.isActive) {
@@ -181,6 +190,13 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         'Correction amount must be a positive value in minor units',
       );
     }
+    if (direction != directionDebit && direction != directionCredit) {
+      throw ArgumentError.value(
+        direction,
+        'direction',
+        "direction must be 'debit' or 'credit'",
+      );
+    }
     final cleanReason = reason.trim();
     if (cleanReason.isEmpty) {
       throw ArgumentError.value(
@@ -206,6 +222,17 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       throw StateError(
         'Cannot request correction: credit ID "$creditId" not found in shop '
         '"${actor.shopId}".',
+      );
+    }
+
+    // --- A credit-direction adjustment exceeding the outstanding balance is
+    //     rejected up front (no negative balances). ---
+    if (direction == directionCredit &&
+        amount.minorUnits > credit.balanceCents) {
+      throw StateError(
+        'Cannot request adjustment: the credit-direction amount of '
+        '${amount.minorUnits} minor units exceeds the outstanding balance of '
+        'credit ID "$creditId".',
       );
     }
 
@@ -272,6 +299,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'creditId': creditId,
             'originalPaymentId': originalPaymentId,
             'amountCents': amount.minorUnits,
+            'direction': direction,
             'reason': cleanReason,
             'requestedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -314,6 +342,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
           originalPaymentId: Value(originalPaymentId),
           requestedByUserId: actor.id,
           correctionAmountCents: amount.minorUnits,
+          direction: Value(direction),
           reason: cleanReason,
           status: Value('pending_approval'),
           reviewedByUserId: const Value.absent(),
@@ -341,6 +370,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'creditId': creditId,
             'originalPaymentId': originalPaymentId,
             'amountCents': amount.minorUnits,
+            'direction': direction,
             'reason': cleanReason,
             'requestedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -377,18 +407,18 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   ///       = 'pending_approval'), recording the reviewer, decision timestamp
   ///       and resulting balance snapshot.
   ///    c. Lift the correction lock and apply the balance adjustment on the
-  ///       credit (`balanceCents += correctionAmountCents`).
+  ///       credit (`balanceCents += correctionAmountCents` for `debit`,
+  ///       `balanceCents -= correctionAmountCents` for `credit`).
   ///    d. Insert the local audit/sync queue entry.
   ///
   /// Rejection of a duplicate/already-decided request is refused with
   /// [StateError] so a correction cannot be approved twice.
   ///
-  /// NOTE (open accounting decision): The balance adjustment applies
-  /// `correctionAmountCents` to the credit balance. The exact business-rule
-  /// meaning of `correctionAmountCents` (full original payment vs. only the
-  /// excess) and any separate immutable compensating ledger entry require
-  /// Product Owner / Architect approval before this path is considered
-  /// complete.
+  /// Direction-aware balance arithmetic (Story 5.6):
+  /// `debit` adds [correctionAmountCents] to the credit balance; `credit`
+  /// subtracts it (the partial forgiveness write-down). An approved
+  /// credit-direction adjustment exceeding the outstanding balance is rejected
+  /// with [StateError], so the credit never carries a negative balance.
   ///
   /// Returns the approved [CreditCorrection].
   ///
@@ -510,9 +540,20 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         );
       }
 
-      final newBalanceCents = credit.balanceCents + correction.correctionAmountCents;
+      final isAdjustmentProposal = correction.originalPaymentId == null;
+      final adjustmentDelta = correction.direction == directionCredit
+          ? -correction.correctionAmountCents
+          : correction.correctionAmountCents;
+      final newBalanceCents = credit.balanceCents + adjustmentDelta;
+      if (newBalanceCents < 0) {
+        throw StateError(
+          'Cannot approve adjustment: the credit-direction amount of '
+          '${correction.correctionAmountCents} minor units exceeds the '
+          'outstanding balance of credit ID "${correction.creditId}".',
+        );
+      }
 
-      // --- Record the immutable compensating debit ledger entry ---
+      // --- Record the immutable ledger entry ---
       //
       // PRD FR-22: an approved reversal records "a linked compensating debit
       // transaction" while "the original payment transaction is permanently
@@ -520,6 +561,15 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       // immutable financial record of the reversal; it posts within the same
       // transaction as the credit balance, correction record, lock lift, and
       // sync journal so none of them can diverge on failure.
+      //
+      // Story 5.6: an adjustment proposal (no original payment) posts
+      // `adjustment_credit` (forgiveness) or `adjustment_debit` instead of
+      // `compensating_debit`.
+      final entryType = isAdjustmentProposal
+          ? (correction.direction == directionCredit
+              ? 'adjustment_credit'
+              : 'adjustment_debit')
+          : 'compensating_debit';
       await into(creditLedgerEntries).insert(
         CreditLedgerEntriesCompanion.insert(
           id: const Uuid().v4(),
@@ -527,7 +577,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
           creditId: correction.creditId,
           originalPaymentId: Value(correction.originalPaymentId),
           correctionId: Value(correctionId),
-          entryType: 'compensating_debit',
+          entryType: entryType,
           amountCents: correction.correctionAmountCents,
           preBalanceCents: credit.balanceCents,
           postBalanceCents: newBalanceCents,
@@ -598,6 +648,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'correctionId': correctionId,
             'creditId': correction.creditId,
             'amountCents': correction.correctionAmountCents,
+            'direction': correction.direction,
             'previousBalanceCents': credit.balanceCents,
             'newBalanceCents': newBalanceCents,
             'reviewedAt': now.toIso8601String(),
@@ -743,6 +794,8 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'actorId': actor.id,
             'correctionId': correctionId,
             'creditId': correction.creditId,
+            'amountCents': correction.correctionAmountCents,
+            'direction': correction.direction,
             'rejectionReason': cleanRejectionReason,
             'reviewedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -813,6 +866,8 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'actorId': actor.id,
             'correctionId': correctionId,
             'creditId': correction.creditId,
+            'amountCents': correction.correctionAmountCents,
+            'direction': correction.direction,
             'rejectionReason': cleanRejectionReason,
             'reviewedAt': now.toIso8601String(),
             'shopId': actor.shopId,
@@ -1352,6 +1407,10 @@ class CreditCorrection {
   final String requestedByUserId;
   final DateTime createdAt;
   final int correctionAmountCents;
+
+  /// Direction the approved adjustment moves the credit balance: `debit`
+  /// (increase) or `credit` (decrease — the forgiveness write-down).
+  final String direction;
   final String reason;
   final CreditCorrectionStatus status;
   final String? reviewedByUserId;
@@ -1368,6 +1427,7 @@ class CreditCorrection {
     required this.requestedByUserId,
     required this.createdAt,
     required this.correctionAmountCents,
+    this.direction = 'debit',
     required this.reason,
     required this.status,
     this.reviewedByUserId,
@@ -1392,6 +1452,7 @@ class CreditCorrection {
         other.requestedByUserId == requestedByUserId &&
         other.createdAt == createdAt &&
         other.correctionAmountCents == correctionAmountCents &&
+        other.direction == direction &&
         other.reason == reason &&
         other.status == status &&
         other.reviewedByUserId == reviewedByUserId &&
@@ -1410,6 +1471,7 @@ class CreditCorrection {
         requestedByUserId,
         createdAt,
         correctionAmountCents,
+        direction,
         reason,
         status,
         reviewedByUserId,

@@ -1,6 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/data/local/connection/database_connection.dart';
+import 'package:credit_system/core/permissions/app_permission.dart';
+import 'package:credit_system/core/permissions/authorization_guard.dart';
+import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/domain/models/customer.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
@@ -581,6 +585,127 @@ void main() {
       // Same NIC in different shop — must not be found
       final notFound = await customerDao.getCustomerByNic(shopBetaId, '851234567V');
       expect(notFound, isNull);
+    });
+  });
+
+  group('CustomerDao - Soft Delete', () {
+    AppUser alphaOwner() => AppUser(
+          id: 'alpha-owner',
+          shopId: shopAlphaId,
+          username: 'alpha.owner',
+          fullName: 'Alpha Owner',
+          role: AppRole.shopOwner,
+          isActive: true,
+        );
+
+    Future<int> seedCustomer() => customerDao.createCustomer(
+          Customer(
+            id: 0,
+            shopId: shopAlphaId,
+            fullName: 'Soft Delete Me',
+            nic: '851234567V',
+            phone: '0771234567',
+            address: '1 Main St',
+            createdAt: DateTime.now().toUtc(),
+            updatedAt: DateTime.now().toUtc(),
+          ),
+        );
+
+    Future<void> insertSettledCredit(int customerId) async {
+      final now = DateTime.now().toUtc();
+      await db.into(db.credits).insert(
+            CreditsCompanion(
+              id: Value('credit-$customerId-settled'),
+              shopId: Value(shopAlphaId),
+              customerId: Value(customerId),
+              principalCents: Value(250000),
+              balanceCents: Value(0),
+              status: Value('settled'),
+              workflowStatus: Value('disbursed'),
+              dueDate: Value(now),
+              createdAt: Value(now),
+              settledAt: Value(now),
+            ),
+          );
+    }
+
+    Future<DateTime?> readDeletedAt(int customerId) async {
+      final row = await (db.select(db.customers)
+            ..where((c) => c.id.equals(customerId)))
+          .getSingle();
+      return row.deletedAt;
+    }
+
+    test('a credit row of a non-active status blocks deletion', () async {
+      final id = await seedCustomer();
+      await insertSettledCredit(id);
+
+      await expectLater(
+        () => customerDao.softDeleteCustomer(
+          actor: alphaOwner(),
+          shopId: shopAlphaId,
+          customerId: id,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(await readDeletedAt(id), isNull);
+      expect(await db.select(db.syncQueue).get(), isEmpty);
+    });
+
+    test('double-delete throws StateError and leaves one audit row', () async {
+      final id = await seedCustomer();
+      await customerDao.softDeleteCustomer(
+        actor: alphaOwner(),
+        shopId: shopAlphaId,
+        customerId: id,
+      );
+
+      await expectLater(
+        () => customerDao.softDeleteCustomer(
+          actor: alphaOwner(),
+          shopId: shopAlphaId,
+          customerId: id,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(await db.select(db.syncQueue).get(), hasLength(1));
+    });
+
+    test('a cross-shop actor is denied', () async {
+      final id = await seedCustomer();
+      final foreignOwner = AppUser(
+        id: 'beta-owner',
+        shopId: shopBetaId,
+        username: 'beta.owner',
+        fullName: 'Beta Owner',
+        role: AppRole.shopOwner,
+        isActive: true,
+      );
+
+      await expectLater(
+        () => customerDao.softDeleteCustomer(
+          actor: foreignOwner,
+          shopId: shopAlphaId,
+          customerId: id,
+        ),
+        throwsA(isA<PermissionDeniedException>()),
+      );
+
+      expect(await readDeletedAt(id), isNull);
+      expect(await db.select(db.syncQueue).get(), isEmpty);
+    });
+
+    test('a missing customer id throws StateError', () async {
+      await expectLater(
+        () => customerDao.softDeleteCustomer(
+          actor: alphaOwner(),
+          shopId: shopAlphaId,
+          customerId: 999999,
+        ),
+        throwsA(isA<StateError>()),
+      );
     });
   });
 }

@@ -101,9 +101,18 @@ class CustomerRegistrationService {
 
     // 1b. Duplicate NIC detection — scoped to the current shop.
     // A duplicate NIC blocks registration; the existing profile is surfaced
-    // so staff can open it instead of creating a duplicate.
+    // so staff can open it instead of creating a duplicate. A soft-deleted
+    // holder is an unreachable dead-end, so it gets an honest message about
+    // the NIC being unreusable.
     final existingByNic = await customerDao.getCustomerByNic(request.shopId, request.nic);
     if (existingByNic != null) {
+      if (existingByNic.deletedAt != null) {
+        throw DuplicateNicException(
+          existingByNic,
+          message:
+              'A deleted customer record already holds this NIC within ${request.shopId}. NICs cannot be reused. Contact the shop owner.',
+        );
+      }
       throw DuplicateNicException(
         existingByNic,
         message:

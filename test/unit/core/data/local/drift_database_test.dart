@@ -20,7 +20,7 @@ void main() {
 
   group('AppDatabase - Local Drift Foundations & Schema v7 Tests', () {
     test('schema version is 20 and all tables exist', () {
-      expect(db.schemaVersion, equals(25));
+      expect(db.schemaVersion, equals(27));
       expect(
         db.allTables.map((t) => t.actualTableName),
         containsAll([

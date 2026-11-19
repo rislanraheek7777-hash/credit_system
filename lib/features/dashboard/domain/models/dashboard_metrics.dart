@@ -11,8 +11,8 @@ class DashboardMetrics {
     required this.totalStaff,
     required this.totalCredits,
     required this.activeCreditCents,
-    required this.outstandingCents,
     required this.collectedCents,
+    required this.overdueCents,
   });
 
   /// Placeholder used before the first stream event arrives.
@@ -21,8 +21,8 @@ class DashboardMetrics {
     totalStaff: 0,
     totalCredits: 0,
     activeCreditCents: 0,
-    outstandingCents: 0,
     collectedCents: 0,
+    overdueCents: 0,
   );
 
   /// Number of customer profiles in the shop.
@@ -38,19 +38,16 @@ class DashboardMetrics {
   /// disbursement, disbursed, or overdue (excludes cancelled).
   final int activeCreditCents;
 
-  /// Sum of outstanding balances for credits that are active/overdue and pending
-  /// disbursement, disbursed, or overdue (excludes cancelled).
-  final int outstandingCents;
-
   /// Principal already repaid across all non-cancelled credits.
   final int collectedCents;
 
-  /// Collected-to-outstanding ratio, preserving the legacy dashboard formula.
+  /// Sum of outstanding balances for disbursed, unsettled credits whose
+  /// official due date has passed in the shop's local time zone.
   ///
-  /// Returns `0` when there is nothing outstanding.
-  double get ratio {
-    if (outstandingCents == 0) return 0;
-    return collectedCents / outstandingCents;
-  }
+  /// Mirrors the overdue evaluation rule used elsewhere in the domain: a
+  /// credit is overdue on the calendar day after its due date, not settled,
+  /// with a positive balance. Credits still awaiting disbursement are
+  /// excluded because their official due date is only fixed at disbursement.
+  final int overdueCents;
 }
 

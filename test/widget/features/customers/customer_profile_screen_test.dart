@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show Value;
@@ -6,6 +8,7 @@ import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
+import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/credit_term.dart';
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
@@ -14,7 +17,7 @@ import 'package:credit_system/features/customers/presentation/credit_draft_agree
 import 'package:credit_system/features/customers/domain/models/credit_document_content.dart';
 import 'package:credit_system/features/customers/presentation/credit_settle_action.dart';
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
-import 'package:credit_system/features/customers/presentation/payment_screen.dart';
+import 'package:credit_system/features/customers/presentation/settle_summary_screen.dart';
 
 import '../../../support/customers_test_support.dart';
 
@@ -36,6 +39,7 @@ void main() {
     bool isActive = true,
     String? actorShopId,
     bool canViewSensitive = false,
+    bool isOfflineOnly = false,
   }) {
     return MaterialApp(
       home: CustomerProfileScreen(
@@ -43,6 +47,7 @@ void main() {
         customerId: customerId,
         canViewSensitive: canViewSensitive,
         database: db,
+        isOfflineOnly: isOfflineOnly,
         currentUser: AppUser(
           id: testUserId,
           shopId: actorShopId ?? shopId,
@@ -741,37 +746,37 @@ void main() {
           createdAt: DateTime.now().toUtc(),
         ),
       );
-      await collateralDao.createCollateralItem(CollateralItem(
-        id: 'coll-pledged',
-        shopId: shopId,
-        customerId: customerId,
-        creditId: pendingCreditId,
-        itemReferenceId: 'COLL-PLEDGED-777',
-        category: CollateralItemCategory.gold,
-        description: '22K gold necklace',
-        conditionGrade: 'Like New',
-        weightMilligrams: 5500,
-        estimatedValueCents: 1500000,
-      ));
-      await collateralDao.createCollateralItem(CollateralItem(
-        id: 'coll-other',
-        shopId: shopId,
-        customerId: customerId,
-        creditId: 'credit-other-1',
-        itemReferenceId: 'COLL-OTHER-888',
-        category: CollateralItemCategory.electronics,
-        description: 'Laptop',
-        conditionGrade: 'Good',
-        weightMilligrams: 1500000,
-        estimatedValueCents: 400000,
-      ));
-
-      await tester.pumpWidget(
-        profileScreen(
-          db: db,
+      await collateralDao.createCollateralItem(
+        CollateralItem(
+          id: 'coll-pledged',
           shopId: shopId,
           customerId: customerId,
+          creditId: pendingCreditId,
+          itemReferenceId: 'COLL-PLEDGED-777',
+          category: CollateralItemCategory.gold,
+          description: '22K gold necklace',
+          conditionGrade: 'Like New',
+          weightMilligrams: 5500,
+          estimatedValueCents: 1500000,
         ),
+      );
+      await collateralDao.createCollateralItem(
+        CollateralItem(
+          id: 'coll-other',
+          shopId: shopId,
+          customerId: customerId,
+          creditId: 'credit-other-1',
+          itemReferenceId: 'COLL-OTHER-888',
+          category: CollateralItemCategory.electronics,
+          description: 'Laptop',
+          conditionGrade: 'Good',
+          weightMilligrams: 1500000,
+          estimatedValueCents: 400000,
+        ),
+      );
+
+      await tester.pumpWidget(
+        profileScreen(db: db, shopId: shopId, customerId: customerId),
       );
       await tester.pumpAndSettle();
 
@@ -1058,30 +1063,73 @@ void main() {
       await db.close();
     });
 
-    testWidgets('tapping Settle opens the payment screen pre-filled to the full '
-        'balance, and a full settlement returns to the profile', (
+    testWidgets('tapping Settle opens the settle summary screen showing the '
+        'borrower, credit identity, outstanding balance and collateral at '
+        'stake, and confirming records a full settlement', (
       WidgetTester tester,
     ) async {
       final db = await seedDisbursedCredit(tester);
+
+      await CollateralDao(db).createCollateralItem(
+        CollateralItem(
+          id: 'coll-settle-1',
+          shopId: shopId,
+          customerId: customerId,
+          creditId: settleCreditId,
+          itemReferenceId: 'COLL-SETTLE-777',
+          category: CollateralItemCategory.gold,
+          description: '22K gold necklace',
+          conditionGrade: 'Like New',
+          weightMilligrams: 5500,
+          estimatedValueCents: 1500000,
+        ),
+      );
 
       await tester.pumpWidget(
         profileScreen(
           db: db,
           shopId: shopId,
           customerId: customerId,
-          role: AppRole.manager,
+          role: AppRole.shopOwner,
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(CreditSettleAction.buttonKey(settleCreditId)));
-      await pumpUntil(tester,
-          () => find.byKey(const Key('payment_amount_input')).evaluate().isNotEmpty);
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
       await tester.pumpAndSettle();
 
-      expect(find.byType(PaymentScreen), findsOneWidget);
+      expect(find.byType(SettleSummaryScreen), findsOneWidget);
+
+      // The borrower, credit identity, big balance and collateral at stake
+      // are all shown.
+      expect(find.byKey(const Key('settle_customer_name')), findsOneWidget);
+      expect(find.text('Sunil Perera'), findsOneWidget);
+      expect(find.byKey(const Key('settle_credit_reference')), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('settle_outstanding_balance')))
+            .data,
+        equals('Rs. 3,000.00'),
+      );
+      expect(
+        find.text('Collateral at stake: 1 of 1 items still in custody'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('COLL-SETTLE-777'), findsOneWidget);
+      expect(
+        find.text('Settlement does not return pledged items.'),
+        findsOneWidget,
+      );
+
       final amountField = tester.widget<TextField>(
-        find.byKey(const Key('payment_amount_input')),
+        find.byKey(const Key('settle_amount_input')),
       );
       expect(
         amountField.controller!.text,
@@ -1089,19 +1137,33 @@ void main() {
         reason: 'The full outstanding balance must be pre-filled.',
       );
 
-      await tester.tap(find.byKey(const Key('record_payment_button')));
-      await pumpUntil(tester, () => find.byType(PaymentScreen).evaluate().isEmpty);
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('settle_sheet_full')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The option sheet leads with a full settlement of the balance.
+      expect(find.text('Settle in full — Rs. 3,000.00'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('settle_sheet_full')));
+      await pumpUntil(
+        tester,
+        () => find.byType(SettleSummaryScreen).evaluate().isEmpty,
+      );
       await tester.pumpAndSettle();
 
       // Back on the profile with a confirmation.
       expect(find.byType(CustomerProfileScreen), findsOneWidget);
-      await pumpUntil(tester,
-          () => find.textContaining('Credit settled').evaluate().isNotEmpty);
+      await pumpUntil(
+        tester,
+        () => find.textContaining('Credit settled').evaluate().isNotEmpty,
+      );
 
       // The credit list was refreshed: balance 0 and Settled.
-      final row = await (db.select(db.credits)
-            ..where((c) => c.id.equals(settleCreditId)))
-          .getSingle();
+      final row = await (db.select(
+        db.credits,
+      )..where((c) => c.id.equals(settleCreditId))).getSingle();
       expect(row.balanceCents, equals(0));
       expect(row.status, equals('settled'));
       expect(find.text('Settled (1)'), findsOneWidget);
@@ -1115,7 +1177,123 @@ void main() {
       await db.close();
     });
 
-    testWidgets('ineligible credits offer no Settle action', (
+    testWidgets('tapping Settle on one of several eligible credits settles '
+        'exactly that credit', (WidgetTester tester) async {
+      final db = await seedDisbursedCredit(tester);
+
+      final now = DateTime.now().toUtc();
+      await insertCredit(db,
+        Credit(
+          id: 'credit-settle-2',
+          shopId: shopId,
+          customerId: customerId,
+          principalCents: 900000,
+          balanceCents: 250000,
+          status: CreditStatus.active,
+          workflowStatus: CreditWorkflowStatus.disbursed,
+          dueDate: now.add(const Duration(days: 45)),
+          createdAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Settle the second card's credit — not the first actionable one.
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey('credit-settle-2')),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SettleSummaryScreen), findsOneWidget);
+      final screen = tester.widget<SettleSummaryScreen>(
+        find.byType(SettleSummaryScreen),
+      );
+      expect(
+        screen.creditId,
+        equals('credit-settle-2'),
+        reason:
+            'Tapping a card\'s Settle action must settle that card\'s credit.',
+      );
+
+      // The pre-filled amount is that credit's balance, not another credit's.
+      final amountField = tester.widget<TextField>(
+        find.byKey(const Key('settle_amount_input')),
+      );
+      expect(amountField.controller!.text, equals('2500.00'));
+
+      await db.close();
+    });
+
+    testWidgets('the settle screen offers the balance-adjustment (forgiveness) '
+        'option', (WidgetTester tester) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // Settle opens the options sheet; the adjustment proposal lives there.
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('request_adjustment_button'))
+            .evaluate()
+            .isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('request_adjustment_button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('request_adjustment_button')));
+      await pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('adjustment_amount_input'))
+            .evaluate()
+            .isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Request Balance Adjustment'), findsWidgets);
+
+      await db.close();
+    });
+
+    testWidgets('ineligible credits still offer Settle, and the summary '
+        'screen explains why they cannot be settled', (
       WidgetTester tester,
     ) async {
       final db = await openTestDatabase();
@@ -1177,19 +1355,39 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // The settle button is visible on every card for a recordPayments
+      // holder (visibility rule restored at the human's request); the
+      // summary screen is the eligibility backstop.
       expect(
         find.byKey(CreditSettleAction.buttonKey('credit-pending')),
-        findsNothing,
+        findsOneWidget,
       );
       expect(
         find.byKey(CreditSettleAction.buttonKey('credit-settled')),
-        findsNothing,
+        findsOneWidget,
       );
       expect(
         find.byKey(CreditSettleAction.buttonKey('credit-zero-balance')),
-        findsNothing,
+        findsOneWidget,
       );
-      expect(find.text('Settle'), findsNothing);
+
+      // Tapping Settle on an ineligible credit opens the summary screen,
+      // which refuses payment and explains why.
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey('credit-zero-balance')),
+      );
+      await pumpUntil(
+        tester,
+        () => find
+            .text('This credit is not eligible for payment recording.')
+            .evaluate()
+            .isNotEmpty,
+      );
+      expect(
+        find.text('This credit is not eligible for payment recording.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('settle_confirm_button')), findsNothing);
 
       await db.close();
     });
@@ -1258,29 +1456,65 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(CreditSettleAction.buttonKey(settleCreditId)));
-      await pumpUntil(tester,
-          () => find.byKey(const Key('payment_amount_input')).evaluate().isNotEmpty);
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
       await tester.pumpAndSettle();
 
+      // Lower the amount via the Partial settlement option, then confirm
+      // through the sheet — no auto-return, recorded as a partial payment.
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_sheet_partial')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('settle_sheet_partial')));
+      await tester.pumpAndSettle();
+
+      final clearedField = tester.widget<TextField>(
+        find.byKey(const Key('settle_amount_input')),
+      );
+      expect(clearedField.controller!.text, isEmpty);
+
       await tester.enterText(
-        find.byKey(const Key('payment_amount_input')),
+        find.byKey(const Key('settle_amount_input')),
         '1000.00',
       );
-      await tester.tap(find.byKey(const Key('record_payment_button')));
-      await pumpUntil(tester,
-          () => find.byKey(const Key('payment_success_display')).evaluate().isNotEmpty);
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () =>
+            find.textContaining('Record partial payment').evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('settle_sheet_partial')));
+      await pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('settle_success_display'))
+            .evaluate()
+            .isNotEmpty,
+      );
 
-      // The payment screen stays open — a partial payment never auto-returns.
-      expect(find.byType(PaymentScreen), findsOneWidget);
+      // The summary screen stays open — a partial payment never auto-returns.
+      expect(find.byType(SettleSummaryScreen), findsOneWidget);
 
-      final row = await (db.select(db.credits)
-            ..where((c) => c.id.equals(settleCreditId)))
-          .getSingle();
+      final row = await (db.select(
+        db.credits,
+      )..where((c) => c.id.equals(settleCreditId))).getSingle();
       expect(row.balanceCents, equals(200000));
       expect(row.status, equals('active'));
-      expect((await db.select(db.payments).get()).single.paymentType,
-          equals('partial'));
+      expect(
+        (await db.select(db.payments).get()).single.paymentType,
+        equals('partial'),
+      );
 
       await db.close();
     });
@@ -1299,31 +1533,43 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(CreditSettleAction.buttonKey(settleCreditId)));
-      await pumpUntil(tester,
-          () => find.byKey(const Key('payment_amount_input')).evaluate().isNotEmpty);
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
       await tester.pumpAndSettle();
 
       // The balance drops after the screen was rendered and pre-filled.
-      await (db.update(db.credits)
-            ..where((c) => c.id.equals(settleCreditId)))
+      await (db.update(db.credits)..where((c) => c.id.equals(settleCreditId)))
           .write(const CreditsCompanion(balanceCents: Value(100000)));
 
-      await tester.tap(find.byKey(const Key('record_payment_button')));
-      await pumpUntil(tester,
-          () => find
-              .byKey(const Key('payment_validation_error_display'))
-              .evaluate()
-              .isNotEmpty);
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('settle_sheet_full')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('settle_sheet_full')));
+      await pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('settle_validation_error_display'))
+            .evaluate()
+            .isNotEmpty,
+      );
 
       final error = tester.widget<Text>(
-        find.byKey(const Key('payment_validation_error_display')),
+        find.byKey(const Key('settle_validation_error_display')),
       );
       expect(error.data, contains('exceeds the outstanding balance'));
 
       // Nothing was recorded and the screen stayed open.
       expect(await db.select(db.payments).get(), isEmpty);
-      expect(find.byType(PaymentScreen), findsOneWidget);
+      expect(find.byType(SettleSummaryScreen), findsOneWidget);
 
       await db.close();
     });
@@ -1347,23 +1593,473 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(CreditSettleAction.buttonKey(settleCreditId)));
-      await pumpUntil(tester,
-          () => find.byKey(const Key('payment_amount_input')).evaluate().isNotEmpty);
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('record_payment_button')));
-      await pumpUntil(tester,
-          () => find.byKey(const Key('payment_error_display')).evaluate().isNotEmpty);
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('settle_sheet_full')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('settle_sheet_full')));
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_error_display')).evaluate().isNotEmpty,
+      );
 
       final error = tester.widget<Text>(
-        find.byKey(const Key('payment_error_display')),
+        find.byKey(const Key('settle_error_display')),
       );
       expect(error.data, contains('pending correction'));
 
       // Nothing was recorded and the screen stayed open.
       expect(await db.select(db.payments).get(), isEmpty);
-      expect(find.byType(PaymentScreen), findsOneWidget);
+      expect(find.byType(SettleSummaryScreen), findsOneWidget);
+
+      await db.close();
+    });
+
+    testWidgets('the sheet offers a due date extension to a Shop Owner, and it '
+        'updates the credit through the standard extension path', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+      // A collateral item makes the profile tall enough to fill the test
+      // surface — the configuration in which the modal bottom sheet renders
+      // inside the 3000px test view.
+      await CollateralDao(db).createCollateralItem(
+        CollateralItem(
+          id: 'coll-settle-extend',
+          shopId: shopId,
+          customerId: customerId,
+          creditId: settleCreditId,
+          itemReferenceId: 'COLL-EXTEND-777',
+          category: CollateralItemCategory.gold,
+          description: '22K gold necklace',
+          conditionGrade: 'Like New',
+          weightMilligrams: 5500,
+          estimatedValueCents: 1500000,
+        ),
+      );
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.shopOwner,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final before = await (db.select(
+        db.credits,
+      )..where((c) => c.id.equals(settleCreditId))).getSingle();
+
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_sheet_extend')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The sheet exposes the owner-only extension option.
+      expect(find.byKey(const Key('settle_sheet_extend')), findsOneWidget);
+      expect(find.byKey(const Key('settle_sheet_full')), findsOneWidget);
+      expect(find.byKey(const Key('settle_sheet_partial')), findsOneWidget);
+      expect(
+        find.byKey(const Key('request_adjustment_button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('settle_sheet_extend')));
+      await pumpUntil(
+        tester,
+        () => find.text('Extend due date').evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // Accept the pre-chosen date (today + 30 days), then supply the reason.
+      await tester.tap(find.text('OK'));
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('extend_reason_field')).evaluate().isNotEmpty,
+      );
+      await tester.enterText(
+        find.byKey(const Key('extend_reason_field')),
+        'Customer requested more time',
+      );
+      await tester.tap(find.byKey(const Key('extend_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find.textContaining('Due date extended to').evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The standard extension path persisted the change and an audit entry.
+      final after = await (db.select(
+        db.credits,
+      )..where((c) => c.id.equals(settleCreditId))).getSingle();
+      expect(
+        after.dueDate.millisecondsSinceEpoch,
+        greaterThan(before.dueDate.millisecondsSinceEpoch),
+      );
+      expect(after.status, equals('active'));
+      final extensions = await db.select(db.dueDateExtensions).get();
+      expect(extensions, hasLength(1));
+      expect(extensions.single.reason, equals('Customer requested more time'));
+
+      await db.close();
+    });
+
+    testWidgets('the due date extension option is hidden from non-owners', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('settle_sheet_full')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('settle_sheet_extend')), findsNothing);
+
+      await db.close();
+    });
+  });
+
+  group('CustomerProfileScreen - soft delete', () {
+    const shopId = 'shop-123';
+    const customerId = 456;
+
+    Future<void> seedCredit(AppDatabase db) async {
+      final now = DateTime.now().toUtc();
+      await insertCredit(db,
+        Credit(
+          id: 'credit-delete-guard-1',
+          shopId: shopId,
+          customerId: customerId,
+          principalCents: 250000,
+          balanceCents: 250000,
+          status: CreditStatus.active,
+          dueDate: now.add(const Duration(days: 30)),
+          createdAt: now,
+        ),
+      );
+    }
+
+    OutlinedButton deleteButton(WidgetTester tester) {
+      return tester.widget<OutlinedButton>(
+        find.byKey(const Key('delete_customer_button')),
+      );
+    }
+
+    testWidgets('owner with zero credits sees an enabled Delete customer '
+        'action', (WidgetTester tester) async {
+      final db = await openTestDatabase();
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.shopOwner,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('delete_customer_button')), findsOneWidget);
+      expect(deleteButton(tester).onPressed, isNotNull);
+      expect(
+        find.byKey(const Key('delete_customer_blocked_message')),
+        findsNothing,
+      );
+
+      await db.close();
+    });
+
+    testWidgets('non-owner roles do not see the delete action', (
+      WidgetTester tester,
+    ) async {
+      for (final role in [AppRole.cashier, AppRole.manager]) {
+        final db = await openTestDatabase();
+        await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+        await tester.pumpWidget(
+          profileScreen(
+            db: db,
+            shopId: shopId,
+            customerId: customerId,
+            role: role,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('delete_customer_button')),
+          findsNothing,
+          reason: 'role $role must not see the delete action',
+        );
+
+        await db.close();
+      }
+    });
+
+    testWidgets('custom role with registerCustomers and createCredits still '
+        'does not see the delete action', (WidgetTester tester) async {
+      final db = await openTestDatabase();
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.custom,
+          customPermissions: {
+            AppPermission.registerCustomers,
+            AppPermission.createCredits,
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('delete_customer_button')), findsNothing);
+
+      await db.close();
+    });
+
+    testWidgets('owner with credit history sees a disabled action and a '
+        'blocking explanation', (WidgetTester tester) async {
+      final db = await openTestDatabase();
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+      await seedCredit(db);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.shopOwner,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('delete_customer_button')), findsOneWidget);
+      expect(deleteButton(tester).onPressed, isNull);
+      expect(
+        find.byKey(const Key('delete_customer_blocked_message')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Cannot delete: this customer has credit history.'),
+        findsOneWidget,
+      );
+
+      // Tapping the disabled action opens nothing and writes nothing.
+      await tester.tap(find.byKey(const Key('delete_customer_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete Customer'), findsNothing);
+
+      final row = await (db.select(
+        db.customers,
+      )..where((c) => c.id.equals(customerId))).getSingle();
+      expect(row.deletedAt, isNull);
+
+      await db.close();
+    });
+
+    testWidgets('owner confirming the deletion soft-deletes the customer, '
+        'records an audit event and pops back', (WidgetTester tester) async {
+      final db = await openTestDatabase();
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.shopOwner,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete_customer_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete Customer'), findsOneWidget);
+      expect(find.text('This action cannot be undone.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('delete_customer_confirm_button')));
+      await tester.pumpAndSettle();
+
+      // Popped back to the search screen (the profile is gone).
+      expect(find.text('Customer Profile'), findsNothing);
+
+      // The row is retained, marked deleted, and hidden from search.
+      final row = await (db.select(
+        db.customers,
+      )..where((c) => c.id.equals(customerId))).getSingle();
+      expect(row.deletedAt, isNotNull);
+      final results = await CustomerDao(db).searchCustomers(shopId, 'Sunil');
+      expect(results, isEmpty);
+      final all = await CustomerDao(db).getCustomersByShopId(shopId);
+      expect(all, isEmpty);
+
+      // An audit/sync queue entry records the soft delete (category 1).
+      final queue = await db.select(db.syncQueue).get();
+      expect(queue, hasLength(1));
+      expect(queue.single.actionType, 'customer_soft_deleted');
+      expect(queue.single.entityType, 'customer');
+      expect(queue.single.status, 'pending_server_ack');
+      final payload =
+          jsonDecode(queue.single.payloadJson) as Map<String, dynamic>;
+      expect(payload['auditCategory'], 1);
+      expect(payload['auditEvent'], 'customer_soft_deleted');
+      expect(payload['targetEntityType'], 'customer');
+      expect(payload['targetEntityId'], customerId.toString());
+      expect(payload['customerId'], customerId);
+
+      await db.close();
+    });
+
+    testWidgets('owner declining the confirmation leaves the customer intact', (
+      WidgetTester tester,
+    ) async {
+      final db = await openTestDatabase();
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.shopOwner,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete_customer_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete Customer'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Customer Profile'), findsOneWidget);
+      final row = await (db.select(
+        db.customers,
+      )..where((c) => c.id.equals(customerId))).getSingle();
+      expect(row.deletedAt, isNull);
+      final queue = await db.select(db.syncQueue).get();
+      expect(queue, isEmpty);
+
+      await db.close();
+    });
+
+    testWidgets('offline owner is blocked with an offline message and nothing '
+        'is written', (WidgetTester tester) async {
+      final db = await openTestDatabase();
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.shopOwner,
+          isOfflineOnly: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete_customer_button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Offline session. Please log in online to delete a customer.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Delete Customer'), findsNothing);
+      final row = await (db.select(
+        db.customers,
+      )..where((c) => c.id.equals(customerId))).getSingle();
+      expect(row.deletedAt, isNull);
+      final queue = await db.select(db.syncQueue).get();
+      expect(queue, isEmpty);
+
+      await db.close();
+    });
+
+    testWidgets('deactivated owner does not see the delete action', (
+      WidgetTester tester,
+    ) async {
+      final db = await openTestDatabase();
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.shopOwner,
+          isActive: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('delete_customer_button')), findsNothing);
+      final row = await (db.select(
+        db.customers,
+      )..where((c) => c.id.equals(customerId))).getSingle();
+      expect(row.deletedAt, isNull);
+      final queue = await db.select(db.syncQueue).get();
+      expect(queue, isEmpty);
 
       await db.close();
     });

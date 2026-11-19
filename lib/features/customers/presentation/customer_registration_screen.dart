@@ -131,6 +131,26 @@ class _CustomerRegistrationScreenState
           _sharedPhoneConfirmed = false;
         });
       }
+      // A soft-deleted holder is an unreachable dead-end: do not present
+      // details that cannot be opened.
+      if (mounted && e.existingCustomer.deletedAt != null) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Deleted Customer Record'),
+            content: const Text(
+              'A deleted customer record holds this NIC. It cannot be opened in-app and its NIC cannot be reused. Contact the shop owner.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       // Surface the existing profile so staff can open it instead of duplicating.
       if (mounted) {
         await showDialog(

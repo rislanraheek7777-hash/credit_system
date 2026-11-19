@@ -122,7 +122,9 @@ void main() {
 
   group('schema version 24 -> 25 migration (collateral category CHECK widening)',
       () {
-    test('a genuine version 24 database upgrades to version 25', () async {
+    // Note: the database opens with the current schema version (27), so a
+    // v24 seed passes through the v25, v26 and v27 migrations on open.
+    test('a genuine version 24 database upgrades to version 27', () async {
       final file = File(p.join(tempDir.path, 'v24_to_v25.sqlite'));
       seedV24Database(file);
 
@@ -134,8 +136,8 @@ void main() {
       // Drift opens lazily, so the migration runs on the first query.
       await db.select(db.collateralItems).get();
 
-      expect(readUserVersion(file), equals(25));
-      expect(db.schemaVersion, equals(25));
+      expect(readUserVersion(file), equals(27));
+      expect(db.schemaVersion, equals(27));
     });
 
     test('preserves existing collateral rows verbatim', () async {
@@ -281,7 +283,7 @@ void main() {
       }
     });
 
-    test('a second launch at version 25 does not re-run the migration',
+    test('a second launch at version 27 does not re-run the migration',
         () async {
       final file = File(p.join(tempDir.path, 'v24_reopen.sqlite'));
       seedV24Database(file);
@@ -290,7 +292,7 @@ void main() {
       await first.select(first.collateralItems).get();
       await first.close();
 
-      expect(readUserVersion(file), equals(25));
+      expect(readUserVersion(file), equals(27));
 
       final second = openWithDeviceSemantics(file);
       addTearDown(() async => second.close());

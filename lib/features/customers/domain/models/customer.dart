@@ -28,6 +28,11 @@ class SharedPhoneDuplicateException implements Exception {
 }
 
 /// Clean architecture domain entity representing a borrower customer profile (Story 2.1).
+///
+/// A soft-deleted customer (see `deletedAt`) retains its row for audit/FX
+/// integrity but is hidden from all lists, search and pickers, and can no
+/// longer register or mutate through this entity. The NIC it holds cannot be
+/// reused.
 @immutable
 class Customer {
   /// Auto-increment primary key assigned by the local database on insert.
@@ -60,6 +65,11 @@ class Customer {
   /// UTC last-update timestamp.
   final DateTime updatedAt;
 
+  /// UTC timestamp when the customer was soft-deleted, or `null` for a live
+  /// customer. Soft-deleted customers are retained for audit integrity but
+  /// hidden from all lists, search and pickers.
+  final DateTime? deletedAt;
+
   Customer({
     required this.id,
     required this.shopId,
@@ -71,6 +81,7 @@ class Customer {
     this.photoHash,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.deletedAt,
   }) : nic = normalizeNic(nic),
        createdAt = createdAt ?? DateTime.now().toUtc(),
        updatedAt = updatedAt ?? DateTime.now().toUtc() {

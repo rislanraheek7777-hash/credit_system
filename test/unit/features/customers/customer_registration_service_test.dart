@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:credit_system/core/data/local/app_database.dart';
@@ -704,6 +705,57 @@ void main() {
             ..where((c) => c.nic.equals('851234567V')))
           .get();
       expect(dupCount, hasLength(1));
+    });
+
+    test('a soft-deleted customer holding the NIC blocks registration with an honest message', () async {
+      final photoBytes = createSampleImageBytes();
+
+      await registrationService.registerCustomer(
+        RegisterCustomerRequest(
+          id: existingCustomerId,
+          shopId: shopAlphaId,
+          fullName: 'Deleted NIC Owner',
+          nic: '851234567V',
+          phone: '+94 77 111 2222',
+          address: '1 Main St, Colombo',
+          rawPhotoBytes: photoBytes,
+        ),
+      );
+      final created = await (db.select(db.customers)
+            ..where((c) => c.nic.equals('851234567V')))
+          .getSingle();
+      await (db.update(db.customers)..where((c) => c.id.equals(created.id)))
+          .write(CustomersCompanion(
+            deletedAt: Value(DateTime.now().toUtc()),
+          ));
+
+      await expectLater(
+        () => registrationService.registerCustomer(
+          RegisterCustomerRequest(
+            id: '11111111-1111-1111-1111-111111111107',
+            shopId: shopAlphaId,
+            fullName: 'Second NIC Owner',
+            nic: '851234567V',
+            phone: '+94 77 444 5555',
+            address: '3 Main St, Colombo',
+            rawPhotoBytes: createSampleImageBytes(),
+          ),
+        ),
+        throwsA(
+          isA<DuplicateNicException>().having(
+            (e) => e.message,
+            'message',
+            contains('deleted customer record'),
+          ),
+        ),
+      );
+
+      // No second row was created for the held NIC.
+      final rows = await (db.select(db.customers)
+            ..where((c) => c.shopId.equals(shopAlphaId))
+            ..where((c) => c.nic.equals('851234567V')))
+          .get();
+      expect(rows, hasLength(1));
     });
 
     test('duplicate NIC is scoped to the current shop — same NIC in another shop is allowed', () async {

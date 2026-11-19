@@ -12,6 +12,7 @@ import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:credit_system/features/customers/domain/models/receipt.dart';
 import 'package:credit_system/features/customers/domain/services/receipt_service.dart';
 import 'package:credit_system/features/customers/data/services/receipt_pdf_service.dart';
+import 'package:credit_system/features/customers/presentation/adjustment_proposal_screen.dart';
 import 'package:credit_system/features/customers/presentation/correction_adjustment_screen.dart';
 import 'package:credit_system/features/customers/presentation/correction_request_screen.dart';
 import 'package:credit_system/features/customers/presentation/correction_review_screen.dart';
@@ -39,23 +40,12 @@ class PaymentScreen extends StatefulWidget {
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
 
-  /// When true, the screen opens in settle mode: the amount field is
-  /// pre-filled to the credit's full outstanding balance, and a successful
-  /// full settlement pops the screen with the committed [Receipt] so the
-  /// caller can return to the customer profile and confirm the settlement.
-  ///
-  /// A partial payment — the staff member lowers the pre-filled amount — is
-  /// recorded exactly as it is today and does not pop the screen, so partial
-  /// payments keep their existing behaviour.
-  final bool settleMode;
-
   const PaymentScreen({
     super.key,
     required this.shopId,
     required this.creditId,
     required this.currentUser,
     this.database,
-    this.settleMode = false,
   });
 
   @override
@@ -108,15 +98,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _credit = credit;
         _isLoading = false;
         _error = credit == null ? 'Credit agreement not found' : null;
-        // Settle mode pre-fills the full outstanding balance so a full
-        // settlement can be reviewed and confirmed without typing the balance.
-        // The field stays editable, so lowering it records an ordinary partial
-        // payment instead.
-        if (widget.settleMode && credit != null && credit.balanceCents > 0) {
-          final balance = Money.fromCents(credit.balanceCents);
-          _amountController.text =
-              '${balance.majorUnits}.${balance.centsPart.toString().padLeft(2, '0')}';
-        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -133,7 +114,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       widget.currentUser.effectivePermissions
           .contains(AppPermission.recordPayments);
 
-  /// Whether the actor may request corrections.
+  /// Whether the actor may request corrections (staff payment-correction or
+  /// Story 5.6 balance-adjustment proposals).
   bool get _canRequestCorrection =>
       widget.currentUser.isActive &&
       widget.currentUser.effectivePermissions
@@ -234,15 +216,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
       });
 
-      // A full settlement started from the profile's Settle action returns to
-      // the profile immediately, handing back the committed receipt so the
-      // profile can confirm it. The payment and its receipt row are already
-      // committed, so the receipt remains available from payment history.
-      if (widget.settleMode && receipt.isFullSettlement) {
-        Navigator.of(context).pop(receipt);
-        return;
-      }
-
       // Generate the receipt PDF. Failures are reported separately — the
       // payment itself is preserved.
       await _generateReceiptPdf(receipt);
@@ -258,6 +231,39 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _isSubmitting = false;
         _error = 'Payment failed: $e';
       });
+    }
+  }
+
+  /// Story 5.6: opens the balance-adjustment proposal flow for the current
+  /// credit (partial forgiveness requested because the customer cannot pay in
+  /// full). The proposal is staff-initiated and Shop-Owner-approved; on
+  /// submission the payment screen reloads so the correction lock shows and
+  /// the option is withdrawn until the owner decides.
+  Future<void> _openAdjustmentProposal() async {
+    final proposed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => AdjustmentProposalScreen(
+          shopId: widget.shopId,
+          creditId: widget.creditId,
+          currentUser: widget.currentUser,
+          database: widget.database,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (proposed == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Adjustment proposed. Awaiting Shop Owner approval. '
+            'Payments are locked on this credit meanwhile.',
+          ),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      await _load();
     }
   }
 
@@ -447,6 +453,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       : const Text('Record Payment'),
                 ),
               ),
+              if (_canRequestCorrection && !credit.correctionPending) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+                const Text(
+                  'Settlement options',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Customer cannot pay the full balance? Propose to forgive '
+                  'part of it. Nothing posts until the Shop Owner approves; '
+                  'payments are locked meanwhile.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    key: const Key('request_adjustment_button'),
+                    onPressed: _openAdjustmentProposal,
+                    icon: const Icon(Icons.volunteer_activism_outlined),
+                    label: const Text('Request Balance Adjustment'),
+                  ),
+                ),
+              ],
             ] else
               const Text(
                 'This credit is not eligible for payment recording.',

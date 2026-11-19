@@ -132,7 +132,11 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
   Future<void> _confirmApprove(CreditCorrection correction) async {
     final credit = await _creditDao.getCreditById(widget.shopId, correction.creditId);
     final preBalance = credit?.balanceCents ?? 0;
-    final postBalance = preBalance + correction.correctionAmountCents;
+    final isAdjustment = correction.originalPaymentId == null;
+    final isForgiveness = correction.direction == 'credit';
+    final delta =
+        isForgiveness ? -correction.correctionAmountCents : correction.correctionAmountCents;
+    final postBalance = preBalance + delta;
     if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -149,17 +153,28 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Post an immutable compensating debit of '
-                '${Money.fromCents(correction.correctionAmountCents).format()} '
-                'referencing the original payment.',
-              ),
+              isAdjustment
+                  ? Text(
+                      isForgiveness
+                          ? 'Post an immutable adjustment credit '
+                              '(partial forgiveness) of '
+                              '${Money.fromCents(correction.correctionAmountCents).format()}.'
+                          : 'Post an immutable adjustment debit of '
+                              '${Money.fromCents(correction.correctionAmountCents).format()}.',
+                    )
+                  : Text(
+                      'Post an immutable compensating debit of '
+                      '${Money.fromCents(correction.correctionAmountCents).format()} '
+                      'referencing the original payment.',
+                    ),
               Text(
                 'Recalculate the credit balance from '
                 '${Money.fromCents(preBalance).format()} to '
                 '${Money.fromCents(postBalance).format()}.',
               ),
-              Text('Permanently preserve the original erroneous payment.'),
+              correction.originalPaymentId == null
+                  ? const SizedBox(height: 8)
+                  : const Text('Permanently preserve the original erroneous payment.'),
               Text('Lift the correction lock on the credit.'),
               const SizedBox(height: 12),
               const Text(
@@ -209,7 +224,9 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                 'Leave the credit balance unchanged '
                 '${Money.fromCents(correction.resultingBalanceCents ?? 0).format()}.',
               ),
-              Text('Permanently preserve the original erroneous payment.'),
+              correction.originalPaymentId == null
+                  ? const SizedBox(height: 8)
+                  : const Text('Permanently preserve the original erroneous payment.'),
               Text('Lift the correction lock on the credit.'),
               const SizedBox(height: 16),
               const Text(
@@ -266,8 +283,9 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _successMessage =
-            'Correction approved. Compensating debit posted and lock lifted.';
+        _successMessage = correction.originalPaymentId == null
+            ? 'Adjustment approved. Ledger entry posted and lock lifted.'
+            : 'Correction approved. Compensating debit posted and lock lifted.';
       });
       await _refresh();
     } on PermissionDeniedException catch (e) {
@@ -317,8 +335,9 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _successMessage =
-            'Correction rejected. Balance unchanged and lock lifted.';
+        _successMessage = correction.originalPaymentId == null
+            ? 'Adjustment rejected. Balance unchanged and lock lifted.'
+            : 'Correction rejected. Balance unchanged and lock lifted.';
       });
       await _refresh();
     } on PermissionDeniedException catch (e) {
@@ -379,6 +398,9 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                         Text(
                           'Requested: '
                           '${correction.createdAt.toUtc().toIso8601String()}',
+                        ),
+                        Text(
+                          'Type: ${correction.originalPaymentId == null ? (correction.direction == 'credit' ? 'Adjustment proposal (forgiveness)' : 'Adjustment proposal (increase)') : 'Payment correction'}',
                         ),
                         Text(
                           'Correction amount: '

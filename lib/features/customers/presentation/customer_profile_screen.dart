@@ -20,6 +20,7 @@ import 'package:credit_system/features/customers/presentation/customer_edit_scre
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
 import 'package:credit_system/features/customers/presentation/credit_origination_screen.dart';
 import 'package:credit_system/features/customers/presentation/credit_settle_action.dart';
+import 'package:credit_system/features/customers/presentation/settle_summary_screen.dart';
 import 'package:credit_system/features/customers/presentation/payment_screen.dart';
 
 // A section displaying credits of a single status.
@@ -141,10 +142,10 @@ class _CreditStatusSection extends StatelessWidget {
                   ),
                 ),
                 // The per-card Settle action is a separate, separately tappable
-                // control that opens the payment screen pre-filled to the full
-                // balance. It is offered only for payment-eligible credits, so
-                // it never collides with the draft action above (which is
-                // offered only before disbursement).
+                // control that opens the settle summary screen for this credit.
+                // It is offered on every card (visibility restored at the
+                // human's request) — eligibility is enforced by the summary
+                // screen and the payment path behind it.
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: CreditSettleAction(
@@ -169,13 +170,10 @@ class _CreditStatusSection extends StatelessWidget {
 /// and all associated credits categorized by status badges (Active, Overdue,
 /// Settled).
 ///
-/// When a customer has multiple actionable credits, tapping an action button
-/// opens a multi-credit selection dialog requiring explicit target credit selection.
-///
-/// The [_showMultiCreditSelectionDialog] method has been consolidated into
-/// [_openSettleCreditSelection] / [_showMultiCreditSelectionForSettle] for the
-/// settlement flow; it is retained for potential external use but is no longer
-/// called from the build method.
+/// When a customer has multiple actionable credits, tapping a credit's tile
+/// opens its payment screen directly, and each card's per-card Settle action
+/// settles that card's own credit — the card you tapped always settles its
+/// own credit.
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({
     super.key,
@@ -184,6 +182,7 @@ class CustomerProfileScreen extends StatefulWidget {
     required this.currentUser,
     this.canViewSensitive,
     this.database,
+    this.isOfflineOnly = true,
   });
 
   final String shopId;
@@ -198,6 +197,12 @@ class CustomerProfileScreen extends StatefulWidget {
 
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
+
+  /// Whether the current session was established offline. Sensitive
+  /// administrative actions (such as deleting a customer) are blocked while
+  /// offline. Defaults to `true` so callers that forget to thread the flag
+  /// fail closed instead of silently allowing offline deletes.
+  final bool isOfflineOnly;
 
   @override
   State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
@@ -215,6 +220,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   final Map<String, List<CollateralItem>> _collateralByCreditId = {};
   bool _isLoading = true;
   String? _error;
+
+  /// True while the soft-delete confirmation flow is in flight, so the
+  /// destructive action cannot be submitted twice.
+  bool _isDeleting = false;
 
   /// The shop's operational time zone.
   ///
@@ -286,19 +295,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
   }
 
-  Color _statusChipColor(CreditStatus status) {
-    switch (status) {
-      case CreditStatus.active:
-        return Colors.green.withValues(alpha: 0.15);
-      case CreditStatus.overdue:
-        return Colors.orange.withValues(alpha: 0.15);
-      case CreditStatus.settled:
-        return Colors.grey.withValues(alpha: 0.15);
-      case CreditStatus.cancelled:
-        return Colors.red.withValues(alpha: 0.15);
-    }
-  }
-
   void _proceedToCreditAction(BuildContext context, Credit credit) {
     // Navigate to payment screen for eligible credits (disbursed, active/overdue,
     // balance > 0). For other credit states, show a snackbar.
@@ -327,25 +323,22 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
   }
 
-  /// Opens the payment screen for [credit] with the full outstanding balance
-  /// pre-filled, and confirms the settlement back on the profile.
+  /// Opens the settle summary screen for [credit] and confirms the
+  /// settlement back on the profile.
   ///
-  /// The per-card Settle action hands the card's own [credit] here directly —
-  /// it never routes through [_onCreditAction], whose multi-credit selection
-  /// works from the *count* of actionable credits rather than the tapped card.
+  /// The per-card Settle action hands the card's own [credit] here directly.
   ///
-  /// The payment screen pops with the committed [Receipt] only for a full
+  /// The summary screen pops with the committed [Receipt] only for a full
   /// settlement. A partial payment (or backing out) returns nothing, so the
   /// credit list is refreshed but no settlement confirmation is shown.
   Future<void> _settleCredit(Credit credit) async {
     final receipt = await Navigator.of(context).push<Receipt>(
       MaterialPageRoute(
-        builder: (context) => PaymentScreen(
+        builder: (context) => SettleSummaryScreen(
           shopId: widget.shopId,
           creditId: credit.id,
           currentUser: widget.currentUser,
           database: widget.database,
-          settleMode: true,
         ),
       ),
     );
@@ -436,78 +429,110 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     );
   }
 
-  // Single-eligible-credit settlement dialog (moved inline from _openSettleCreditSelection).
-  Future<void> _openSettleCreditSelection() async {
-    final actionableCredits =
-        _credits.where((l) => l.isActionable).toList();
-
-    if (actionableCredits.isEmpty) {
+  /// Shows a confirmation dialog and, if confirmed, soft-deletes this
+  /// customer. The dialog explains the effect before committing, mirroring
+  /// the destructive-confirm pattern in `correction_review_screen.dart`.
+  ///
+  /// Blocked while offline (sensitive administrative action): an offline
+  /// message is surfaced and nothing is written. A customer with at least one
+  /// credit row of any status is not eligible and cannot be deleted.
+  Future<void> _deleteCustomer() async {
+    if (widget.isOfflineOnly) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No actionable credits available for settlement.'),
-          duration: Duration(seconds: 2),
+          content: Text(
+            'Offline session. Please log in online to delete a customer.',
+          ),
+          duration: Duration(seconds: 3),
         ),
       );
       return;
     }
 
-    if (actionableCredits.length == 1) {
-      // Single eligible credit — proceed directly to settlement
-      _settleCredit(actionableCredits.first);
-    } else {
-      // Multiple eligible credits — show selection dialog
-      await _showMultiCreditSelectionForSettle(context, actionableCredits);
+    if (_credits.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot delete: this customer has credit history.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
     }
-  }
 
-  Future<void> _showMultiCreditSelectionForSettle(
-    BuildContext context,
-    List<Credit> credits,
-  ) async {
-    final selectedId = await showDialog<String>(
+    final confirmed = await showDialog<bool>(
       context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Select Credit to Settle'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: credits.length,
-              itemBuilder: (context, index) {
-                final credit = credits[index];
-                return ListTile(
-                  title: Text('Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...'),
-                  subtitle: Text(
-                    'Status: ${credit.status.value.toUpperCase()}  |  '
-                    'Balance: ${Money.fromCents(credit.balanceCents).format()}}',
-                  ),
-                  trailing: Chip(
-                    label: Text(credit.status.value.toUpperCase()),
-                    backgroundColor: _statusChipColor(credit.status),
-                  ),
-                  onTap: () {
-                    Navigator.of(dialogContext).pop(credit.id);
-                  },
-                );
-              },
-            ),
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Customer'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Deleting this customer will:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Soft-delete the customer profile (the record is retained '
+                'for audit integrity, not erased).',
+              ),
+              const Text(
+                'Hide the customer from search, lists, and pickers — the '
+                'profile will no longer be reachable in-app.',
+              ),
+              const Text(
+                'Record an audit event (category 1: customer_soft_deleted).',
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'This action cannot be undone.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            key: const Key('delete_customer_confirm_button'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
-          ],
-        );
-      },
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
+    if (confirmed != true || !mounted) return;
 
-    if (selectedId != null && mounted) {
-      final selectedCredit =
-          _credits.firstWhere((c) => c.id == selectedId);
-      _settleCredit(selectedCredit);
+    setState(() => _isDeleting = true);
+    try {
+      final db = widget.database ?? AppDatabase();
+      await CustomerDao(db).softDeleteCustomer(
+        actor: widget.currentUser,
+        shopId: widget.shopId,
+        customerId: widget.customerId,
+      );
+      if (!mounted) return;
+      // Pop back to the search screen with `true` so the caller can tell
+      // that the customer was soft-deleted and reload its list.
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to delete customer: $e'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -560,7 +585,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     final canCreateCredits =
         widget.currentUser.hasPermission(AppPermission.createCredits);
 
-    
+    // Soft delete is an owner-administrative action; rendered only for an
+    // active Shop Owner. The DAO re-checks the owner role server-of-truth style.
+    final canDeleteCustomer =
+        widget.currentUser.role.isOwner && widget.currentUser.isActive;
+    final deleteBlockedByCredits = _credits.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -608,7 +637,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
             const SizedBox(height: 16),
 
             // Profile actions (RBAC-gated)
-            if (canEditCustomer || canCreateCredits)
+            if (canEditCustomer || canCreateCredits || canDeleteCustomer)
               Wrap(
                 spacing: 12,
                 runSpacing: 8,
@@ -627,7 +656,30 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                       icon: const Icon(Icons.add),
                       label: const Text('Add Credit'),
                     ),
+                  if (canDeleteCustomer)
+                    OutlinedButton.icon(
+                      key: const Key('delete_customer_button'),
+                      // Disabled while the customer has credit history: any
+                      // credit row, in any status, blocks deletion.
+                      onPressed: (deleteBlockedByCredits || _isDeleting)
+                          ? null
+                          : _deleteCustomer,
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Delete customer'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                    ),
                 ],
+              ),
+            if (canDeleteCustomer && deleteBlockedByCredits)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'Cannot delete: this customer has credit history.',
+                  key: Key('delete_customer_blocked_message'),
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
               ),
             const SizedBox(height: 24),
 
@@ -649,7 +701,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
                     ? _proceedToCreditAction(context, credit)
                     : null,
-                onSettle: (credit) => _openSettleCreditSelection(),
+                onSettle: (credit) => _settleCredit(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,
@@ -663,7 +715,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
                     ? _proceedToCreditAction(context, credit)
                     : null,
-                onSettle: (credit) => _openSettleCreditSelection(),
+                onSettle: (credit) => _settleCredit(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,
@@ -677,7 +729,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 onTap: (credit) => widget.currentUser.hasPermission(AppPermission.recordPayments)
                     ? _proceedToCreditAction(context, credit)
                     : null,
-                onSettle: (credit) => _openSettleCreditSelection(),
+                onSettle: (credit) => _settleCredit(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,

@@ -279,7 +279,9 @@ class CreditDao extends DatabaseAccessor<AppDatabase> with _$CreditDaoMixin {
 
     final customer = await (select(db.customers)
           ..where((c) =>
-              c.id.equals(customerId) & c.shopId.equals(actor.shopId)))
+              c.id.equals(customerId) &
+              c.shopId.equals(actor.shopId) &
+              c.deletedAt.isNull()))
         .getSingleOrNull();
     if (customer == null) {
       throw StateError('Customer does not belong to the actor shop');

@@ -6,18 +6,22 @@ import 'package:credit_system/features/customers/domain/models/credit.dart';
 /// The per-credit "Settle" action (spec: Credit Settle Button in Customer
 /// Profile).
 ///
-/// The action is offered on the customer profile's credit cards for an
-/// agreement that is eligible for payment — disbursed, financially active or
-/// overdue, with a positive outstanding balance — to an active actor holding
-/// `recordPayments`. It mirrors [CreditDraftAgreementAction]'s per-card
-/// presentation so a credit card keeps a single, consistent action pattern.
+/// The action is offered on the customer profile's credit cards to an
+/// active actor holding `recordPayments`, regardless of the credit's
+/// payment eligibility (visibility rule restored at the human's request on
+/// 2026-11-18). Eligibility — disbursed, financially active or overdue,
+/// positive balance — is enforced by the settle summary screen and the
+/// payment path behind it. It mirrors [CreditDraftAgreementAction]'s
+/// per-card presentation so a credit card keeps a single, consistent action
+/// pattern.
 ///
 /// The action itself records nothing: it hands control to [onSettle], which the
-/// profile owns. The profile opens the existing payment screen pre-filled to
-/// the full outstanding balance and reloads the credit list when the
-/// settlement returns, so overpayment validation, the concurrency lock,
-/// idempotency, receipts and audit behaviour all stay on the existing payment
-/// path.
+/// profile owns. The profile opens the dedicated settle summary screen — it
+/// shows the borrower, the credit identity, the outstanding balance and the
+/// collateral at stake, with the amount pre-filled to the full balance —
+/// and reloads the credit list when the settlement returns, so
+/// overpayment validation, the concurrency lock, idempotency, receipts and
+/// audit behaviour all stay on the existing payment path.
 class CreditSettleAction extends StatelessWidget {
   const CreditSettleAction({
     super.key,
@@ -44,8 +48,11 @@ class CreditSettleAction extends StatelessWidget {
   /// deactivated account — including a deactivated shop owner — is never
   /// offered the action. The credit eligibility check is intentionally
   /// omitted here so the settle button appears on every credit card in the
-  /// customer profile (Story 5-X). The payment screen enforces its own
-  /// eligibility validation when the settlement flow is initiated.
+  /// customer profile — restored at the human's request on 2026-11-18,
+  /// overriding the frozen spec's eligible-only visibility. Eligibility is
+  /// still enforced by the settle summary screen when the settlement flow is
+  /// initiated, where an ineligible credit shows an explanation and no
+  /// settlement form.
   static bool isAvailableFor(Credit credit, AppUser actor) {
     return actor.hasPermission(AppPermission.recordPayments);
   }

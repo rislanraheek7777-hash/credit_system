@@ -43,6 +43,11 @@ class Customers extends Table {
   /// UTC last-update timestamp.
   DateTimeColumn get updatedAt => dateTime()();
 
+  /// UTC timestamp when the customer was soft-deleted, or `null` for an
+  /// active customer. Soft-deleted customers are retained for audit integrity
+  /// and hidden from all lists, search and pickers.
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
   @override
   List<Set<Column>> get uniqueKeys => [
     {shopId, nic},

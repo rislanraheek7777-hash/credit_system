@@ -572,6 +572,25 @@ void main() {
       );
     });
 
+    test('rejects a soft-deleted customer and writes no credit, ledger or sync rows', () async {
+      // The customer exists in the actor's shop, but is soft-deleted: no
+      // new financial footprint may be created for them.
+      final deletedAt = DateTime.now().toUtc();
+      final affected = await (db.update(db.customers)
+            ..where((c) => c.id.equals(customerAlphaId)))
+          .write(CustomersCompanion(deletedAt: Value(deletedAt)));
+      expect(affected, 1);
+
+      await expectLater(
+        () async => await createAgreement(),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(await db.select(db.credits).get(), isEmpty);
+      expect(await db.select(db.creditLedgerEntries).get(), isEmpty);
+      expect(await db.select(db.syncQueue).get(), isEmpty);
+    });
+
     test('rejects a collateral item that does not exist', () async {
       await expectLater(
         () async => await createAgreement(collateralItemIds: const ['missing-item']),

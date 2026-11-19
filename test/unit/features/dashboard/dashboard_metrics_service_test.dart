@@ -64,6 +64,7 @@ void main() {
     required int balanceCents,
     required CreditStatus status,
     required CreditWorkflowStatus workflowStatus,
+    DateTime? dueDate,
     DateTime? settledAt,
     DateTime? cancelledAt,
     String? cancellationReason,
@@ -77,7 +78,7 @@ void main() {
         balanceCents: balanceCents,
         status: status,
         workflowStatus: workflowStatus,
-        dueDate: now.add(const Duration(days: 30)),
+        dueDate: dueDate ?? now.add(const Duration(days: 30)),
         createdAt: now,
         settledAt: settledAt,
         cancelledAt: cancelledAt,
@@ -152,6 +153,7 @@ void main() {
       balanceCents: 30000,
       status: CreditStatus.overdue,
       workflowStatus: CreditWorkflowStatus.overdue,
+      dueDate: DateTime.now().toUtc().subtract(const Duration(days: 10)),
     );
     await addCredit(
       id: 'alpha-settled',
@@ -216,6 +218,30 @@ void main() {
   });
 
   group('DashboardMetricsService', () {
+    test('excludes soft-deleted customers from totalCustomers', () async {
+      const softDeleteShopId = 'shop-soft-delete-metrics';
+      await shopDao.createShop(
+        ShopProfile(id: softDeleteShopId, name: 'Soft Delete Shop'),
+      );
+      await addCustomer(softDeleteShopId, 'Live Customer');
+      final deletedId = await addCustomer(softDeleteShopId, 'Deleted Customer');
+      await customerDao.softDeleteCustomer(
+        actor: AppUser(
+          id: 'soft-delete-owner',
+          shopId: softDeleteShopId,
+          username: 'owner',
+          fullName: 'Owner',
+          role: AppRole.shopOwner,
+          isActive: true,
+        ),
+        shopId: softDeleteShopId,
+        customerId: deletedId,
+      );
+
+      final metrics = await service.loadMetrics(softDeleteShopId);
+      expect(metrics.totalCustomers, 1);
+    });
+
     test('aggregates only the requested shop', () async {
       final metrics = await service.loadMetrics(shopAlphaId);
 
@@ -223,9 +249,8 @@ void main() {
       expect(metrics.totalStaff, 2);
       expect(metrics.totalCredits, 4);
       expect(metrics.activeCreditCents, 87000);
-      expect(metrics.outstandingCents, 77000);
       expect(metrics.collectedCents, 30000);
-      expect(metrics.ratio, closeTo(30000 / 77000, 1e-9));
+      expect(metrics.overdueCents, 30000);
     });
 
     test('returns an empty snapshot for an unknown shop', () async {
@@ -235,9 +260,50 @@ void main() {
       expect(metrics.totalStaff, 0);
       expect(metrics.totalCredits, 0);
       expect(metrics.activeCreditCents, 0);
-      expect(metrics.outstandingCents, 0);
       expect(metrics.collectedCents, 0);
-      expect(metrics.ratio, 0);
+      expect(metrics.overdueCents, 0);
+    });
+
+    test('overdue counts only past-due, disbursed, unsettled balances', () async {
+      final pastDue = DateTime.now().toUtc().subtract(const Duration(days: 5));
+
+      // Past-due and disbursed: must count.
+      await addCredit(
+        id: 'alpha-overdue-extra',
+        shopId: shopAlphaId,
+        customerId: alphaCustomerOneId,
+        principalCents: 21000,
+        balanceCents: 12000,
+        status: CreditStatus.active,
+        workflowStatus: CreditWorkflowStatus.disbursed,
+        dueDate: pastDue,
+      );
+      // Past-due but still pending disbursement: must not count.
+      await addCredit(
+        id: 'alpha-overdue-pending',
+        shopId: shopAlphaId,
+        customerId: alphaCustomerOneId,
+        principalCents: 40000,
+        balanceCents: 40000,
+        status: CreditStatus.active,
+        workflowStatus: CreditWorkflowStatus.pendingDisbursement,
+        dueDate: pastDue,
+      );
+      // Past-due but fully repaid: must not count.
+      await addCredit(
+        id: 'alpha-overdue-settled',
+        shopId: shopAlphaId,
+        customerId: alphaCustomerOneId,
+        principalCents: 15000,
+        balanceCents: 0,
+        status: CreditStatus.settled,
+        workflowStatus: CreditWorkflowStatus.disbursed,
+        dueDate: pastDue,
+        settledAt: now,
+      );
+
+      final metrics = await service.loadMetrics(shopAlphaId);
+      expect(metrics.overdueCents, 30000 + 12000);
     });
 
     test('re-emits when customers, staff, and credits are added', () async {
@@ -251,7 +317,6 @@ void main() {
       expect(initial.totalStaff, 2);
       expect(initial.totalCredits, 4);
       expect(initial.activeCreditCents, 87000);
-      expect(initial.outstandingCents, 77000);
 
       await addPayment(
         id: 'alpha-live-payment',
@@ -279,7 +344,6 @@ void main() {
       await _waitUntil(() => values.last.totalCredits == initial.totalCredits + 1);
 
       expect(values.last.activeCreditCents, initial.activeCreditCents + 15000);
-      expect(values.last.outstandingCents, initial.outstandingCents + 15000);
     });
 
     test('re-emits and counts a newly created pending-disbursement credit', () async {
@@ -302,13 +366,11 @@ void main() {
       await _waitUntil(() => values.last.totalCredits == initial.totalCredits + 1);
 
       expect(values.last.activeCreditCents, initial.activeCreditCents + 12000);
-      expect(values.last.outstandingCents, initial.outstandingCents + 12000);
       expect(values.last.collectedCents, initial.collectedCents);
 
       final beta = await service.loadMetrics(shopBetaId);
       expect(beta.totalCredits, 1);
       expect(beta.activeCreditCents, 99900);
-      expect(beta.outstandingCents, 99900);
     });
   });
 }
