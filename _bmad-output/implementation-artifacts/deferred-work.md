@@ -181,3 +181,23 @@
 - source_spec: `spec-customer-soft-delete-no-credits.md`
   summary: `AdjustmentProposalScreen`/`CorrectionDao.requestCorrection` for a credit-adjustment proposal accepts cancellation-state credits and pending-disbursement workflows as "forgivable"; see also the zero-balance-at-full-forgiveness edge.
   evidence: Edge-case review of the in-flight Story 5.6 change-set surfaced during the soft-delete review (`correction_dao.dart:543-556`); full-forgiveness proposals must settle, never strand, the credit.
+
+- source_spec: \spec-settings-bottom-navigation.md\
+  summary: The Audit Log Viewer (\lib/features/audit/presentation/audit_trail_viewer_screen.dart\, gated by AppPermission.viewAuditLogs) still has no entry point from the Settings hub, though the UX spine routes it through Settings (permission-gated).
+  evidence: Blind-hunter review of the Settings bottom-nav change; pre-existing omission, not caused by the change. Adding it is a new permission-gated tile + wiring, beyond the approved scope.
+
+- source_spec: \spec-settings-bottom-navigation.md\
+  summary: MainApp rebuilds \pages[_selectedIndex]\ on every tab switch, destroying tab state (e.g. Customers search text/scroll); consider IndexedStack/keep-alive and hoisting per-tab page construction out of build().
+  evidence: Blind-hunter review; pre-existing mount policy shared by all four tabs. Switching to keep-alive changes eager-load behavior (e.g. customers list would load before first visit) and needs an explicit decision, not a drive-by fix.
+
+- source_spec: \spec-settings-bottom-navigation.md\
+  summary: The Settings dark-mode toggle (appThemeMode ValueNotifier) is session-only and resets to light on restart; persist the choice (e.g. via shop settings or preferences storage).
+  evidence: Blind-hunter review; pre-existing. Persistence is a small feature needing a storage decision and is out of scope for the bottom-nav move.
+
+- source_spec: \spec-settings-bottom-navigation.md\
+  summary: Verify the 4-destination NavigationBar (long \Credit Details\ label) renders acceptably at ~320px widths and with large text scaling; destinations now carry stable ValueKeys for selection.
+  evidence: Blind-hunter review (low); no release-blocker evidence either way; needs a small widget test or manual check on a narrow viewport.
+
+- source_spec: \spec-settings-bottom-navigation.md\
+  summary: AGENTS.md's project-structure map and features/ listing omit the settings/ feature module (now a first-class bottom-nav destination).
+  evidence: Blind-hunter review; AGENTS.md is maintained by bmad-project-context, so the refresh belongs there rather than in this change.

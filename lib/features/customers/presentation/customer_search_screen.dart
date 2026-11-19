@@ -4,15 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
-import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/customers/data/daos/customer_dao.dart';
 import 'package:credit_system/features/customers/domain/models/customer.dart';
 import 'package:credit_system/features/customers/domain/models/customer_masking.dart';
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
 import 'package:credit_system/features/customers/presentation/customer_registration_screen.dart';
-import 'package:credit_system/features/customers/presentation/shop_profile_screen.dart';
-import 'package:credit_system/features/settings/presentation/settings_screen.dart';
-import 'package:credit_system/features/auth/presentation/staff_management_screen.dart';
 
 /// Customer search screen implementing Story 2.5 AC-1.
 ///
@@ -25,7 +21,6 @@ class CustomerSearchScreen extends StatefulWidget {
     required this.shopId,
     required this.currentUser,
     this.database,
-    this.onLogout,
   });
 
   /// The active shop tenant UUID.
@@ -36,9 +31,6 @@ class CustomerSearchScreen extends StatefulWidget {
 
   /// Optional injected [AppDatabase] for testing.
   final AppDatabase? database;
-
-  /// Invoked when the user chooses to log out from the settings screen.
-  final VoidCallback? onLogout;
 
   @override
   State<CustomerSearchScreen> createState() => _CustomerSearchScreenState();
@@ -226,52 +218,6 @@ class _CustomerSearchScreenState extends State<CustomerSearchScreen> {
             ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => SettingsScreen(
-                    shopId: widget.shopId,
-                    currentUser: widget.currentUser,
-                    onLogout: widget.onLogout,
-                  ),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.store),
-            tooltip: 'Shop Profile',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => ShopProfileScreen(
-                    shopId: widget.shopId,
-                    currentUser: widget.currentUser,
-                  ),
-                ),
-              );
-            },
-          ),
-          if (widget.currentUser.role == AppRole.shopOwner)
-            IconButton(
-              icon: const Icon(Icons.person_add),
-              tooltip: 'Staff Management',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => StaffManagementScreen(
-                      shopId: widget.shopId,
-                      currentUser: widget.currentUser,
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
       ),
       body: Stack(
         children: [

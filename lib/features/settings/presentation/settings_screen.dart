@@ -10,8 +10,11 @@ import 'package:credit_system/core/theme/theme_controller.dart';
 /// Central settings hub for the credit system application.
 ///
 /// Groups configuration and navigation entry points behind a single
-/// "Settings" surface so the main screens stay uncluttered.
-class SettingsScreen extends StatelessWidget {
+/// "Settings" surface so the main screens stay uncluttered. Rendered as a
+/// bottom-navigation tab body inside the app's bottom `NavigationBar`; it
+/// owns no `Scaffold` of its own. A [onLogout] callback may be omitted by
+/// hosts that do not want to expose the logout action.
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
     required this.shopId,
@@ -28,6 +31,17 @@ class SettingsScreen extends StatelessWidget {
   final VoidCallback? onLogout;
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  static const String _appVersion = '1.0.0';
+
+  /// Guards against double-taps on Logout stacking multiple confirmation
+  /// dialogs.
+  bool _logoutInFlight = false;
+
+  @override
   Widget build(BuildContext context) {
     final options = <_SettingOption>[
       _SettingOption(
@@ -37,34 +51,38 @@ class SettingsScreen extends StatelessWidget {
         onTap: () => _open(
           context,
           ShopProfileScreen(
-            shopId: shopId,
-            currentUser: currentUser,
-            database: database,
+            shopId: widget.shopId,
+            currentUser: widget.currentUser,
+            database: widget.database,
           ),
         ),
       ),
-      if (currentUser.role == AppRole.shopOwner)
+      if (widget.currentUser.role == AppRole.shopOwner)
         _SettingOption(
           icon: Icons.group_add_outlined,
           title: 'Staff Management',
           subtitle: 'Create and manage staff accounts',
           onTap: () => _open(
             context,
-            StaffManagementScreen(shopId: shopId, currentUser: currentUser),
+            StaffManagementScreen(
+              shopId: widget.shopId,
+              currentUser: widget.currentUser,
+              database: widget.database,
+            ),
           ),
         ),
 
       _SettingOption(
         icon: Icons.info_outline,
         title: 'About',
-        subtitle: 'Credit System v1.0.0',
+        subtitle: 'Credit System v$_appVersion',
         onTap: () => showAboutDialog(
           context: context,
           applicationName: 'Credit System',
-          applicationVersion: '1.0.0',
+          applicationVersion: _appVersion,
         ),
       ),
-      if (onLogout != null)
+      if (widget.onLogout != null)
         _SettingOption(
           icon: Icons.logout,
           title: 'Logout',
@@ -74,21 +92,43 @@ class SettingsScreen extends StatelessWidget {
         ),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
+              ),
+            ),
+            // Decorative duplication of the bottom-nav "Settings" label;
+            // hidden from screen readers.
+            child: const ExcludeSemantics(
+              child: Row(
+              children: [
+                Icon(Icons.settings, color: Colors.white, size: 28),
+                SizedBox(width: 8),
+                Text(
+                  'Settings',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
             ),
           ),
-        ),
-      ),
-      body: Column(
-        children: [
           Padding(
             padding: const EdgeInsets.all(16),
             child: Card(
@@ -151,6 +191,9 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
+    if (_logoutInFlight) return;
+    setState(() => _logoutInFlight = true);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -171,12 +214,16 @@ class SettingsScreen extends StatelessWidget {
       },
     );
 
-    if (confirmed != true || !context.mounted) return;
+    if (!context.mounted) return;
+    setState(() => _logoutInFlight = false);
+    if (confirmed != true) return;
 
     // Leave settings before the session is cleared so the login screen is
-    // not covered by this route.
-    Navigator.of(context).pop();
-    onLogout?.call();
+    // not covered by this route. In the tab there is nothing to pop.
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+    widget.onLogout?.call();
   }
 }
 

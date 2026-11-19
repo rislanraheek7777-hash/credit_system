@@ -17,10 +17,18 @@ import 'package:credit_system/features/auth/data/daos/user_dao.dart';
 import 'package:credit_system/features/auth/data/services/auth_service.dart';
 import 'package:credit_system/features/auth/data/services/jwt_service.dart';
 import 'package:credit_system/features/auth/data/services/password_hash_service.dart';
+import 'package:credit_system/features/settings/presentation/settings_screen.dart';
+
+/// Bottom-navigation tab indices for [MainApp]. The `pages` list and the
+/// `NavigationBar` destinations must stay in this order; dashboard quick
+/// actions jump to tabs by these constants.
+const int _dashboardTabIndex = 0;
+const int _customersTabIndex = 1;
+const int _creditDetailsTabIndex = 2;
 
 /// Main application shell shown after authentication.
 /// Uses a scaffold with a bottom navigation bar for switching between
-/// dashboard and customers sections.
+/// dashboard, customers, credit details and settings sections.
 class MainApp extends StatefulWidget {
   final String shopId;
   final AppUser currentUser;
@@ -47,7 +55,7 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  int _selectedIndex = 0;
+  int _selectedIndex = _dashboardTabIndex;
 
   Future<void> _handleLogout() async {
     try {
@@ -77,7 +85,6 @@ class _MainAppState extends State<MainApp> {
     final customersPage = _CustomersPage(
       shopId: widget.shopId,
       currentUser: widget.currentUser,
-      onLogout: _handleLogout,
       database: widget.database,
     );
 
@@ -87,10 +94,19 @@ class _MainAppState extends State<MainApp> {
       database: widget.database,
     );
 
+    final settingsPage = SettingsScreen(
+      shopId: widget.shopId,
+      currentUser: widget.currentUser,
+      database: widget.database,
+      onLogout: _handleLogout,
+    );
+
     final List<Widget> pages = [
-      dashboardPage,
-      customersPage,
-      creditDetailsPage,
+      // Order must match the bottom `NavigationBar` destinations below.
+      dashboardPage, // _dashboardTabIndex
+      customersPage, // _customersTabIndex
+      creditDetailsPage, // _creditDetailsTabIndex
+      settingsPage, // index 3 (Settings)
     ];
 
     return Scaffold(
@@ -112,19 +128,28 @@ class _MainAppState extends State<MainApp> {
         },
         destinations: const [
           NavigationDestination(
+            key: ValueKey('nav-dashboard'),
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
           NavigationDestination(
+            key: ValueKey('nav-customers'),
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person),
             label: 'Customers',
           ),
           NavigationDestination(
+            key: ValueKey('nav-credit-details'),
             icon: Icon(Icons.credit_score_outlined),
             selectedIcon: Icon(Icons.credit_score),
             label: 'Credit Details',
+          ),
+          NavigationDestination(
+            key: ValueKey('nav-settings'),
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),
@@ -359,7 +384,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                           icon: Icons.credit_score,
                           label: 'New Credit',
                           onTap: () => _jumpToTabWithHint(
-                            1,
+                            _customersTabIndex,
                             'Pick a customer, then tap Add Credit on their profile.',
                           ),
                         ),
@@ -371,7 +396,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                           icon: Icons.payments,
                           label: 'Record Payment',
                           onTap: () => _jumpToTabWithHint(
-                            2,
+                            _creditDetailsTabIndex,
                             'Pick a credit and record the payment from its details.',
                           ),
                         ),
@@ -538,13 +563,11 @@ class _QuickActionCard extends StatelessWidget {
 class _CustomersPage extends StatelessWidget {
   final String shopId;
   final AppUser currentUser;
-  final VoidCallback? onLogout;
   final AppDatabase? database;
 
   const _CustomersPage({
     required this.shopId,
     required this.currentUser,
-    this.onLogout,
     this.database,
   });
 
@@ -553,7 +576,6 @@ class _CustomersPage extends StatelessWidget {
     return CustomerSearchScreen(
       shopId: shopId,
       currentUser: currentUser,
-      onLogout: onLogout,
       database: database,
     );
   }
