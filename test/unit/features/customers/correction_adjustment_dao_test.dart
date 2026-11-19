@@ -1,5 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:uuid/uuid.dart';
 
 import 'package:credit_system/core/data/local/app_database.dart';
@@ -46,11 +48,17 @@ AppUser managerActor() => AppUser(
       sessionVersion: 1,
     );
 
-Future<AppDatabase> seedCredit({int balanceCents = 300000}) async {
+Future<AppDatabase> seedCredit({
+  int balanceCents = 300000,
+  String status = 'active',
+  String workflowStatus = 'disbursed',
+}) async {
   final executor = AppDatabaseConnection.openInMemoryConnection();
   final db = AppDatabase.forTesting(executor);
 
   final now = DateTime.now().toUtc();
+  final isCancelled = status == 'cancelled';
+  final isDisbursedWorkflow = workflowStatus == 'disbursed';
   await db.into(db.shops).insert(
     ShopEntry(
       id: shopId,
@@ -98,12 +106,21 @@ Future<AppDatabase> seedCredit({int balanceCents = 300000}) async {
       customerId: customerId,
       principalCents: 500000,
       balanceCents: balanceCents,
-      status: const Value('active'),
-      workflowStatus: const Value('disbursed'),
+      status: Value(status),
+      workflowStatus: Value(workflowStatus),
       termPresetDays: const Value(30),
       dueDate: now.add(const Duration(days: 30)),
-      disbursedAt: Value(now.subtract(const Duration(days: 10))),
-      disbursedByUserId: Value(ownerId),
+      disbursedAt: isDisbursedWorkflow
+          ? Value(now.subtract(const Duration(days: 10)))
+          : const Value.absent(),
+      disbursedByUserId:
+          isDisbursedWorkflow ? Value(ownerId) : const Value.absent(),
+      cancelledAt: isCancelled ? Value(now) : const Value.absent(),
+      cancellationReason:
+          isCancelled ? const Value('Cancelled before disbursement') : const Value.absent(),
+      settledAt: status == 'settled'
+          ? Value(now.subtract(const Duration(days: 3)))
+          : const Value.absent(),
       createdAt: now,
       correctionPending: const Value(false),
     ),
@@ -308,6 +325,325 @@ void main() {
     final ledger = await dao.getLedgerEntriesByCredit(shopId, creditId);
     expect(ledger.single.entryType, CreditLedgerEntryType.adjustmentDebit);
     expect(ledger.single.postBalanceCents, 325000);
+
+    await db.close();
+  });
+
+  test('double-tap approve with the same idempotency key commits exactly once',
+      () async {
+    final db = await seedCredit();
+    final now = DateTime.now().toUtc();
+    final dao = CorrectionDao(db);
+
+    final correction = await dao.requestCorrection(
+      actor: managerActor(),
+      idempotencyKey: const Uuid().v4(),
+      creditId: creditId,
+      originalPaymentId: null,
+      amount: Money.fromCents(100000),
+      reason: 'Partial forgiveness requested by staff.',
+      requestedAt: now,
+      direction: CorrectionDao.directionCredit,
+    );
+
+    final approveKey = const Uuid().v4();
+    final approved = await dao.approveCorrection(
+      actor: ownerActor(),
+      idempotencyKey: approveKey,
+      correctionId: correction.id,
+      reviewedAt: DateTime.now().toUtc(),
+    );
+    // A re-transmitted approval with the same key resolves to the recorded
+    // decision instead of posting a second ledger entry.
+    final approvedAgain = await dao.approveCorrection(
+      actor: ownerActor(),
+      idempotencyKey: approveKey,
+      correctionId: correction.id,
+      reviewedAt: DateTime.now().toUtc(),
+    );
+
+    expect(approvedAgain.id, approved.id);
+    expect(approvedAgain.isApproved, isTrue);
+
+    final credit = await CreditDao(db).getCreditById(shopId, creditId);
+    expect(credit!.balanceCents, 200000, reason: 'balance reduced exactly once');
+    expect(credit.correctionPending, isFalse);
+
+    final ledger = await dao.getLedgerEntriesByCredit(shopId, creditId);
+    expect(ledger, hasLength(1));
+
+    await db.close();
+  });
+
+  test('a full forgiveness settles the credit atomically on approval',
+      () async {
+    final db = await seedCredit();
+    final now = DateTime.now().toUtc();
+    final dao = CorrectionDao(db);
+
+    // Zero is permitted: a forgiveness equal to the full balance.
+    final correction = await dao.requestCorrection(
+      actor: managerActor(),
+      idempotencyKey: const Uuid().v4(),
+      creditId: creditId,
+      originalPaymentId: null,
+      amount: Money.fromCents(300000),
+      reason: 'Customer is insolvent; forgive the whole balance.',
+      requestedAt: now,
+      direction: CorrectionDao.directionCredit,
+    );
+
+    final approved = await dao.approveCorrection(
+      actor: ownerActor(),
+      idempotencyKey: const Uuid().v4(),
+      correctionId: correction.id,
+      reviewedAt: DateTime.now().toUtc(),
+    );
+
+    expect(approved.resultingBalanceCents, 0);
+
+    final credit = await CreditDao(db).getCreditById(shopId, creditId);
+    expect(credit!.balanceCents, 0);
+    expect(credit.status, CreditStatus.settled,
+        reason: 'a zero-balance credit must not strand as active');
+    expect(credit.settledAt, isNotNull);
+    expect(credit.correctionPending, isFalse);
+
+    final ledger = await dao.getLedgerEntriesByCredit(shopId, creditId);
+    expect(ledger.single.entryType, CreditLedgerEntryType.adjustmentCredit);
+    expect(ledger.single.postBalanceCents, 0);
+
+    await db.close();
+  });
+
+  test("a 'credit'-direction proposal referencing an original payment is rejected at validation",
+      () async {
+    final db = await seedCredit();
+    final now = DateTime.now().toUtc();
+    final dao = CorrectionDao(db);
+
+    await expectLater(
+      dao.requestCorrection(
+        actor: managerActor(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        originalPaymentId: 'some-payment-id',
+        amount: Money.fromCents(50000),
+        reason: 'Forgive part of the payment.',
+        requestedAt: now,
+        direction: CorrectionDao.directionCredit,
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+
+    final credit = await CreditDao(db).getCreditById(shopId, creditId);
+    expect(credit!.correctionPending, isFalse,
+        reason: 'a rejected proposal must not lock the credit');
+
+    await db.close();
+  });
+
+  test('proposals are refused on pending-disbursement, cancelled and zero-balance credits',
+      () async {
+    for (final scenario in [
+      ({'status': 'active', 'workflowStatus': 'pending_disbursement'}),
+      ({'status': 'cancelled', 'workflowStatus': 'cancelled'}),
+      ({'status': 'active', 'workflowStatus': 'disbursed'}),
+    ]) {
+      final isZeroBalance = scenario['workflowStatus'] == 'disbursed';
+      final db = await seedCredit(
+        status: scenario['status']!,
+        workflowStatus: scenario['workflowStatus']!,
+        balanceCents: isZeroBalance ? 0 : 300000,
+      );
+      final now = DateTime.now().toUtc();
+
+      await expectLater(
+        CorrectionDao(db).requestCorrection(
+          actor: managerActor(),
+          idempotencyKey: const Uuid().v4(),
+          creditId: creditId,
+          originalPaymentId: null,
+          amount: Money.fromCents(50000),
+          reason: 'Forgiveness requested.',
+          requestedAt: now,
+          direction: CorrectionDao.directionCredit,
+        ),
+        throwsA(isA<StateError>()),
+        reason: scenario.toString(),
+      );
+
+      final credit = await CreditDao(db).getCreditById(shopId, creditId);
+      expect(credit!.correctionPending, isFalse);
+
+      await db.close();
+    }
+  });
+
+  test('a payment correction on a settled credit is exempt from the eligibility gate (Story 5.5)',
+      () async {
+    final db = await seedCredit(
+      status: 'settled',
+      workflowStatus: 'disbursed',
+      balanceCents: 0,
+    );
+    final now = DateTime.now().toUtc();
+    await db.into(db.payments).insert(
+      PaymentsCompanion.insert(
+        id: 'payment-full-1',
+        shopId: shopId,
+        creditId: creditId,
+        receiptNumber: 'RCP-TEST-FULLSETTLE',
+        amountCents: 500000,
+        preBalanceCents: 500000,
+        postBalanceCents: 0,
+        paymentType: 'full_settlement',
+        recordedAt: now.subtract(const Duration(days: 10)),
+        recordedByUserId: ownerId,
+        customerId: customerId,
+        customerName: 'Adjust Customer',
+        customerNic: '851234567V',
+        shopName: 'Adjust Shop',
+        idempotencyKey: 'idemp-full-1',
+      ),
+    );
+    final dao = CorrectionDao(db);
+
+    final correction = await dao.requestCorrection(
+      actor: managerActor(),
+      idempotencyKey: const Uuid().v4(),
+      creditId: creditId,
+      originalPaymentId: 'payment-full-1',
+      amount: Money.fromCents(500000),
+      reason: 'The settling payment was recorded erroneously.',
+      requestedAt: now,
+      direction: CorrectionDao.directionDebit,
+    );
+
+    expect(correction.isPending, isTrue);
+
+    await db.close();
+  });
+
+  test('a proposal on an overdue credit (status overdue, workflow disbursed) is accepted',
+      () async {
+    final db = await seedCredit(
+      status: 'overdue',
+      workflowStatus: 'disbursed',
+      balanceCents: 300000,
+    );
+    final now = DateTime.now().toUtc();
+    final dao = CorrectionDao(db);
+
+    final correction = await dao.requestCorrection(
+      actor: managerActor(),
+      idempotencyKey: const Uuid().v4(),
+      creditId: creditId,
+      originalPaymentId: null,
+      amount: Money.fromCents(100000),
+      reason: 'Forgiveness requested for a delinquent borrower.',
+      requestedAt: now,
+      direction: CorrectionDao.directionCredit,
+    );
+
+    expect(correction.isPending, isTrue);
+
+    final credit = await CreditDao(db).getCreditById(shopId, creditId);
+    expect(credit!.correctionPending, isTrue);
+
+    await db.close();
+  });
+
+  test('the approval audit entry carries actor ids, target credit, direction, pre/post balance and justification',
+      () async {
+    final db = await seedCredit();
+    final now = DateTime.now().toUtc();
+    final dao = CorrectionDao(db);
+
+    const justification = 'Customer is insolvent; partial forgiveness agreed.';
+    final correction = await dao.requestCorrection(
+      actor: managerActor(),
+      idempotencyKey: const Uuid().v4(),
+      creditId: creditId,
+      originalPaymentId: null,
+      amount: Money.fromCents(100000),
+      reason: justification,
+      requestedAt: now,
+      direction: CorrectionDao.directionCredit,
+    );
+
+    await dao.approveCorrection(
+      actor: ownerActor(),
+      idempotencyKey: const Uuid().v4(),
+      correctionId: correction.id,
+      reviewedAt: DateTime.now().toUtc(),
+    );
+
+    final auditRows = await (db.select(db.syncQueue)
+          ..where((s) => s.actionType.equals('approve_correction')))
+        .get();
+    expect(auditRows, isNotEmpty);
+
+    final payloads = auditRows
+        .map((row) => jsonDecode(row.payloadJson) as Map<String, dynamic>)
+        .toList();
+    for (final payload in payloads) {
+      expect(payload['auditCategory'], 7);
+      expect(payload['actorId'], ownerId);
+      expect(payload['correctionId'], correction.id);
+      expect(payload['creditId'], creditId);
+      expect(payload['direction'], 'credit');
+      expect(payload['reason'], justification);
+    }
+    final committingPayload = payloads.firstWhere(
+      (payload) => payload.containsKey('previousBalanceCents'),
+    );
+    expect(committingPayload['previousBalanceCents'], 300000);
+    expect(committingPayload['newBalanceCents'], 200000);
+
+    await db.close();
+  });
+
+  test('an approval whose balance re-check fails rolls back completely',
+      () async {
+    final db = await seedCredit();
+    final now = DateTime.now().toUtc();
+    final dao = CorrectionDao(db);
+
+    // Full-balance forgiveness proposed while the balance is 300000.
+    final correction = await dao.requestCorrection(
+      actor: managerActor(),
+      idempotencyKey: const Uuid().v4(),
+      creditId: creditId,
+      originalPaymentId: null,
+      amount: Money.fromCents(300000),
+      reason: 'Customer cannot pay.',
+      requestedAt: now,
+      direction: CorrectionDao.directionCredit,
+    );
+
+    // A concurrent writer shrinks the balance directly (bypassing the DAO
+    // and the lock, as a settlement would inside its own transaction).
+    await db.customStatement(
+      'UPDATE credits SET balance_cents = 100000 WHERE id = ?',
+      [creditId],
+    );
+
+    await expectLater(
+      dao.approveCorrection(
+        actor: ownerActor(),
+        idempotencyKey: const Uuid().v4(),
+        correctionId: correction.id,
+        reviewedAt: DateTime.now().toUtc(),
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    // The approval rolled back: correction still pending, no ledger entry,
+    // no approval audit row recorded.
+    final pending = await dao.getCorrectionById(shopId, correction.id);
+    expect(pending!.isPending, isTrue);
+    expect(await dao.getLedgerEntriesByCredit(shopId, creditId), isEmpty);
 
     await db.close();
   });

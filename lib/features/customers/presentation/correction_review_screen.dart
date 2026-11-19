@@ -137,6 +137,7 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
     final delta =
         isForgiveness ? -correction.correctionAmountCents : correction.correctionAmountCents;
     final postBalance = preBalance + delta;
+    final negativePostBalance = postBalance < 0;
     if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -168,10 +169,22 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                       'referencing the original payment.',
                     ),
               Text(
-                'Recalculate the credit balance from '
-                '${Money.fromCents(preBalance).format()} to '
-                '${Money.fromCents(postBalance).format()}.',
+                negativePostBalance
+                    ? 'The credit balance cannot become negative.'
+                    : 'Recalculate the credit balance from '
+                        '${Money.fromCents(preBalance).format()} to '
+                        '${Money.fromCents(postBalance).format()}.',
               ),
+              if (negativePostBalance) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'The approval cannot be completed: the post-approval balance '
+                  'would be negative. The outstanding balance changed after '
+                  'this proposal was raised.',
+                  key: Key('review_negative_balance_warning'),
+                  style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                ),
+              ],
               correction.originalPaymentId == null
                   ? const SizedBox(height: 8)
                   : const Text('Permanently preserve the original erroneous payment.'),
@@ -191,7 +204,11 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
           ),
           ElevatedButton(
             key: const Key('review_approve_confirm_button'),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
+            // Disabled when the approval cannot be executed (negative
+            // post-balance) — the same guard the DAO enforces.
+            onPressed: negativePostBalance
+                ? null
+                : () => Navigator.of(dialogContext).pop(true),
             child: const Text('Approve'),
           ),
         ],
@@ -202,13 +219,16 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
   }
 
   /// Shows a confirmation dialog requiring a non-empty rejection reason and,
-  /// if confirmed, rejects [correction].
+  /// if confirmed, rejects [correction]. The confirm button stays disabled
+  /// until the reason is non-blank.
   Future<void> _confirmReject(CreditCorrection correction) async {
     final reasonController = TextEditingController();
+    var reasonIsNonEmpty = false;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
         title: const Text('Reject Correction Request'),
         content: SingleChildScrollView(
           child: Column(
@@ -220,9 +240,8 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Leave the credit balance unchanged '
-                '${Money.fromCents(correction.resultingBalanceCents ?? 0).format()}.',
+              const Text(
+                'Leave the credit balance outstanding (unchanged).',
               ),
               correction.originalPaymentId == null
                   ? const SizedBox(height: 8)
@@ -242,6 +261,8 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
+                onChanged: (value) =>
+                    setDialogState(() => reasonIsNonEmpty = value.trim().isNotEmpty),
               ),
               const SizedBox(height: 16),
               Row(
@@ -253,7 +274,9 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
                   ),
                   ElevatedButton(
                     key: const Key('review_reject_confirm_button'),
-                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    onPressed: reasonIsNonEmpty
+                        ? () => Navigator.of(dialogContext).pop(true)
+                        : null,
                     child: const Text('Reject'),
                   ),
                 ],
@@ -262,7 +285,12 @@ class _CorrectionReviewScreenState extends State<CorrectionReviewScreen> {
           ),
         ),
       ),
+    ),
     );
+    // Note: the TextEditingController is intentionally kept for the
+    // dialog's lifetime here — disposing it synchronously breaks the
+    // dismissal animation (it is used by the exiting subtree). One
+    // controller per dialog open is negligible.
     if (confirmed != true || !mounted) return;
     await _rejectCorrection(correction, reasonController.text.trim());
   }

@@ -748,6 +748,44 @@ void main() {
       expect(credit.balanceCents, equals(250000));
     });
 
+    test('a full-balance credit adjustment settles the credit atomically', () async {
+      final entry = await correctionDao.adjustBalance(
+        actor: owner(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        amount: Money.fromCents(300000),
+        adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+        reason: 'Insolvent customer; forgive the whole balance.',
+        recordedAt: DateTime.utc(2026, 10, 23),
+      );
+
+      expect(entry.postBalanceCents, equals(0));
+
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(0));
+      expect(credit.status, equals(CreditStatus.settled));
+      expect(credit.settledAt, isNotNull);
+      expect(credit.workflowStatus, equals(CreditWorkflowStatus.disbursed));
+    });
+
+    test('a debit adjustment raises the balance and keeps the credit active', () async {
+      final entry = await correctionDao.adjustBalance(
+        actor: owner(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        amount: Money.fromCents(150000),
+        adjustmentType: CreditLedgerEntryType.adjustmentDebit,
+        reason: 'Undercharged at disbursement.',
+        recordedAt: DateTime.utc(2026, 10, 23),
+      );
+
+      expect(entry.postBalanceCents, equals(450000));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(450000));
+      expect(credit.status, equals(CreditStatus.active));
+      expect(credit.settledAt, isNull);
+    });
+
     test('non-owner cannot adjust balance', () async {
       expect(
         () => correctionDao.adjustBalance(

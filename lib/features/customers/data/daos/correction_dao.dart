@@ -14,7 +14,8 @@ import '../../../../core/money/money.dart';
 import '../../../../core/permissions/app_permission.dart';
 import '../../../../core/permissions/authorization_guard.dart';
 import '../../../../features/auth/domain/models/app_user.dart';
-import '../../../../features/customers/domain/models/credit.dart';
+import '../../domain/models/credit.dart';
+import '../../domain/services/receipt_service.dart';
 import 'package:uuid/uuid.dart';
 
 part 'correction_dao.g.dart';
@@ -40,6 +41,18 @@ part 'correction_dao.g.dart';
 /// the approved adjustment moves the balance (`debit` increases it, `credit`
 /// decreases it — the partial forgiveness write-down), and an approved
 /// credit-direction adjustment exceeding the outstanding balance is rejected.
+///
+/// Balance adjustments and correction proposals are only accepted for an
+/// eligible credit: cash disbursed (workflow `disbursed`), financial status
+/// `active` or `overdue`, and a positive outstanding balance (the same
+/// semantics as [ReceiptService.isEligibleForPayment]). Pending-disbursement,
+/// cancelled and settled/zero-balance credits are refused at proposal time
+/// and re-checked inside the transaction. When an approved adjustment drives
+/// the balance to exactly zero the credit transitions to `settled` with
+/// `settled_at` in the same transaction — it is never stranded as an active
+/// zero-balance credit. A `credit`-direction proposal may not reference an
+/// original payment (that combination would post a mistyped movement); it is
+/// rejected at validation.
 @DriftAccessor(
   tables: [Credits, Payments, CreditCorrections, CreditLedgerEntries, SyncQueue, Shops, AppUsers],
 )
@@ -139,11 +152,14 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// Throws [PermissionDeniedException] when the actor is deactivated or does
   /// not hold `requestCorrections`.
   /// Throws [ArgumentError] when [idempotencyKey], [creditId], [reason] is
-  /// blank, [amount] is not positive, or [direction] is not 'debit' or
-  /// 'credit'. For a `credit`-direction proposal, [StateError] is also thrown
-  /// when [amount] exceeds the outstanding balance.
-  /// Throws [StateError] when the credit does not exist in the actor's shop or
-  /// when a correction is already pending for that credit.
+  /// blank, [amount] is not positive, [direction] is not 'debit' or
+  /// 'credit', or a `credit`-direction proposal references a non-null
+  /// [originalPaymentId] (rejected combination).
+  /// Throws [StateError] when the credit does not exist in the actor's shop,
+  /// is not eligible (disbursed workflow, `active`/`overdue` status, positive
+  /// balance), when a correction is already pending for that credit, or when
+  /// a `credit`-direction [amount] exceeds the outstanding balance. The
+  /// eligibility and over-balance checks are re-read inside the transaction.
   Future<CreditCorrection> requestCorrection({
     required AppUser actor,
     required String idempotencyKey,
@@ -197,6 +213,17 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         "direction must be 'debit' or 'credit'",
       );
     }
+    if (direction == directionCredit &&
+        originalPaymentId != null &&
+        originalPaymentId.trim().isNotEmpty) {
+      throw ArgumentError.value(
+        originalPaymentId,
+        'originalPaymentId',
+        "A 'credit'-direction (forgiveness) proposal cannot reference an "
+            'original payment; an adjustment proposal and a payment '
+            'correction are mutually exclusive.',
+      );
+    }
     final cleanReason = reason.trim();
     if (cleanReason.isEmpty) {
       throw ArgumentError.value(
@@ -223,6 +250,15 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         'Cannot request correction: credit ID "$creditId" not found in shop '
         '"${actor.shopId}".',
       );
+    }
+
+    // --- Story 5.6 eligibility: disbursed workflow, active/overdue
+    //     status, positive balance (ReceiptService.isEligibleForPayment
+    //     semantics). Enforced here and re-checked in the transaction.
+    //     Payment corrections (Story 5.5) are exempt — they must work on
+    //     settled credits whose settling payment needs reversal. ---
+    if (originalPaymentId == null) {
+      _checkAdjustmentEligibility(credit);
     }
 
     // --- A credit-direction adjustment exceeding the outstanding balance is
@@ -275,6 +311,22 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
           '"${actor.shopId}".',
         );
       }
+      // --- Re-check eligibility inside the transaction: the credit may have
+      //     settled, cancelled or been fully paid between the reads.
+      //     Adjustments only — payment corrections stay possible. ---
+      if (originalPaymentId == null) {
+        _checkAdjustmentEligibility(currentCredit);
+      }
+
+      if (direction == directionCredit &&
+          amount.minorUnits > currentCredit.balanceCents) {
+        throw StateError(
+          'Cannot request adjustment: the credit-direction amount of '
+          '${amount.minorUnits} minor units exceeds the outstanding balance '
+          'of credit ID "$creditId" (current balance: '
+          '${currentCredit.balanceCents}).',
+        );
+      }
       if (currentCredit.correctionPending) {
         throw StateError(
           'Cannot request correction: credit ID "$creditId" already has a pending '
@@ -295,6 +347,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
           payloadJson: jsonEncode({
             'auditCategory': 6,
             'auditEvent': correctionAuditEvent,
+            'action': 'request',
             'actorId': actor.id,
             'creditId': creditId,
             'originalPaymentId': originalPaymentId,
@@ -366,6 +419,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
           payloadJson: jsonEncode({
             'auditCategory': 6,
             'auditEvent': correctionAuditEvent,
+            'action': 'request',
             'actorId': actor.id,
             'creditId': creditId,
             'originalPaymentId': originalPaymentId,
@@ -419,6 +473,8 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// subtracts it (the partial forgiveness write-down). An approved
   /// credit-direction adjustment exceeding the outstanding balance is rejected
   /// with [StateError], so the credit never carries a negative balance.
+  /// When the adjustment drives the balance to exactly zero the credit flips
+  /// to `settled` with `settled_at` in the same transaction.
   ///
   /// Returns the approved [CreditCorrection].
   ///
@@ -517,6 +573,8 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'correctionId': correctionId,
             'creditId': correction.creditId,
             'amountCents': correction.correctionAmountCents,
+            'direction': correction.direction,
+            'reason': correction.reason,
             'reviewedAt': now.toIso8601String(),
             'shopId': actor.shopId,
           }),
@@ -538,6 +596,14 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
           'Cannot approve correction: credit ID "${correction.creditId}" not '
           'found in shop "${actor.shopId}".',
         );
+      }
+
+      // --- Re-validate eligibility at approval time (adjustments only —
+      //     payment corrections stay possible): a pending proposal on
+      //     a credit that was settled/cancelled/paid in the meantime must
+      //     not commit. The owner can still reject the stale proposal. ---
+      if (correction.originalPaymentId == null) {
+        _checkAdjustmentEligibility(credit);
       }
 
       final isAdjustmentProposal = correction.originalPaymentId == null;
@@ -611,7 +677,12 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         );
       }
 
-      // --- Lift the correction lock and apply the balance adjustment ---
+      // --- Lift the correction lock and apply the balance adjustment.
+      //     Story 5.6: when the adjustment drives the balance to exactly
+      //     zero the credit settles in the same transaction (status flips to
+      //     `settled` with `settled_at`) — a fully-forgiven credit never
+      //     strands as an unsettleable active agreement. ---
+      final zeroBalance = newBalanceCents == 0;
       final creditAffected = await (update(credits)
             ..where((l) =>
                 l.shopId.equals(actor.shopId) &
@@ -620,6 +691,14 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
           .write(CreditsCompanion(
         balanceCents: Value(newBalanceCents),
         correctionPending: Value(false),
+        status: zeroBalance ? const Value('settled') : const Value.absent(),
+        settledAt: zeroBalance ? Value(now) : const Value.absent(),
+        // A settled credit must carry workflow `disbursed` — every reader
+        // (payment conditional update, settle eligibility, dashboards)
+        // enforces that invariant. Overdue credits settle straight from the
+        // overdue state.
+        workflowStatus:
+            zeroBalance ? const Value('disbursed') : const Value.absent(),
       ));
 
       if (creditAffected == 0) {
@@ -649,8 +728,10 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'creditId': correction.creditId,
             'amountCents': correction.correctionAmountCents,
             'direction': correction.direction,
+            'reason': correction.reason,
             'previousBalanceCents': credit.balanceCents,
             'newBalanceCents': newBalanceCents,
+            'settled': newBalanceCents == 0,
             'reviewedAt': now.toIso8601String(),
             'shopId': actor.shopId,
           }),
@@ -1099,7 +1180,10 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
-      // --- Conditionally update the credit balance ---
+      // --- Conditionally update the credit balance. Story 5.6: an owner
+      //     adjustment driving the balance to exactly zero settles the
+      //     credit in the same transaction, mirroring the approval path. ---
+      final zeroBalance = newBalanceCents == 0;
       final affected = await (update(credits)
             ..where((l) =>
                 l.shopId.equals(actor.shopId) &
@@ -1107,6 +1191,10 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
                 l.correctionPending.equals(false)))
         .write(CreditsCompanion(
       balanceCents: Value(newBalanceCents),
+      status: zeroBalance ? const Value('settled') : const Value.absent(),
+      settledAt: zeroBalance ? Value(now) : const Value.absent(),
+      workflowStatus:
+          zeroBalance ? const Value('disbursed') : const Value.absent(),
     ));
 
       if (affected == 0) {
@@ -1136,6 +1224,7 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
             'amountCents': amount.minorUnits,
             'previousBalanceCents': credit.balanceCents,
             'newBalanceCents': newBalanceCents,
+            'settled': newBalanceCents == 0,
             'recordedAt': now.toIso8601String(),
             'shopId': actor.shopId,
           }),
@@ -1341,6 +1430,26 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
     }
 
     return correction;
+  }
+
+  /// Story 5.6 eligibility gate for correction/adjustment proposals.
+  ///
+  /// A proposal may only be recorded for a credit whose cash has been
+  /// disbursed, whose financial status is `active` or `overdue`, and whose
+  /// outstanding balance is positive — the same semantics as
+  /// [ReceiptService.isEligibleForPayment]. Pending-disbursement, cancelled,
+  /// settled and zero-balance credits are refused. Throws [StateError] with
+  /// the reason.
+  void _checkAdjustmentEligibility(Credit credit) {
+    if (!ReceiptService().isEligibleForPayment(credit)) {
+      throw StateError(
+        'Cannot request correction: credit ID "${credit.id}" is not eligible '
+        'for an adjustment. The credit must be disbursed, in active or '
+        'overdue status and with a positive outstanding balance (current '
+        'workflow: ${credit.workflowStatus.value}, status: '
+        '${credit.status.value}, balance: ${credit.balanceCents}).',
+      );
+    }
   }
 
   /// Helper to fetch a credit by id within a shop (avoids constructing a second

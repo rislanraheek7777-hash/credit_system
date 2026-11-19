@@ -446,8 +446,10 @@ class Credit {
 
   /// Returns a copy of this credit with an overdue status applied (Story 6.1).
   ///
-  /// Transitions financial status and workflow status to `overdue`. Only
-  /// permitted when:
+  /// Transitions the financial status to `overdue` only; the workflow status
+  /// stays `disbursed` so the payment conditional update, settle eligibility
+  /// and adjustment approval continue to work on overdue credits — every
+  /// financial write path keys off workflow_status. Only permitted when:
   /// - The credit has been disbursed
   /// - The outstanding balance is greater than zero
   /// - The credit is not settled
@@ -478,7 +480,8 @@ class Credit {
     }
     return copyWith(
       status: CreditStatus.overdue,
-      workflowStatus: CreditWorkflowStatus.overdue,
+      // workflowStatus stays `disbursed`: payments, settlement and
+      // adjustments target disbursed workflow rows by design.
     );
   }
 

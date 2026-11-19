@@ -25,7 +25,10 @@ class OverdueService {
     ShopTimeZone shopTimeZone,
   ) {
     return credits.where((credit) {
-      if (credit.status == CreditStatus.settled) return false;
+      // Only credits not yet in overdue status are candidates; an already
+      // overdue credit must not be re-transitioned (or re-counted when the
+      // screen reports how many flipped).
+      if (credit.status != CreditStatus.active) return false;
       if (credit.balanceCents <= 0) return false;
       if (!credit.isDisbursed) return false;
       return credit.isOverdue(shopTimeZone);

@@ -510,7 +510,7 @@ void main() {
 
     test('schema version is current and payments table is accessible', () async {
       // Verify the database is at the current schema version
-      expect(db.schemaVersion, 27);
+      expect(db.schemaVersion, 28);
 
       // Verify the payments table exists and is queryable
       final count = await db.customSelect(

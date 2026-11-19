@@ -16,8 +16,10 @@ import 'package:credit_system/features/customers/presentation/credit_origination
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_view_screen.dart';
 import 'package:credit_system/features/customers/domain/models/credit_document_content.dart';
 import 'package:credit_system/features/customers/presentation/credit_settle_action.dart';
+import 'package:credit_system/features/customers/presentation/credit_adjustment_action.dart';
 import 'package:credit_system/features/customers/presentation/customer_profile_screen.dart';
 import 'package:credit_system/features/customers/presentation/settle_summary_screen.dart';
+import 'package:credit_system/features/customers/presentation/adjustment_proposal_screen.dart';
 
 import '../../../support/customers_test_support.dart';
 
@@ -1764,6 +1766,203 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('settle_sheet_extend')), findsNothing);
+
+      await db.close();
+    });
+  });
+
+  group('CustomerProfileScreen - adjustment action', () {
+    const shopId = 'shop-123';
+    const customerId = 456;
+    const adjustCreditId = 'credit-adjust-1';
+
+    /// Seeds a shop, a borrower, the manager actor and one disbursed,
+    /// active credit with a positive balance.
+    Future<AppDatabase> seedAdjustableCredit(
+      WidgetTester tester, {
+      String creditId = adjustCreditId,
+      int balanceCents = 300000,
+      bool correctionPending = false,
+    }) async {
+      final db = await openTestDatabase();
+      useLargeSurface(tester);
+      await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+
+      final now = DateTime.now().toUtc();
+      await db.into(db.appUsers).insert(
+            AppUserEntry(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: 'manager',
+              isActive: true,
+              sessionVersion: 1,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+      await insertCredit(db,
+          Credit(
+            id: creditId,
+            shopId: shopId,
+            customerId: customerId,
+            principalCents: 500000,
+            balanceCents: balanceCents,
+            status: CreditStatus.active,
+            workflowStatus: CreditWorkflowStatus.disbursed,
+            dueDate: now.add(const Duration(days: 30)),
+            createdAt: now,
+          ));
+      if (correctionPending) {
+        await (db.update(db.credits)
+              ..where((c) => c.id.equals(creditId)))
+            .write(const CreditsCompanion(correctionPending: Value(true)));
+      }
+      return db;
+    }
+
+    testWidgets('an eligible credit offers the Request Balance Adjustment '
+        'action to a staff member holding requestCorrections', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedAdjustableCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final button = tester.widget<OutlinedButton>(
+        find.byKey(CreditAdjustmentAction.buttonKey(adjustCreditId)),
+      );
+      expect(button.onPressed, isNotNull);
+      expect(find.text('Request Balance Adjustment'), findsOneWidget);
+
+      await db.close();
+    });
+
+    testWidgets('the action is hidden from an actor without '
+        'requestCorrections', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedAdjustableCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          // Cashiers do not hold requestCorrections by default.
+          role: AppRole.cashier,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(CreditAdjustmentAction.buttonKey(adjustCreditId)),
+        findsNothing,
+      );
+
+      await db.close();
+    });
+
+    testWidgets('the action is disabled with a lock subtitle while a '
+        'proposal is pending', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedAdjustableCredit(tester, correctionPending: true);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final button = tester.widget<OutlinedButton>(
+        find.byKey(CreditAdjustmentAction.buttonKey(adjustCreditId)),
+      );
+      expect(button.onPressed, isNull);
+      expect(
+        find.byKey(CreditAdjustmentAction.lockNoticeKey(adjustCreditId)),
+        findsOneWidget,
+      );
+
+      await db.close();
+    });
+
+    testWidgets('tapping the action opens the adjustment proposal screen and '
+        'a submitted proposal locks the card on return', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedAdjustableCredit(tester);
+
+      await tester.pumpWidget(
+        profileScreen(
+          db: db,
+          shopId: shopId,
+          customerId: customerId,
+          role: AppRole.manager,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(CreditAdjustmentAction.buttonKey(adjustCreditId)),
+      );
+      await pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('adjustment_amount_input'))
+            .evaluate()
+            .isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AdjustmentProposalScreen), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('adjustment_amount_input')),
+        '1,000.00',
+      );
+      await tester.enterText(
+        find.byKey(const Key('adjustment_reason_input')),
+        'Customer cannot pay the balance in full this month.',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('submit_adjustment_button')));
+      await pumpUntil(
+        tester,
+        () => find
+            .textContaining('Adjustment proposed')
+            .evaluate()
+            .isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The proposal is pending and the card now renders the locked state.
+      final button = tester.widget<OutlinedButton>(
+        find.byKey(CreditAdjustmentAction.buttonKey(adjustCreditId)),
+      );
+      expect(button.onPressed, isNull);
+      expect(
+        find.byKey(CreditAdjustmentAction.lockNoticeKey(adjustCreditId)),
+        findsOneWidget,
+      );
+
+      final credit = await (db.select(db.credits)
+            ..where((c) => c.id.equals(adjustCreditId)))
+          .getSingle();
+      expect(credit.correctionPending, isTrue);
 
       await db.close();
     });

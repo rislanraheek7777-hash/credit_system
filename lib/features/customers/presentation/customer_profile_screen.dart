@@ -20,8 +20,10 @@ import 'package:credit_system/features/customers/presentation/customer_edit_scre
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
 import 'package:credit_system/features/customers/presentation/credit_origination_screen.dart';
 import 'package:credit_system/features/customers/presentation/credit_settle_action.dart';
+import 'package:credit_system/features/customers/presentation/credit_adjustment_action.dart';
 import 'package:credit_system/features/customers/presentation/settle_summary_screen.dart';
 import 'package:credit_system/features/customers/presentation/payment_screen.dart';
+import 'package:credit_system/features/customers/presentation/adjustment_proposal_screen.dart';
 
 // A section displaying credits of a single status.
 class _CreditStatusSection extends StatelessWidget {
@@ -37,6 +39,10 @@ class _CreditStatusSection extends StatelessWidget {
   /// Invoked when the per-card Settle action is tapped, with the card's own
   /// credit.
   final ValueChanged<Credit> onSettle;
+
+  /// Invoked when the per-card Request Balance Adjustment action is tapped,
+  /// with the card's own credit.
+  final ValueChanged<Credit> onRequestAdjustment;
 
   final Map<String, List<Receipt>> paymentsByCreditId;
   final Map<String, List<CollateralItem>> collateralByCreditId;
@@ -55,6 +61,7 @@ class _CreditStatusSection extends StatelessWidget {
     required this.shopTimeZone,
     required this.onTap,
     required this.onSettle,
+    required this.onRequestAdjustment,
     required this.paymentsByCreditId,
     required this.collateralByCreditId,
     required this.currentUser,
@@ -154,6 +161,17 @@ class _CreditStatusSection extends StatelessWidget {
                     onSettle: () => onSettle(credit),
                   ),
                 ),
+                // The per-card adjustment action sits below Settle, mirroring
+                // its placement: offered to actors holding `requestCorrections`,
+                // disabled with a lock subtitle while a proposal is pending.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: CreditAdjustmentAction(
+                    credit: credit,
+                    currentUser: currentUser,
+                    onRequestAdjustment: () => onRequestAdjustment(credit),
+                  ),
+                ),
               ],
             ),
           );
@@ -173,7 +191,9 @@ class _CreditStatusSection extends StatelessWidget {
 /// When a customer has multiple actionable credits, tapping a credit's tile
 /// opens its payment screen directly, and each card's per-card Settle action
 /// settles that card's own credit — the card you tapped always settles its
-/// own credit.
+/// own credit. Each card also offers a per-card Request Balance Adjustment
+/// action (Story 5.6) to actors holding `requestCorrections`; it is disabled
+/// with a lock subtitle while a proposal is pending on the credit.
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({
     super.key,
@@ -330,6 +350,46 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         ),
       );
     }
+  }
+
+  /// Opens the adjustment proposal screen for [credit] and, when the staff
+  /// member submitted a proposal, reloads the credit list (so the lock shows)
+  /// and confirms with a SnackBar.
+  ///
+  /// The proposal screen pops with `true` only when a proposal was recorded;
+  /// backing out returns nothing, so no confirmation is shown.
+  Future<void> _requestAdjustment(Credit credit) async {
+    final proposed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => AdjustmentProposalScreen(
+          shopId: widget.shopId,
+          creditId: credit.id,
+          currentUser: widget.currentUser,
+          database: widget.database,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    // No result means the user backed out without proposing anything;
+    // only a record reload (so the lock shows) runs after a real proposal.
+    if (proposed != true) return;
+
+    // Reload from the database so the credit list reflects the lock.
+    await _loadProfile(showLoading: false);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Adjustment proposed. Awaiting Shop Owner approval. '
+          'Payments are locked on this credit meanwhile.',
+        ),
+        duration: Duration(seconds: 4),
+      ),
+    );
   }
 
   /// Opens the settle summary screen for [credit] and confirms the
@@ -725,6 +785,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 shopTimeZone: _shopTimeZone,
                 onTap: (credit) => _creditTileTap(context, credit),
                 onSettle: (credit) => _settleCredit(credit),
+                onRequestAdjustment: (credit) => _requestAdjustment(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,
@@ -737,6 +798,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 shopTimeZone: _shopTimeZone,
                 onTap: (credit) => _creditTileTap(context, credit),
                 onSettle: (credit) => _settleCredit(credit),
+                onRequestAdjustment: (credit) => _requestAdjustment(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,
@@ -749,6 +811,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 shopTimeZone: _shopTimeZone,
                 onTap: (credit) => _creditTileTap(context, credit),
                 onSettle: (credit) => _settleCredit(credit),
+                onRequestAdjustment: (credit) => _requestAdjustment(credit),
                 paymentsByCreditId: _paymentsByCreditId,
                 collateralByCreditId: _collateralByCreditId,
                 currentUser: widget.currentUser,

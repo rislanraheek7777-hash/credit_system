@@ -246,3 +246,11 @@
 - source_spec: `spec-credit-settle-button-customer-profile.md`
   summary: The multi-credit selection dialog was deleted from the customer profile without a spine amendment; `EXPERIENCE.md` still mandates "Multi-select credit: explicit selection dialog when >1 actionable credit", and tapping any card now routes straight to `PaymentScreen` for that card.
   evidence: Blind-hunter finding in the settle-button review; change staged "per human instruction" (bbfb913 commit message) but no artifact renegotiates the spine rule. Needs a correct-course decision: amend the spine to "per-card routing" or restore the dialog for >1 actionable credits.
+
+- source_spec: `spec-5-6-staff-proposed-owner-approved-balance-adjustments-partial-forgiveness.md`
+  summary: Category 6/7 audit payloads (extended with direction/reason/settled etc.) have not been validated against a PostgreSQL/RLS instance - no server-side run confirmed the payload shape or the audit-trigger behavior.
+  evidence: Review pass 2 of the 5.6 build; the local Drift tests cover the client path but the server-side append/trigger path (AD-1/AD-6, cs_audit_writer) is unverified for the extended payloads.
+
+- source_spec: `spec-5-6-staff-proposed-owner-approved-balance-adjustments-partial-forgiveness.md`
+  summary: A full forgiveness settled at the counter produces no settlement document/receipt of its own - the adjustment_credit ledger entry is the only terminal artifact, and Epic 6/7 cannot distinguish "forgiven at counter" from "settled by payment with receipt".
+  evidence: Blind-hunter finding in the 5.6 review; product/Epic-7 scope question - a settlement-disposition document, or an explicit Epic 7 derived marker in the audit viewer. Not addable here without new "settlement semantics" scope and human renegotiation of the frozen intent.

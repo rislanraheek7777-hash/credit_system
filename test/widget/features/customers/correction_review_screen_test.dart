@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/data/local/connection/database_connection.dart';
 import 'package:credit_system/core/money/money.dart';
@@ -357,10 +357,21 @@ void main() {
       await tester.tap(find.text('Reject').first);
       await tester.pumpAndSettle();
 
-      // The reject dialog opens with an empty reason field and disabled
+      // The reject dialog opens with an empty reason field and a disabled
       // confirm button.
+      final confirmDisabled = tester.widget<ElevatedButton>(
+          find.byKey(const Key('review_reject_confirm_button')));
+      expect(confirmDisabled.onPressed, isNull);
+
       await tester.enterText(
           find.byKey(const Key('review_reject_reason_input')), '   ');
+      await tester.pumpAndSettle();
+
+      // Whitespace alone keeps the confirm button disabled.
+      final stillDisabled = tester.widget<ElevatedButton>(
+          find.byKey(const Key('review_reject_confirm_button')));
+      expect(stillDisabled.onPressed, isNull);
+
       await tester.tap(find.byKey(const Key('review_reject_confirm_button')));
       await tester.pumpAndSettle();
 
@@ -368,6 +379,40 @@ void main() {
       final corrections = await CorrectionDao(db).getCorrectionsByCredit(
           shopAlphaId, creditAlphaId);
       expect(corrections.first.status, equals(CreditCorrectionStatus.pendingApproval));
+    });
+
+    testWidgets('approve confirm is disabled when the post-balance would be negative',
+        (WidgetTester tester) async {
+      // Seed an out-of-range proposal directly in the database (the DAO
+      // refuses over-balance proposals at submit time; this models a
+      // proposal whose balance changed underneath it before review).
+      final now = DateTime.now().toUtc();
+      await db.into(db.creditCorrections).insert(
+        CreditCorrectionsCompanion.insert(
+          id: 'review-overbalance-1111-1111-1111111111aa',
+          shopId: shopAlphaId,
+          creditId: creditAlphaId,
+          requestedByUserId: managerAlphaId,
+          correctionAmountCents: 400000,
+          direction: const Value('credit'),
+          reason: 'Forgiveness proposed before a settlement posted.',
+          status: const Value('pending_approval'),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await openScreen(tester, db, actor: owner());
+
+      await tester.tap(find.byKey(
+          const Key('review_approve_review-overbalance-1111-1111-1111111111aa')));
+      await tester.pumpAndSettle();
+
+      final confirm = tester.widget<ElevatedButton>(
+          find.byKey(const Key('review_approve_confirm_button')));
+      expect(confirm.onPressed, isNull);
+      expect(find.byKey(const Key('review_negative_balance_warning')),
+          findsOneWidget);
     });
 
     testWidgets('reject invokes the DAO correctly',

@@ -30,7 +30,7 @@
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 
 generated: 10-14-2026 13:02
-last_updated: 11-17-2026 00:00
+last_updated: 11-19-2026 00:00
 project: credit_system
 project_key: CS
 tracking_system: file-system
@@ -79,7 +79,7 @@ development_status:
   5-3-payment-idempotency-concurrency-control-correction-pending-l: done
   5-4-immutable-receipt-snapshot-model-watermarked-reprints-audit: done
   5-5-controlled-financial-correction-shop-owner-reversal-approval: done
-  5-6-staff-proposed-owner-approved-balance-adjustments-partial-forgiveness: backlog
+  5-6-staff-proposed-owner-approved-balance-adjustments-partial-forgiveness: review
   epic-5-retrospective: optional
 
   epic-6: done
@@ -110,4 +110,3 @@ action_items:
     action: "Complete remaining Acceptance Criteria for Story 1.1 (Drift SQLite and PostgreSQL minor unit mapping layers)"
     owner: "Developer"
     status: done
-

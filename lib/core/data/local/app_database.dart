@@ -130,7 +130,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 28;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1062,6 +1062,33 @@ class AppDatabase extends _$AppDatabase {
         );
         if (customerColumns.isNotEmpty && !hasDeletedAt) {
           await m.addColumn(customers, customers.deletedAt);
+        }
+      }
+      if (from < 28) {
+        // Upgrade from Schema Version 27 to 28: data normalize only, no DDL.
+        //
+        // Overdue credits were once persisted with workflow_status = 'overdue'
+        // while every payment conditional update, settlement eligibility and
+        // adjustment approval target workflow_status = 'disbursed' — the
+        // overdue badge is carried by status = 'overdue' alone. That drifted
+        // overdue credits into an unpayable/unsettleable state. Normalize any
+        // drifted rows back to the disbursed workflow.
+        //
+        // Guarded by PRAGMA so pathological upgrades from pre-credits schema
+        // versions are left alone; every v2+ database carries the credits
+        // table with workflow_status.
+        final creditsColumns = await customSelect(
+          'PRAGMA table_info("credits")',
+        ).get();
+        final hasWorkflow = creditsColumns.any(
+          (row) => row.read<String>('name') == 'workflow_status',
+        );
+        if (hasWorkflow) {
+          await customStatement(
+            'UPDATE "credits" '
+            "SET \"workflow_status\" = 'disbursed' "
+            "WHERE \"workflow_status\" = 'overdue' AND \"status\" = 'overdue'",
+          );
         }
       }
     },
