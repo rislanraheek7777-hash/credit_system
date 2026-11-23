@@ -363,7 +363,7 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
     final credit = _credit;
     if (credit == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Request Balance Adjustment')),
+        appBar: AppBar(title: const Text('Settle')),
         body: Center(child: Text(_error ?? 'Credit not found')),
       );
     }
@@ -385,7 +385,7 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
       afterCents = desired.minorUnits;
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Request Balance Adjustment')),
+      appBar: AppBar(title: const Text('Settle')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(

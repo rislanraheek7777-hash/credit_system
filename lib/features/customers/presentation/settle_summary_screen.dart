@@ -44,7 +44,7 @@ import 'package:uuid/uuid.dart';
 /// - **Partial settlement** — dismisses the sheet and focuses the amount
 ///   field for a lower amount; with a partial amount entered it posts an
 ///   ordinary partial payment, which stays on this screen.
-/// - **Request Balance Adjustment** — Story 5.6 partial-forgiveness proposal
+/// - **Settle** — Story 5.6 partial-forgiveness proposal
 ///   (staff-initiated, Shop Owner approves).
 /// - **Extend due date** — FR-26 extension (Shop Owner only, new date plus a
 ///   mandatory reason), reusing [OverdueDao.grantDueDateExtension].
@@ -414,7 +414,7 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
               ListTile(
                 key: const Key('request_adjustment_button'),
                 leading: const Icon(Icons.volunteer_activism_outlined),
-                title: const Text('Request Balance Adjustment'),
+                title: const Text('Settle'),
                 subtitle: const Text(
                   'Customer cannot pay in full? The Shop Owner approves any forgiveness',
                 ),

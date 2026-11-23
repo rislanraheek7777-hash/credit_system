@@ -3,7 +3,7 @@ import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/domain/models/credit.dart';
 
-/// The per-credit "Request Balance Adjustment" action (Story 5.6).
+/// The per-credit "Settle" action (Story 5.6).
 ///
 /// Staff propose an adjustment (partial forgiveness or increase) from the
 /// customer profile's credit cards; the Shop Owner approves or rejects it in
@@ -35,7 +35,7 @@ class CreditAdjustmentAction extends StatelessWidget {
   /// The authenticated actor.
   final AppUser currentUser;
 
-  /// Invoked when the staff member taps Request Balance Adjustment.
+  /// Invoked when the staff member taps Settle.
   final VoidCallback onRequestAdjustment;
 
   /// The key of the request-adjustment action offered for [creditId].
@@ -78,7 +78,7 @@ class CreditAdjustmentAction extends StatelessWidget {
             key: CreditAdjustmentAction.buttonKey(credit.id),
             onPressed: locked ? null : onRequestAdjustment,
             icon: Icon(locked ? Icons.lock_outline : Icons.volunteer_activism_outlined),
-            label: const Text('Request Balance Adjustment'),
+            label: const Text('Settle'),
           ),
           if (locked)
             Padding(

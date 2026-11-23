@@ -475,7 +475,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     key: const Key('request_adjustment_button'),
                     onPressed: _openAdjustmentProposal,
                     icon: const Icon(Icons.volunteer_activism_outlined),
-                    label: const Text('Request Balance Adjustment'),
+                    label: const Text('Settle'),
                   ),
                 ),
               ],

@@ -40,7 +40,7 @@ class _CreditStatusSection extends StatelessWidget {
   /// credit.
   final ValueChanged<Credit> onSettle;
 
-  /// Invoked when the per-card Request Balance Adjustment action is tapped,
+  /// Invoked when the per-card Settle action is tapped,
   /// with the card's own credit.
   final ValueChanged<Credit> onRequestAdjustment;
 
@@ -148,19 +148,6 @@ class _CreditStatusSection extends StatelessWidget {
                     database: database,
                   ),
                 ),
-                // The per-card Settle action is a separate, separately tappable
-                // control that opens the settle summary screen for this credit.
-                // It is offered on every card (visibility restored at the
-                // human's request) — eligibility is enforced by the summary
-                // screen and the payment path behind it.
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: CreditSettleAction(
-                    credit: credit,
-                    currentUser: currentUser,
-                    onSettle: () => onSettle(credit),
-                  ),
-                ),
                 // The per-card adjustment action sits below Settle, mirroring
                 // its placement: offered to actors holding `requestCorrections`,
                 // disabled with a lock subtitle while a proposal is pending.
@@ -191,7 +178,7 @@ class _CreditStatusSection extends StatelessWidget {
 /// When a customer has multiple actionable credits, tapping a credit's tile
 /// opens its payment screen directly, and each card's per-card Settle action
 /// settles that card's own credit — the card you tapped always settles its
-/// own credit. Each card also offers a per-card Request Balance Adjustment
+/// own credit. Each card also offers a per-card Settle
 /// action (Story 5.6) to actors holding `requestCorrections`; it is disabled
 /// with a lock subtitle while a proposal is pending on the credit.
 class CustomerProfileScreen extends StatefulWidget {
