@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:credit_system/core/theme/theme_controller.dart';
+import 'package:credit_system/core/utils/connectivity_service.dart';
 import 'package:credit_system/features/auth/presentation/login_screen.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/presentation/customer_search_screen.dart';
@@ -608,7 +609,8 @@ class _CreditDetailsPage extends StatelessWidget {
   }
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -887,6 +889,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     if (!_isAuthenticated || _currentUser == null) {
       return LoginScreen(
+        isOnline: () => ConnectivityService().isOnline(),
         onAuthenticated: _onAuthenticated,
         onAuthServiceReady: (service) {
           if (service != null) {

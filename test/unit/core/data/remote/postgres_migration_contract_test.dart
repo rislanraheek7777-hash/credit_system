@@ -313,6 +313,217 @@ void main() {
       },
     );
   });
+
+  group('PostgreSQL DDL Migration Contract Tests (003_credential_recovery.sql)', () {
+    late String upSql;
+    late String downSql;
+
+    setUpAll(() async {
+      final upFile = File(
+        'lib/core/data/remote/migrations/003_credential_recovery.sql',
+      );
+      final downFile = File(
+        'lib/core/data/remote/migrations/003_credential_recovery_down.sql',
+      );
+
+      expect(await upFile.exists(), isTrue,
+          reason: '003_credential_recovery.sql must exist');
+      expect(await downFile.exists(), isTrue,
+          reason: '003_credential_recovery_down.sql must exist');
+
+      upSql = await upFile.readAsString();
+      downSql = await downFile.readAsString();
+    });
+
+    String normalize(String sql) => sql.replaceAll('\r\n', '\n').trim();
+
+    test('creates the challenge table with the full recovery column contract', () {
+      expect(
+        upSql.contains(
+          RegExp(r'CREATE TABLE public\.credential_recovery_challenges\b'),
+        ),
+        isTrue,
+      );
+
+      for (final column in [
+        'shop_id',
+        'user_id',
+        'channel',
+        'otp_hash',
+        'expires_at',
+        'attempts',
+        'consumed_at',
+        'client_operation_id',
+        'idempotency_key',
+      ]) {
+        expect(upSql.contains(column), isTrue,
+            reason: 'challenge table must define $column');
+      }
+
+      // Only the SHA-256 digest is persisted — never a plaintext OTP/password.
+      expect(upSql.contains(RegExp(r'otp_hash\s+VARCHAR\(64\)')), isTrue);
+      expect(upSql.contains("otp_hash ~ '^[0-9a-f]{64}\$'"), isTrue);
+    });
+
+    test('enforces immutability of tenant attribution and idempotency', () {
+      expect(upSql.contains('REFERENCES public.shops(id) ON DELETE RESTRICT'),
+          isTrue);
+      expect(
+          upSql.contains('UNIQUE (client_operation_id)'), isTrue,
+          reason: 're-transmission must return the same challenge');
+      expect(upSql.contains('UNIQUE (idempotency_key)'), isTrue);
+      expect(upSql.contains("CHECK (channel IN ('email', 'sms'))"), isTrue);
+    });
+
+    test('closes the app_users contact-identifier collision and rejects pre-existing duplicates', () {
+      expect(
+        normalize(upSql).contains(
+          'ALTER TABLE public.app_users\n    ADD CONSTRAINT uq_app_users_shop_email UNIQUE (shop_id, email);',
+        ),
+        isTrue,
+      );
+      expect(
+        normalize(upSql).contains(
+          'ALTER TABLE public.app_users\n    ADD CONSTRAINT uq_app_users_shop_phone UNIQUE (shop_id, phone);',
+        ),
+        isTrue,
+      );
+      expect(
+        normalize(upSql).contains(
+          'CREATE TABLE IF NOT EXISTS public.credential_recovery_challenges',
+        ),
+        isFalse,
+        reason: 'ADD CONSTRAINT must fail loudly on pre-existing duplicates');
+    });
+
+    test('enables and FORCES RLS with a policy bound to app.current_shop_id', () {
+      expect(
+        upSql.contains(
+            'ALTER TABLE public.credential_recovery_challenges ENABLE ROW LEVEL SECURITY;'),
+        isTrue,
+      );
+      expect(
+        upSql.contains(
+            'ALTER TABLE public.credential_recovery_challenges FORCE  ROW LEVEL SECURITY;'),
+        isTrue,
+      );
+      expect(
+        upSql.contains("current_setting('app.current_shop_id', true)"), isTrue,
+      );
+      expect(upSql.contains('WITH CHECK ('), isTrue);
+    });
+
+    test('grants least-privilege DML to cs_app and narrow resolver access only', () {
+      expect(
+        upSql.contains(
+          'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.credential_recovery_challenges TO cs_app;',
+        ),
+        isTrue,
+      );
+      // Parse the full GRANT statement: a naive contains('GRANT DELETE') check
+      // cannot observe DELETE inside a combined privilege list.
+      final grants = RegExp(
+        r'GRANT\s+([^;]+?)\s+ON TABLE public\.credential_recovery_challenges\s+TO cs_app;',
+      ).allMatches(upSql).toList();
+      expect(grants, hasLength(1),
+          reason: 'exactly one challenge-table grant to cs_app');
+      final privileges = grants.single
+          .group(1)!
+          .split(',')
+          .map((privilege) => privilege.trim().toUpperCase())
+          .toSet();
+      expect(privileges, equals({'SELECT', 'INSERT', 'UPDATE', 'DELETE'}),
+          reason: 'cs_app must have the four narrow recovery DML privileges only');
+
+      final ledgerGrant = RegExp(
+        r'GRANT\s+([^;]+?)\s+ON TABLE public\.credential_recovery_operations\s+TO cs_app;',
+      ).firstMatch(upSql);
+      expect(ledgerGrant, isNotNull);
+      expect(
+        ledgerGrant!.group(1)!.split(',').map((p) => p.trim().toUpperCase()).toSet(),
+        equals({'SELECT', 'INSERT', 'DELETE'}),
+        reason: 'failure cleanup must be able to delete ledger rows',
+      );
+      expect(
+        upSql.contains('cs_resolve_recovery_identity'), isTrue,
+        reason: 'unauthenticated identifier resolution must be server-side');
+      expect(upSql.contains('cs_resolve_recovery_challenge'), isFalse,
+          reason: 'the unused cross-tenant resolver must not be granted');
+      expect(upSql.contains('REVOKE EXECUTE ON FUNCTION'), isTrue);
+      expect(upSql.contains('RETURNS TABLE (shop_id uuid, user_id uuid, destination text, match_count integer)'),
+          isTrue,
+          reason: 'resolver must expose only the minimum data and a collision count');
+    });
+
+    test('enforces rate limiting atomically in SQL with a system audit actor', () {
+      expect(upSql.contains('cs_create_recovery_challenge'), isTrue);
+      expect(upSql.contains('pg_catalog.pg_advisory_xact_lock'), isTrue,
+          reason: 'rate-limit count and INSERT must be serialized in SQL');
+      expect(upSql.contains("INTERVAL '15 minutes'"), isTrue);
+      expect(
+        upSql.contains(
+          'RETURNS TABLE (stored_operation_id uuid, stored_idempotency_key uuid, status text)',
+        ),
+        isTrue,
+        reason: 'replays must return the stored operation and idempotency ids',
+      );
+      expect(upSql.contains('cs_finalize_recovery_challenge'), isTrue,
+          reason: 'OTP digest is installed only after a created status');
+      expect(upSql.contains('cs_load_recovery_for_reference'), isTrue,
+          reason: 'delivery/verify state must be read from PostgreSQL');
+      expect(upSql.contains('cs_record_recovery_audit'), isTrue);
+      expect(upSql.contains('md5(p_shop_id::text'), isTrue,
+          reason: 'system actor must be derived deterministically per tenant');
+      expect(upSql.contains('GRANT SELECT, INSERT, UPDATE, DELETE'), isTrue,
+          reason: 'server must be able to remove a challenge after delivery failure');
+      expect(upSql.contains('CONSTRAINT ck_recovery_attempts CHECK (attempts <= 5)'),
+          isTrue,
+          reason: 'attempt counter must stay within the database CHECK');
+
+      final ddl = upSql
+          .replaceAll(RegExp(r'--.*$', multiLine: true), '')
+          .replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '');
+      expect(RegExp(r'ck_recovery_attempts CHECK \(attempts <= 5\)').hasMatch(ddl),
+          isTrue);
+    });
+
+    test('never adds a 15th audit category or RBAC permission', () {
+      expect(upSql.contains('event_category BETWEEN 15'), isFalse);
+      expect(upSql.contains("'15'"), isFalse);
+    });
+
+    test('down migration drops ONLY 003 objects and preserves 001/002 objects', () {
+      for (final object in [
+        'DROP FUNCTION IF EXISTS public.cs_resolve_recovery_identity(text, text);',
+        'DROP FUNCTION IF EXISTS public.cs_create_recovery_challenge(uuid, uuid, text, text, uuid, uuid);',
+        'DROP FUNCTION IF EXISTS public.cs_record_recovery_audit(uuid, integer, text, uuid, text, text, text);',
+        'DROP FUNCTION IF EXISTS public.cs_finalize_recovery_challenge(uuid, text, text);',
+        'DROP FUNCTION IF EXISTS public.cs_load_recovery_for_reference(uuid);',
+        'DROP TABLE IF EXISTS public.credential_recovery_challenges CASCADE;',
+        'ALTER TABLE public.app_users DROP CONSTRAINT IF EXISTS uq_app_users_shop_email;',
+        'ALTER TABLE public.app_users DROP CONSTRAINT IF EXISTS uq_app_users_shop_phone;',
+        'DROP ROLE IF EXISTS cs_recovery_resolver;',
+        'DELETE FROM public.schema_migrations WHERE version = 3;',
+      ]) {
+        expect(downSql.contains(object), isTrue, reason: 'missing: $object');
+      }
+      for (final preserved in [
+        'DROP TABLE IF EXISTS app_users',
+        'DROP TABLE IF EXISTS audit_events',
+        'DROP TRIGGER IF EXISTS trg_audit_immutable',
+      ]) {
+        expect(downSql.contains(preserved), isFalse,
+            reason: '003 rollback must not touch $preserved');
+      }
+    });
+
+    test('SQL file is the only source of truth for version 3 DDL', () {
+      // The standalone backend applies this file explicitly. No embedded Dart
+      // copy and no registered migration list may exist in the client.
+      expect(File('lib/core/data/remote/migrations/003_credential_recovery.sql')
+          .existsSync(), isTrue);
+    });
+  });
 }
 
 /// In-memory mock SQL executor simulating PostgreSQL transactional migration state.

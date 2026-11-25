@@ -9,16 +9,27 @@ import 'package:credit_system/features/auth/data/services/auth_service.dart';
 import 'package:credit_system/features/auth/data/services/jwt_service.dart';
 import 'package:credit_system/features/auth/data/services/password_hash_service.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
+import 'package:credit_system/features/auth/presentation/credential_recovery_dialog.dart';
 import 'package:credit_system/features/auth/presentation/signup_screen.dart';
+import 'package:credit_system/features/shop/data/daos/shop_dao.dart';
 
 class LoginScreen extends StatefulWidget {
   final void Function(AppUser user, bool isOfflineOnly) onAuthenticated;
   final void Function(AuthService? service)? onAuthServiceReady;
 
+  /// Test seams. Production leaves these `null`; widget tests inject an
+  /// isolated database and an [AuthService] whose recovery methods are faked.
+  final AppDatabase? injectedDatabase;
+  final AuthService? injectedAuthService;
+  final Future<bool> Function()? isOnline;
+
   const LoginScreen({
     super.key,
     required this.onAuthenticated,
     this.onAuthServiceReady,
+    this.injectedDatabase,
+    this.injectedAuthService,
+    this.isOnline,
   });
 
   @override
@@ -46,8 +57,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _initializeAuthService() async {
-    _appDatabase = AppDatabase();
+    _appDatabase = widget.injectedDatabase ?? AppDatabase();
     _userDao = UserDao(_appDatabase!);
+
+    if (widget.injectedAuthService != null) {
+      _authService = widget.injectedAuthService;
+      if (mounted) {
+        setState(() => _isInitializing = false);
+      }
+      return;
+    }
 
     try {
       _authService = AuthService(
@@ -74,81 +93,80 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _showForgotCredentialsDialog() async {
-    if (_userDao == null) return;
-    final shopIdController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    String? message;
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Reset shop owner password'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: shopIdController,
-                    decoration: const InputDecoration(labelText: 'Shop ID'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: newPasswordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'New password'),
-                  ),
-                  if (message != null) ...[
-                    const SizedBox(height: 12),
-                    Text(message!, style: const TextStyle(color: Colors.red)),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final shopId = shopIdController.text.trim();
-                    final newPassword = newPasswordController.text;
-                    if (shopId.isEmpty || newPassword.isEmpty) {
-                      setState(() => message = 'Shop ID and password required');
-                      return;
-                    }
-                    try {
-                      final users = await _userDao!.getUsersByShopId(shopId);
-                      final owner = users.firstWhere(
-                        (u) => u.role == AppRole.shopOwner,
-                        orElse: () => throw StateError('not found'),
-                      );
-                      final hash = PasswordHashService().hashPassword(newPassword);
-                      await _userDao!.updateUserPassword(shopId, owner.id, passwordHash: hash);
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                      }
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                          SnackBar(content: Text('Password reset. Username: ${owner.username}')),
-                        );
-                    } catch (e) {
-                      setState(() => message = 'Reset failed: $e');
-                    }
-                  },
-                  child: const Text('Reset'),
-                ),
-              ],
-            );
-          },
+  /// Opens the server-authoritative two-step recovery flow.
+  ///
+  /// No local password write and no Shop ID prompt: the server derives tenant
+  /// context from its own records only.
+  Future<void> _showCredentialRecoveryDialog() async {
+    final authService = _authService;
+    if (authService == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Recovery is unavailable while offline. Please try again when connected.',
+            ),
+          ),
         );
-      },
-    );
+      }
+      return;
+    }
 
-    shopIdController.dispose();
-    newPasswordController.dispose();
+    final isOnline = widget.isOnline ?? (() async => true);
+
+    await CredentialRecoveryDialog.show(
+      context,
+      authService: authService,
+      isOnline: isOnline,
+      userDao: _appDatabase != null ? UserDao(_appDatabase!) : null,
+    );
+  }
+
+  /// Forces an explicit tenant choice when a cached username exists in more
+  /// than one shop. Never silently selects the first tenant.
+  Future<String?> _selectShopId(List<String> shopIds) async {
+    if (shopIds.length == 1) return shopIds.first;
+    final shopDao = ShopDao(_appDatabase!);
+    final labels = <String>[];
+    for (final id in shopIds) {
+      final shop = await shopDao.getShopById(id);
+      labels.add(shop?.name ?? id);
+    }
+    if (!mounted) return null;
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select your shop'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'This username is cached for more than one shop. Choose which '
+                'shop you want to sign in to.',
+              ),
+              const SizedBox(height: 12),
+              ...List.generate(
+                shopIds.length,
+                (index) => ListTile(
+                  key: Key('tenantOption-${shopIds[index]}'),
+                  title: Text(labels[index]),
+                  subtitle: Text(shopIds[index]),
+                  onTap: () => Navigator.of(context).pop(shopIds[index]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _login() async {
@@ -164,7 +182,23 @@ class _LoginScreenState extends State<LoginScreen> {
       final username = _usernameController.text.trim();
       final password = _passwordController.text;
 
-      final localUser = await _userDao!.getUserByLoginIdentifierGlobal(username);
+      // Resolve tenant scope from the local cache (shop ids only), then read
+      // the user strictly within that tenant. Credential recovery never uses
+      // this local path — it is server-authoritative.
+      final shopIds = await _userDao!.resolveLocalShopIdsForUsername(username);
+      if (shopIds.isEmpty) {
+        throw const AuthenticationException('Invalid credentials');
+      }
+      final selectedShopId = await _selectShopId(shopIds);
+      if (selectedShopId == null) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        return;
+      }
+      final localUser = await _userDao!.getUserByLoginIdentifier(
+        selectedShopId,
+        username,
+      );
       if (localUser == null) {
         throw const AuthenticationException('Invalid credentials');
       }
@@ -376,16 +410,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         key: const Key('usernameField'),
                         controller: _usernameController,
                         decoration: const InputDecoration(
-                          labelText: 'Email or Phone Number',
-                          hintText: 'Enter your email or phone number',
+                          labelText: 'Username',
+                          hintText: 'Enter your username',
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Email or phone number is required';
+                            return 'Username is required';
                           }
                           return null;
                         },
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Sign in with your username. Email and phone are no '
+                        'longer login identifiers — use "Forgot username or '
+                        'password?" to recover your username.',
+                        key: Key('usernameOnlyNotice'),
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -445,7 +488,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                       ],
                       TextButton(
-                        onPressed: _showForgotCredentialsDialog,
+                        key: const Key('forgotCredentialsButton'),
+                        onPressed: _showCredentialRecoveryDialog,
                         child: const Text('Forgot username or password?'),
                       ),
                       const SizedBox(height: 8),

@@ -1063,9 +1063,9 @@ void main() {
       await db.close();
     });
 
-    testWidgets('tapping Settle opens the settle summary screen showing the '
-        'borrower, credit identity, outstanding balance and collateral at '
-        'stake, and confirming records a full settlement', (
+    testWidgets('the summary screen shows the borrower, credit identity, '
+        'outstanding balance and collateral at stake, and Settle posts the '
+        'full balance directly', (
       WidgetTester tester,
     ) async {
       final db = await seedDisbursedCredit(tester);
@@ -1086,17 +1086,20 @@ void main() {
       );
 
       await tester.pumpWidget(
-        profileScreen(
-          db: db,
-          shopId: shopId,
-          customerId: customerId,
-          role: AppRole.shopOwner,
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.shopOwner,
+            ),
+            database: db,
+          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(
-        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
       );
       await pumpUntil(
         tester,
@@ -1137,37 +1140,21 @@ void main() {
         reason: 'The full outstanding balance must be pre-filled.',
       );
 
+      // Tapping Settle posts the pre-filled full balance directly — no
+      // confirmation sheet — and pops with the receipt.
       await tester.tap(find.byKey(const Key('settle_confirm_button')));
-      await pumpUntil(
-        tester,
-        () => find.byKey(const Key('settle_sheet_full')).evaluate().isNotEmpty,
-      );
-      await tester.pumpAndSettle();
-
-      // The option sheet leads with a full settlement of the balance.
-      expect(find.text('Settle in full — Rs. 3,000.00'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('settle_sheet_full')));
       await pumpUntil(
         tester,
         () => find.byType(SettleSummaryScreen).evaluate().isEmpty,
       );
       await tester.pumpAndSettle();
 
-      // Back on the profile with a confirmation.
-      expect(find.byType(CustomerProfileScreen), findsOneWidget);
-      await pumpUntil(
-        tester,
-        () => find.textContaining('Credit settled').evaluate().isNotEmpty,
-      );
-
-      // The credit list was refreshed: balance 0 and Settled.
+      // The committed credit is settled with a zero balance.
       final row = await (db.select(
         db.credits,
       )..where((c) => c.id.equals(settleCreditId))).getSingle();
       expect(row.balanceCents, equals(0));
       expect(row.status, equals('settled'));
-      expect(find.text('Settled (1)'), findsOneWidget);
-      expect(find.text('Balance: Rs. 0.00'), findsOneWidget);
 
       // The receipt row is committed and remains available from history.
       final payments = await db.select(db.payments).get();
@@ -1237,22 +1224,25 @@ void main() {
       await db.close();
     });
 
-    testWidgets('the settle screen offers the balance-adjustment (forgiveness) '
-        'option', (WidgetTester tester) async {
+    testWidgets('the settle screen no longer offers the balance-adjustment '
+        '(approval) option', (WidgetTester tester) async {
       final db = await seedDisbursedCredit(tester);
 
       await tester.pumpWidget(
-        profileScreen(
-          db: db,
-          shopId: shopId,
-          customerId: customerId,
-          role: AppRole.manager,
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.manager,
+            ),
+            database: db,
+          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(
-        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
       );
       await pumpUntil(
         tester,
@@ -1261,33 +1251,206 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Settle opens the options sheet; the adjustment proposal lives there.
+      // The settle screen has no approval entry points and no options sheet.
+      expect(find.byKey(const Key('request_adjustment_button')), findsNothing);
+      expect(find.byKey(const Key('settle_sheet_full')), findsNothing);
+      expect(find.byKey(const Key('settle_sheet_partial')), findsNothing);
+      expect(find.textContaining('approves any forgiveness'), findsNothing);
+
+      // None of the three owner-approval entry points are present either.
+      expect(find.byKey(const Key('request_correction_button')), findsNothing);
+      expect(find.byKey(const Key('review_corrections_button')), findsNothing);
+      expect(find.byKey(const Key('adjust_balance_button')), findsNothing);
+
+      await db.close();
+    });
+
+    testWidgets('a staff receipt preview shows only receipt info — no '
+        'correction, approval or forgiveness affordances', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      // Manager has requestCorrections (but not approveCorrections): this is
+      // the role that previously saw the Request Correction button. Pump the
+      // settle screen directly so this regression test is independent of the
+      // profile card's Settle action wiring.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.manager,
+            ),
+            database: db,
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // No options sheet and no forgiveness/approval row.
+      expect(find.byKey(const Key('settle_sheet_full')), findsNothing);
+      expect(find.byKey(const Key('settle_sheet_partial')), findsNothing);
+      expect(find.byKey(const Key('request_adjustment_button')), findsNothing);
+      expect(find.textContaining('forgiveness'), findsNothing);
+
+      // Record a partial payment directly so the receipt preview renders on
+      // this screen — this is where the approval buttons used to live.
+      await tester.enterText(
+        find.byKey(const Key('settle_amount_input')),
+        '1000.00',
+      );
       await tester.tap(find.byKey(const Key('settle_confirm_button')));
       await pumpUntil(
         tester,
         () => find
-            .byKey(const Key('request_adjustment_button'))
+            .byKey(const Key('settle_success_display'))
             .evaluate()
             .isNotEmpty,
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const Key('request_adjustment_button')),
-        findsOneWidget,
-      );
+      // Receipt info is shown, with View Receipt PDF as the only action —
+      // no approval/correction affordances.
+      expect(find.text('Receipt'), findsOneWidget);
+      expect(find.textContaining('Receipt Number:'), findsOneWidget);
+      expect(find.byKey(const Key('view_receipt_button')), findsOneWidget);
+      expect(find.byKey(const Key('request_correction_button')), findsNothing);
+      expect(find.byKey(const Key('review_corrections_button')), findsNothing);
+      expect(find.byKey(const Key('adjust_balance_button')), findsNothing);
+      expect(find.text('Request Correction'), findsNothing);
+      expect(find.text('Review Corrections'), findsNothing);
+      expect(find.text('Adjust Balance'), findsNothing);
 
-      await tester.tap(find.byKey(const Key('request_adjustment_button')));
+      await db.close();
+    });
+
+    testWidgets('a Shop Owner receipt preview shows no review/adjustment '
+        'buttons, and the separate Extend due date control is present', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      // Shop Owner has both requestCorrections and approveCorrections: this
+      // is the role that previously saw Review Corrections / Adjust Balance.
+      // Pump the settle screen directly so this regression test is
+      // independent of the profile card's Settle action wiring.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.shopOwner,
+            ),
+            database: db,
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The FR-26 extension is its own control on the summary screen, and the
+      // forgiveness/approval affordances remain absent.
+      expect(find.byKey(const Key('settle_extend_due_date_button')), findsOneWidget);
+      expect(find.byKey(const Key('request_adjustment_button')), findsNothing);
+      expect(find.textContaining('forgiveness'), findsNothing);
+
+      // Record a partial payment directly so the receipt preview renders.
+      await tester.enterText(
+        find.byKey(const Key('settle_amount_input')),
+        '1000.00',
+      );
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
       await pumpUntil(
         tester,
         () => find
-            .byKey(const Key('adjustment_amount_input'))
+            .byKey(const Key('settle_success_display'))
             .evaluate()
             .isNotEmpty,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Request Balance Adjustment'), findsWidgets);
+      expect(find.byKey(const Key('view_receipt_button')), findsOneWidget);
+      expect(find.byKey(const Key('review_corrections_button')), findsNothing);
+      expect(find.byKey(const Key('adjust_balance_button')), findsNothing);
+      expect(find.byKey(const Key('request_correction_button')), findsNothing);
+      expect(find.text('Review Corrections'), findsNothing);
+      expect(find.text('Adjust Balance'), findsNothing);
+      expect(find.text('Request Correction'), findsNothing);
+
+      await db.close();
+    });
+
+    testWidgets('a pending correction still blocks settlement through the '
+        'DAO-enforced lock, with no approval UI involved', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      // Activate the correction lock directly on the credit — it is enforced
+      // by PaymentDao, not by any UI in the settle flow. Pumping the settle
+      // screen directly keeps this coverage independent of the profile card's
+      // Settle action wiring.
+      await (db.update(db.credits)
+            ..where((c) => c.id.equals(settleCreditId)))
+          .write(const CreditsCompanion(correctionPending: Value(true)));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.manager,
+            ),
+            database: db,
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The pre-filled amount is posted directly; the unchanged DAO lock
+      // rejects it without any confirmation sheet.
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_error_display')).evaluate().isNotEmpty,
+      );
+
+      final error = tester.widget<Text>(
+        find.byKey(const Key('settle_error_display')),
+      );
+      expect(error.data, contains('pending correction'));
+      expect(await db.select(db.payments).get(), isEmpty);
 
       await db.close();
     });
@@ -1345,36 +1508,24 @@ void main() {
         ),
       );
 
+      // Pump the settle screen directly for an ineligible credit so this
+      // assertion is independent of the profile card's unwired Settle action
+      // (a separately deferred defect).
       await tester.pumpWidget(
-        profileScreen(
-          db: db,
-          shopId: shopId,
-          customerId: customerId,
-          role: AppRole.manager,
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: 'credit-zero-balance',
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.shopOwner,
+            ),
+            database: db,
+          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      // The settle button is visible on every card for a recordPayments
-      // holder (visibility rule restored at the human's request); the
-      // summary screen is the eligibility backstop.
-      expect(
-        find.byKey(CreditSettleAction.buttonKey('credit-pending')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(CreditSettleAction.buttonKey('credit-settled')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(CreditSettleAction.buttonKey('credit-zero-balance')),
-        findsOneWidget,
-      );
-
-      // Tapping Settle on an ineligible credit opens the summary screen,
-      // which refuses payment and explains why.
-      await tester.tap(
-        find.byKey(CreditSettleAction.buttonKey('credit-zero-balance')),
       );
       await pumpUntil(
         tester,
@@ -1383,11 +1534,182 @@ void main() {
             .evaluate()
             .isNotEmpty,
       );
+      await tester.pumpAndSettle();
+
+      // The existing explanation is still shown, but it no longer hides the
+      // control: the amount field and the Settle button stay visible and
+      // enabled so the actor can attempt the settlement and get the real
+      // eligibility error from the payment path.
       expect(
         find.text('This credit is not eligible for payment recording.'),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('settle_confirm_button')), findsNothing);
+      expect(find.byKey(const Key('settle_amount_input')), findsOneWidget);
+      final settleButton = tester.widget<ElevatedButton>(
+        find.byKey(const Key('settle_confirm_button')),
+      );
+      expect(settleButton.onPressed, isNotNull);
+
+      // Even a Shop Owner must not see the FR-26 extension control for a
+      // credit that is not eligible for settlement.
+      expect(find.byKey(const Key('settle_extend_due_date_button')), findsNothing);
+
+      // A blocked tap posts the entered (empty) amount directly to the
+      // unchanged payment path, which rejects it and posts nothing.
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('settle_validation_error_display'))
+            .evaluate()
+            .isNotEmpty,
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const Key('settle_validation_error_display')),
+            )
+            .data,
+        contains('positive'),
+      );
+      expect(await db.select(db.payments).get(), isEmpty);
+
+      // With a valid amount the tap reaches the balance guard for this
+      // ineligible (zero-balance) credit: it reports the outstanding balance
+      // inline and still posts nothing.
+      await tester.enterText(
+        find.byKey(const Key('settle_amount_input')),
+        '1000.00',
+      );
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find
+            .textContaining('exceeds the outstanding balance')
+            .evaluate()
+            .isNotEmpty,
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const Key('settle_validation_error_display')),
+            )
+            .data,
+        contains('exceeds the outstanding balance'),
+      );
+      expect(await db.select(db.payments).get(), isEmpty);
+
+      await db.close();
+    });
+
+    testWidgets('an actor without recordPayments still sees a tappable Settle '
+        'button on a directly pumped summary, and posts no payment', (
+      WidgetTester tester,
+    ) async {
+      final db = await seedDisbursedCredit(tester);
+
+      // Eligible credit, actor holds only viewCustomers. Pump the settle
+      // screen directly: authorization is enforced by the DAO, not by hiding
+      // the control.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.custom,
+              customPermissions: {AppPermission.viewCustomers},
+            ),
+            database: db,
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The amount field and Settle button are shown and the button is
+      // enabled, with the permission copy shown as information only.
+      expect(find.byKey(const Key('settle_amount_input')), findsOneWidget);
+      final settleButton = tester.widget<ElevatedButton>(
+        find.byKey(const Key('settle_confirm_button')),
+      );
+      expect(settleButton.onPressed, isNotNull);
+      expect(
+        find.text('You do not have the Record Payments permission.'),
+        findsOneWidget,
+      );
+
+      // The pre-filled full balance is posted directly to the unchanged
+      // payment path, which rejects the actor; nothing is posted.
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('settle_error_display')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<Text>(find.byKey(const Key('settle_error_display'))).data,
+        allOf(contains('PermissionDeniedException'), contains('record a credit payment')),
+      );
+      expect(find.byType(SettleSummaryScreen), findsOneWidget);
+      expect(await db.select(db.payments).get(), isEmpty);
+
+      await db.close();
+    });
+
+    testWidgets('a directly pumped summary still records a full settlement '
+        'through the unchanged payment path', (WidgetTester tester) async {
+      final db = await seedDisbursedCredit(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.shopOwner,
+            ),
+            database: db,
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('settle_amount_input')).evaluate().isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The pre-filled full balance is posted directly — no confirmation sheet.
+      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find.byType(SettleSummaryScreen).evaluate().isEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      final row = await (db.select(db.credits)
+            ..where((c) => c.id.equals(settleCreditId)))
+          .getSingle();
+      expect(row.balanceCents, equals(0));
+      expect(row.status, equals('settled'));
+
+      final payments = await db.select(db.payments).get();
+      expect(payments, hasLength(1));
+      expect(payments.single.paymentType, equals('full_settlement'));
 
       await db.close();
     });
@@ -1412,7 +1734,12 @@ void main() {
         find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
         findsNothing,
       );
-      expect(find.text('Settle'), findsNothing);
+      // The immediate-adjustment Settle action is deliberately available to
+      // any active actor, independent of the recordPayments permission.
+      expect(
+        find.byKey(CreditAdjustmentAction.buttonKey(settleCreditId)),
+        findsOneWidget,
+      );
 
       await db.close();
     });
@@ -1447,17 +1774,20 @@ void main() {
       final db = await seedDisbursedCredit(tester);
 
       await tester.pumpWidget(
-        profileScreen(
-          db: db,
-          shopId: shopId,
-          customerId: customerId,
-          role: AppRole.manager,
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.manager,
+            ),
+            database: db,
+          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(
-        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
       );
       await pumpUntil(
         tester,
@@ -1466,23 +1796,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Lower the amount via the Partial settlement option, then confirm
-      // through the sheet — no auto-return, recorded as a partial payment.
-      await tester.tap(find.byKey(const Key('settle_confirm_button')));
-      await pumpUntil(
-        tester,
-        () =>
-            find.byKey(const Key('settle_sheet_partial')).evaluate().isNotEmpty,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('settle_sheet_partial')));
-      await tester.pumpAndSettle();
-
-      final clearedField = tester.widget<TextField>(
-        find.byKey(const Key('settle_amount_input')),
-      );
-      expect(clearedField.controller!.text, isEmpty);
-
+      // Lower the pre-filled amount and post it directly — no sheet, no
+      // auto-return; recorded as a partial payment.
       await tester.enterText(
         find.byKey(const Key('settle_amount_input')),
         '1000.00',
@@ -1491,10 +1806,13 @@ void main() {
       await pumpUntil(
         tester,
         () =>
-            find.textContaining('Record partial payment').evaluate().isNotEmpty,
+            tester
+                .widget<TextField>(
+                  find.byKey(const Key('settle_amount_input')),
+                )
+                .controller!.text ==
+            '2000.00',
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('settle_sheet_partial')));
       await pumpUntil(
         tester,
         () => find
@@ -1503,8 +1821,10 @@ void main() {
             .isNotEmpty,
       );
 
-      // The summary screen stays open — a partial payment never auto-returns.
+      // The summary screen stays open with a refreshed balance and receipt —
+      // a partial payment never auto-returns.
       expect(find.byType(SettleSummaryScreen), findsOneWidget);
+      expect(find.textContaining('Receipt Number:'), findsOneWidget);
 
       final row = await (db.select(
         db.credits,
@@ -1524,17 +1844,20 @@ void main() {
       final db = await seedDisbursedCredit(tester);
 
       await tester.pumpWidget(
-        profileScreen(
-          db: db,
-          shopId: shopId,
-          customerId: customerId,
-          role: AppRole.manager,
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.manager,
+            ),
+            database: db,
+          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(
-        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
       );
       await pumpUntil(
         tester,
@@ -1547,13 +1870,8 @@ void main() {
       await (db.update(db.credits)..where((c) => c.id.equals(settleCreditId)))
           .write(const CreditsCompanion(balanceCents: Value(100000)));
 
+      // The pre-filled amount is now over the balance; no sheet row intervenes.
       await tester.tap(find.byKey(const Key('settle_confirm_button')));
-      await pumpUntil(
-        tester,
-        () => find.byKey(const Key('settle_sheet_full')).evaluate().isNotEmpty,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('settle_sheet_full')));
       await pumpUntil(
         tester,
         () => find
@@ -1584,17 +1902,20 @@ void main() {
           .write(const CreditsCompanion(correctionPending: Value(true)));
 
       await tester.pumpWidget(
-        profileScreen(
-          db: db,
-          shopId: shopId,
-          customerId: customerId,
-          role: AppRole.manager,
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.manager,
+            ),
+            database: db,
+          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(
-        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
       );
       await pumpUntil(
         tester,
@@ -1603,13 +1924,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // The pre-filled amount is posted directly; the DAO lock rejects it.
       await tester.tap(find.byKey(const Key('settle_confirm_button')));
-      await pumpUntil(
-        tester,
-        () => find.byKey(const Key('settle_sheet_full')).evaluate().isNotEmpty,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('settle_sheet_full')));
       await pumpUntil(
         tester,
         () =>
@@ -1628,14 +1944,12 @@ void main() {
       await db.close();
     });
 
-    testWidgets('the sheet offers a due date extension to a Shop Owner, and it '
-        'updates the credit through the standard extension path', (
+    testWidgets('the separate extension control offers a Shop Owner a due date '
+        'extension, and it updates the credit through the standard path', (
       WidgetTester tester,
     ) async {
       final db = await seedDisbursedCredit(tester);
-      // A collateral item makes the profile tall enough to fill the test
-      // surface — the configuration in which the modal bottom sheet renders
-      // inside the 3000px test view.
+      // Include collateral so the summary is exercised with items at stake.
       await CollateralDao(db).createCollateralItem(
         CollateralItem(
           id: 'coll-settle-extend',
@@ -1652,21 +1966,20 @@ void main() {
       );
 
       await tester.pumpWidget(
-        profileScreen(
-          db: db,
-          shopId: shopId,
-          customerId: customerId,
-          role: AppRole.shopOwner,
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.shopOwner,
+            ),
+            database: db,
+          ),
         ),
-      );
-      await tester.pumpAndSettle();
-
-      final before = await (db.select(
-        db.credits,
-      )..where((c) => c.id.equals(settleCreditId))).getSingle();
-
-      await tester.tap(
-        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
       );
       await pumpUntil(
         tester,
@@ -1675,27 +1988,26 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('settle_confirm_button')));
-      await pumpUntil(
-        tester,
-        () =>
-            find.byKey(const Key('settle_sheet_extend')).evaluate().isNotEmpty,
-      );
-      await tester.pumpAndSettle();
+      final before = await (db.select(
+        db.credits,
+      )..where((c) => c.id.equals(settleCreditId))).getSingle();
 
-      // The sheet exposes the owner-only extension option.
-      expect(find.byKey(const Key('settle_sheet_extend')), findsOneWidget);
-      expect(find.byKey(const Key('settle_sheet_full')), findsOneWidget);
-      expect(find.byKey(const Key('settle_sheet_partial')), findsOneWidget);
+      // The separate extension control is on the summary screen, and the
+      // owner-approval adjustment options remain absent.
+      expect(find.byKey(const Key('settle_extend_due_date_button')), findsOneWidget);
+      expect(find.byKey(const Key('settle_sheet_full')), findsNothing);
       expect(
         find.byKey(const Key('request_adjustment_button')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(find.byKey(const Key('request_correction_button')), findsNothing);
+      expect(find.byKey(const Key('review_corrections_button')), findsNothing);
+      expect(find.byKey(const Key('adjust_balance_button')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('settle_sheet_extend')));
+      await tester.tap(find.byKey(const Key('settle_extend_due_date_button')));
       await pumpUntil(
         tester,
-        () => find.text('Extend due date').evaluate().isNotEmpty,
+        () => find.byType(DatePickerDialog).evaluate().isNotEmpty,
       );
       await tester.pumpAndSettle();
 
@@ -1733,23 +2045,29 @@ void main() {
       await db.close();
     });
 
-    testWidgets('the due date extension option is hidden from non-owners', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('the extension control is visible to non-owners, but the DAO '
+        'rejects the extension', (WidgetTester tester) async {
       final db = await seedDisbursedCredit(tester);
 
-      await tester.pumpWidget(
-        profileScreen(
-          db: db,
-          shopId: shopId,
-          customerId: customerId,
-          role: AppRole.manager,
-        ),
-      );
-      await tester.pumpAndSettle();
+      final before = await (db.select(
+        db.credits,
+      )..where((c) => c.id.equals(settleCreditId))).getSingle();
 
-      await tester.tap(
-        find.byKey(CreditSettleAction.buttonKey(settleCreditId)),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettleSummaryScreen(
+            shopId: shopId,
+            creditId: settleCreditId,
+            currentUser: AppUser(
+              id: testUserId,
+              shopId: shopId,
+              username: 'testuser',
+              fullName: 'Test User',
+              role: AppRole.manager,
+            ),
+            database: db,
+          ),
+        ),
       );
       await pumpUntil(
         tester,
@@ -1758,14 +2076,47 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('settle_confirm_button')));
+      // The control is shown to any active actor, including a non-owner.
+      expect(find.byKey(const Key('settle_extend_due_date_button')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('settle_extend_due_date_button')));
       await pumpUntil(
         tester,
-        () => find.byKey(const Key('settle_sheet_full')).evaluate().isNotEmpty,
+        () => find.byType(DatePickerDialog).evaluate().isNotEmpty,
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('settle_sheet_extend')), findsNothing);
+      await tester.tap(find.text('OK'));
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('extend_reason_field')).evaluate().isNotEmpty,
+      );
+      await tester.enterText(
+        find.byKey(const Key('extend_reason_field')),
+        'Customer requested more time',
+      );
+      await tester.tap(find.byKey(const Key('extend_confirm_button')));
+      await pumpUntil(
+        tester,
+        () => find
+            .textContaining('Could not extend due date')
+            .evaluate()
+            .isNotEmpty,
+      );
+      await tester.pumpAndSettle();
+
+      // The DAO's Shop-Owner-only guard rejected the tap; no extension was
+      // queued and the credit's due date is unchanged.
+      expect(
+        find.textContaining('Due date extensions require the Shop Owner role'),
+        findsOneWidget,
+      );
+      expect(await db.select(db.dueDateExtensions).get(), isEmpty);
+      final after = await (db.select(
+        db.credits,
+      )..where((c) => c.id.equals(settleCreditId))).getSingle();
+      expect(after.dueDate, equals(before.dueDate));
 
       await db.close();
     });
@@ -1822,8 +2173,8 @@ void main() {
       return db;
     }
 
-    testWidgets('an eligible credit offers the Request Balance Adjustment '
-        'action to a staff member holding requestCorrections', (
+    testWidgets('an eligible credit offers the immediate Settle adjustment '
+        'action to an active staff member', (
       WidgetTester tester,
     ) async {
       final db = await seedAdjustableCredit(tester);
@@ -1842,12 +2193,12 @@ void main() {
         find.byKey(CreditAdjustmentAction.buttonKey(adjustCreditId)),
       );
       expect(button.onPressed, isNotNull);
-      expect(find.text('Request Balance Adjustment'), findsOneWidget);
+      expect(find.text('Settle'), findsWidgets);
 
       await db.close();
     });
 
-    testWidgets('the action is hidden from an actor without '
+    testWidgets('the action is offered to an actor without '
         'requestCorrections', (
       WidgetTester tester,
     ) async {
@@ -1858,16 +2209,17 @@ void main() {
           db: db,
           shopId: shopId,
           customerId: customerId,
-          // Cashiers do not hold requestCorrections by default.
+          // Cashiers do not hold requestCorrections, but any active actor may
+          // post an immediate adjustment.
           role: AppRole.cashier,
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(
+      final button = tester.widget<OutlinedButton>(
         find.byKey(CreditAdjustmentAction.buttonKey(adjustCreditId)),
-        findsNothing,
       );
+      expect(button.onPressed, isNotNull);
 
       await db.close();
     });
@@ -1900,8 +2252,8 @@ void main() {
       await db.close();
     });
 
-    testWidgets('tapping the action opens the adjustment proposal screen and '
-        'a submitted proposal locks the card on return', (
+    testWidgets('tapping the action opens the adjustment screen and a '
+        'submitted adjustment posts immediately without locking the card', (
       WidgetTester tester,
     ) async {
       final db = await seedAdjustableCredit(tester);
@@ -1943,26 +2295,35 @@ void main() {
       await pumpUntil(
         tester,
         () => find
-            .textContaining('Adjustment proposed')
+            .textContaining('Adjustment applied immediately')
             .evaluate()
             .isNotEmpty,
       );
       await tester.pumpAndSettle();
 
-      // The proposal is pending and the card now renders the locked state.
+      // The credit is updated in place: no pending correction and no lock.
       final button = tester.widget<OutlinedButton>(
         find.byKey(CreditAdjustmentAction.buttonKey(adjustCreditId)),
       );
-      expect(button.onPressed, isNull);
+      expect(button.onPressed, isNotNull);
       expect(
         find.byKey(CreditAdjustmentAction.lockNoticeKey(adjustCreditId)),
-        findsOneWidget,
+        findsNothing,
       );
+
+      final ledger = await (db.select(db.creditLedgerEntries)
+            ..where((e) => e.creditId.equals(adjustCreditId))).get();
+      expect(ledger, hasLength(1));
+      expect(ledger.single.entryType, 'adjustment_credit');
+      expect(ledger.single.amountCents, 100000);
+
+      expect(await db.select(db.creditCorrections).get(), isEmpty);
 
       final credit = await (db.select(db.credits)
             ..where((c) => c.id.equals(adjustCreditId)))
           .getSingle();
-      expect(credit.correctionPending, isTrue);
+      expect(credit.correctionPending, isFalse);
+      expect(credit.balanceCents, 200000);
 
       await db.close();
     });

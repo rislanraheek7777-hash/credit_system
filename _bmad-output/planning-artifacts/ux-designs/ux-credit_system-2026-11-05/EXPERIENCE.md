@@ -17,6 +17,7 @@ Multi-surface: Flutter Web (counter terminal) + Flutter Mobile (camera capture, 
 | Surface | Reached from | Purpose |
 |---|---|---|
 | Login | App open | Authenticate; offline indicator; new shop entry |
+| Credential Recovery | Login ("Forgot username or password?") | Two-step self-service: request single-use OTP to verified contact channel; verify OTP and set new password; generic response at every step |
 | Dashboard (Owner) | Login (owner) | Daily cash reconciliation, portfolio overview, pending correction queue, pending-disbursement worklist |
 | Customer Search | Nav / dashboard | Search customers by NIC/phone/name; entry to registration/profile |
 | Customer Registration | Search (no match) / FAB | Create profile with photo capture |
@@ -46,6 +47,7 @@ Microcopy is concise, factual, and action-oriented. Use canonical glossary terms
 ## Component Patterns (behavioral)
 - **Search**: debounced 300ms, min 2 chars, shop-scoped; empty state with icon + text.
 - **Forms**: mandatory fields block submit; inline validation; pre-save photo preview with retake.
+- **Credential recovery**: two steps (request challenge → verify OTP + new password). One identical generic message for every unauthenticated outcome; inline validation only after a challenge exists; submit controls disabled while in flight; no username, shop, or channel value ever displayed.
 - **Credit Details**: single-agreement "everything at a glance" surface. Balance hero (outstanding in mono, paid-progress bar vs principal, due-date pill with days remaining/overdue). Actions RBAC-gated: Record Payment (hidden/disabled when correction-pending lock active — lock banner shown instead), Confirm Disbursement (only in Pending Disbursement), Reprint Ticket, Correction Request, Balance Adjustment (staff-propose → owner-approve; blocked while an adjustment proposal is pending; owner may execute directly). Collateral section lists item receipts with per-item custody badge. Payment history is reverse-chronological with receipt #, actor, running balance; reversed entries shown struck-through with link to reversal. Follow-up notes (overdue) reverse-chronological with actor/timestamp. PII masked for unauthorized staff; no cross-tenant data. Entry points: customer profile, overdue queue, credit lists.
 - **Multi-select credit**: explicit selection dialog when >1 actionable credit; single proceeds directly.
 - **Payment**: amount parses to Money; validates 0 < amount ≤ balance; shows new balance preview; idempotent submit disables button while in flight.
@@ -63,6 +65,7 @@ Microcopy is concise, factual, and action-oriented. Use canonical glossary terms
 - Correction-pending lock: blocks new payments only on affected credit.
 - Item receipts are optional at origination. A settled credit with zero item receipts has no handover step and resolves to `Closed / Completed`.
 - Credit Details renders the derived overall status. `Settled (Items Pending Handover)` swaps the primary action to "Verify & Return Items"; `Closed / Completed` and `Cancelled / Undisbursed` render read-only with no Record Payment affordance. Correction-pending lock blocks Record Payment on that credit only and shows an explicit banner.
+- Credential recovery states: Challenge Issued → Verified (password reset; all sessions revoked) / Expired / Consumed / Rejected; all request/verify errors are generic and non-enumerating.
 
 ## Interaction Primitives
 - Tap/click to select; long-press not required.
@@ -84,6 +87,7 @@ Microcopy is concise, factual, and action-oriented. Use canonical glossary terms
 - [ASSUMPTION] No explicit WCAG level in PRD; target WCAG 2.1 AA for web.
 
 ## Key Flows
+0. **Staff credential recovery (FR-34)** — Login → "Forgot username or password?" → enter login identifier → server resolves tenant from its own records and delivers a single-use OTP to the verified contact channel (identical generic response whether or not a match exists) → enter OTP + new password → server verifies, atomically resets the hash and increments `session_version`, appends Category 12/14 audit → all sessions revoked → return to Login.
 1. **New customer + credit origination (UJ-1)** — Kasun searches NIC → no match → registers (name, phone, address, photo) → creates credit (30/60/90 or custom, principal) → optionally adds item receipts (category, description, condition, estimated value, weight if gold, ≥1 photo each) → reviews summary → submits (idempotent) → verifies cash handover → confirms disbursement → printable agreement/ticket with zero-interest disclosure.
    - Climax: all required fields validated; each attached item receipt has a photo; creator + disbursing user/timestamp recorded; printable ticket.
 2. **Returning partial payment (UJ-2)** — search → select target credit among multiple → enter amount → validation + balance preview → submit (idempotent) → receipt print; reprint preserves original identity + reprint audit.

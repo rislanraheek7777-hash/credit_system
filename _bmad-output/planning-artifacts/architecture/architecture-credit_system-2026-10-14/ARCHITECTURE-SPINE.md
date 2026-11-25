@@ -29,49 +29,22 @@ The codebase is structured into isolated, testable layers:
 
 ## Invariants & Rules
 
-### AD-1 — Drift (SQLite) Local Relational Persistence with Cloud PostgreSQL & Row-Level Security (RLS) [ADOPTED]
+### AD-1 — Single-Device Drift SQLite Persistence with Application-Enforced Tenant Isolation [ADOPTED]
 
 - **Binds:** FR-4, FR-18, FR-21, FR-22, FR-23, FR-31, FR-32
-- **Prevents:**
-  - Cross-tenant data leaks across shops.
-  - Floating-point arithmetic errors and orphaned child records (collateral/payments without parent credit).
-  - Counter freezing or operational lockout during intermittent internet hiccups.
-  - Silent record overwrites or unverified state reconciliation during sync.
-  - Duplicate payment postings from concurrent submissions or network retries.
-- **Rule:**
-  1. **Dual-Tier Relational Storage:**
-     - **Local (Counter):** Drift (SQLite) serves as the local relational cache and persistence engine for responsive counter operations on Flutter (Android and Web).
-     - **Remote (Cloud Source of Truth):** PostgreSQL 16+ acts as the authoritative central multi-tenant database.
-  2. **Server-Side Tenant Isolation (RLS):**
-     - Every relational entity table must carry an immutable, non-nullable `tenant_id` (UUID).
-     - PostgreSQL Row-Level Security (RLS) is strictly enforced on all tables:
-       ```sql
-       ALTER TABLE credits ENABLE ROW LEVEL SECURITY;
-       CREATE POLICY tenant_isolation_policy ON credits
-         USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
-       ```
-     - Direct client access bypassing the authenticated tenant context is prohibited.
-  3. **Atomic Financial Transactions (ACID):**
-     - All balance updates, payment postings, reversals, and adjustments must execute within single atomic database transactions.
-     - Partial commits are strictly prohibited; any failure rolls back the entire transaction.
-     - Balance adjustments may only be posted from an approved request (staff-proposed → Shop Owner-approved, `approveCorrections`) or by direct Shop Owner execution. Both paths write an immutable `adjustment_debit` / `adjustment_credit` ledger entry in the same atomic transaction as the correction-lock lift; the stored balance is never mutated in place.
-  4. **Offline Synchronization & Acknowledgement Semantics:**
-     - Every local write operation assigns a client-generated `client_operation_id` (UUIDv4) and unique idempotency key.
-     - Local mutations are flagged with a synchronization state: `PendingServerAck` vs. `ConfirmedByServer`.
-     - Counter interfaces must visibly distinguish unconfirmed offline records from centrally confirmed records.
-     - The client must never treat an offline write as permanent or centrally settled until the server responds with a signed acknowledgement.
-  5. **No Silent Overwrites (Compensating Ledger Protocol):**
-     - Financial transaction records are strictly append-only.
-     - Sync conflict resolution must never overwrite, truncate, or merge existing financial entries. Corrections and reversals must be submitted as discrete compensating entries with mandatory audit justifications and Shop Owner approvals.
-  6. **Idempotency & Duplicate Prevention:**
-     - The cloud database enforces a unique constraint on `(tenant_id, idempotency_key)` and `(tenant_id, client_operation_id)`.
-     - Re-transmitted requests return the existing confirmed transaction and receipt snapshot without re-executing balance deductions.
-  7. **Sensitive PII Security:**
-     - Customer NIC numbers, residential addresses, and photographic blobs are protected by server-side role-based access control and encrypted in transit (TLS 1.3). Direct unauthenticated media URLs are forbidden.
-   8. **Offline Audit Durability (R2 — approved, not yet implemented):**
-     - Offline durability is provided by a local, append-only, hash-chained journal in Drift SQLite (see AD-6 rule 7). The journal is a durability mechanism, not a second authority: the central cloud PostgreSQL `audit_events` table remains the authoritative, cryptographically verified record of truth, and every journal entry is reconciled to it on synchronization.
-     - Cash disbursement and cancellation of an undisbursed agreement are **permitted while offline**: the business mutation and its journal entry are written in the same local ACID transaction; the agreement state transitions immediately in the local database and the event is marked `Pending Server Confirmation` until server acknowledgement. Other high-risk administrative actions (approving corrections, approving balance adjustments, due-date extensions, administrative closures) remain locked offline per AD-6 rule 8.
-     - Reconciliation: on connectivity, each `PendingServerAck` journal entry is appended to `audit_events` by the server-side audit writer (Story 1.3 / 1.8); a rejected entry is surfaced as `failed` with `lastError` and is never silently dropped; an entry is removed from the local journal only after server acknowledgement. A device lost before synchronization leaves a permanent gap, which FR-32's RPO does not cover; this is an accepted risk of the offline-first model.
+- **Context.** The deployed product is a single-device application with one SQLite database; there is no cloud PostgreSQL, no server process, and no cross-device synchronization. This decision replaces the former dual-tier/RLS architecture.
+
+**Decision.**
+1. Drift SQLite is the sole persistent store and the authoritative source of truth. All entities, audit events, and recovery challenges live in one app-private SQLite file.
+2. Multi-tenancy is represented by a non-nullable `shop_id` column on every tenant table. Isolation is enforced in the application layer: every repository query applies the authenticated `shop_id`, and no query path accepts a client-supplied tenant id. SQLite has no RLS; this application boundary is the only boundary and must be covered by automated cross-tenant tests.
+3. No `PendingServerAck` / `ConfirmedByServer` sync states and no sync-queue-driven authority. Local writes are immediately authoritative and durable in SQLite.
+4. Audit immutability is enforced by SQLite `BEFORE UPDATE/DELETE` triggers with `RAISE(ABORT, ...)`, plus `INSERT`/`SELECT`-only repository access. No credential values are written to audit rows.
+5. Atomic financial transactions remain mandatory: balance updates, payment postings, reversals and adjustments execute in one SQLite transaction with compensating ledger entries; no partial commits.
+6. Idempotency is enforced by SQLite `UNIQUE(shop_id, idempotency_key)` and `UNIQUE(shop_id, client_operation_id)`; re-transmission returns the existing confirmed record without re-executing deductions.
+7. Durability is a documented file-backup/restore procedure (copy the SQLite file, verify with `PRAGMA integrity_check`); no WAL archiving, PITR, or cloud object storage.
+8. PII is protected by application-layer role checks and sandboxed app-private storage; there are no remote media URLs.
+
+**Consequences.** Simplifies the stack to one database and removes all server infrastructure. Security now depends entirely on application-layer tenant filtering — a single missed predicate is a cross-tenant leak, so repository-level guards and tests are mandatory. Cloud sync and multi-device operation are explicitly out of scope.
 
 ### AD-2 — Integer Minor Units with Immutable Money Value Object [ADOPTED]
 
@@ -292,7 +265,7 @@ The codebase is structured into isolated, testable layers:
      - Adding, deleting, or altering permission semantics without a formal PRD amendment is prohibited.
   2. **Dual-Layer Authorization Enforcement:**
      - **Client (Presentation):** Riverpod typed selectors (e.g., `ref.watch(hasPermissionProvider(AppPermission.approveCorrections))`) declaratively disable or hide unauthorized buttons, tabs, and routes.
-     - **Server (Data / API):** The server and PostgreSQL Row-Level Security unconditionally enforce tenant isolation and permission requirements on every API request, export generation, image access, and database mutation. Client-side checks are treated strictly as presentation conveniences, never as security boundaries.
+     - **Application (Data / Domain):** In the SQLite-only single-device deployment, application-layer repository guards are the sole enforcement boundary for tenant isolation and permissions: every query is scoped to the authenticated `shop_id` and every sensitive action rechecks the role/permission in the domain layer before writing. UI selectors remain presentation conveniences only. Cross-tenant rejection is verified by automated repository tests because no database engine enforces it.
   3. **Immediate Session Revocation (FR-5):**
      - User authentication tokens carry a server-validated `session_version` (or token identifier).
      - Deactivating an account or altering its permissions immediately increments the user's `session_version` on the server, causing all active sessions across counter terminals and browser tabs to fail subsequent requests with `401 Unauthorized` / `403 Forbidden`.
@@ -443,6 +416,21 @@ The codebase is structured into isolated, testable layers:
   7. **Provider Capability Evaluation Gate:**
      - Architecture requires evaluating the chosen cloud hosting provider (e.g. AWS RDS, Supabase, Neon, or DigitalOcean) against these exact specifications before provisioning production workloads.
 
+### AD-9 — In-App SQLite Credential Recovery [ADOPTED]
+
+**Context.** With no backend or PostgreSQL, credential recovery must run inside the Flutter app against its SQLite database. This decision replaces the standalone-backend and client-adapter decisions.
+
+**Decision.**
+1. Recovery is implemented in `features/auth` against the app's Drift SQLite database: a `credential_recovery_challenges` table stores the OTP hash, channel, destination, expiry, attempt counter, consumed marker, `client_operation_id`, `idempotency_key`, and signed-reference digest — all with `shop_id` and application-level tenant scoping.
+2. The app generates the OTP, hashes it with an app-held secret, delivers it through a platform HTTP adapter configured at build/run time, and verifies it in constant time. Secrets in a client binary are an accepted risk of the single-device deployment and must be documented in the runbook.
+3. Every query is tenant-scoped via the repository guard; no `shop_id` is accepted from user input. Responses to unauthenticated recovery requests are identical in body and status for matched and unmatched identifiers.
+4. Success atomically updates the password hash and increments `session_version` in one SQLite transaction, revoking all local sessions, and appends a Category 12 audit event; failures append Category 14. Audit immutability is the SQLite trigger from AD-1.
+5. Idempotency is enforced by SQLite `UNIQUE(client_operation_id)` / `UNIQUE(idempotency_key)`; re-transmission returns the stored challenge without a second OTP.
+6. Recovery is blocked only when no delivery channel is configured; there is no network/server dependency beyond the provider call.
+7. No fifteenth permission and no fifteenth audit category.
+
+**Consequences.** Removes the backend service, `DATABASE_URL`, pgTAP, and PostgreSQL SQL functions. Client-held secrets and single-device scope are explicit, accepted trade-offs; tenant isolation rests entirely on application guards and tests.
+
 ## Stack
 
 | Name | Version | Role |
@@ -513,7 +501,7 @@ lib/
 
 The following architectural dimensions are intentionally deferred beyond Version 1 in alignment with the PRD:
 1. **Multi-Currency FX & Dynamic Wallets:** Single base ledger currency (LKR baseline) locked post-transaction; multi-currency floating ledger deferred.
-2. **Automated Reminders & SMS/WhatsApp Integration:** Outgoing notification gateway architectures deferred pending provider and cost evaluation.
+2. **Automated Reminders & Bulk SMS/WhatsApp Campaigns:** Outgoing *batch/marketing* gateways remain deferred pending provider and cost evaluation. The narrow transactional OTP path required by FR-34 is adopted in V1 under AD-9 — credential-recovery codes only, tenant-partitioned, no marketing/reminder capability.
 3. **Multi-Branch Corporate Hierarchy:** Centralized inventory pooling across separate physical storefronts deferred; strictly independent shop tenants in Version 1.
 4. **Bi-directional Third-Party Accounting Sync:** QuickBooks / Xero API synchronization bridges deferred to post-pilot roadmap.
 

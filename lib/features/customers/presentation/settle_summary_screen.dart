@@ -17,10 +17,6 @@ import 'package:credit_system/features/customers/domain/services/receipt_service
 import 'package:credit_system/features/customers/data/services/receipt_pdf_service.dart';
 import 'package:credit_system/features/collateral/data/daos/collateral_dao.dart';
 import 'package:credit_system/features/collateral/domain/models/collateral_item.dart';
-import 'package:credit_system/features/customers/presentation/adjustment_proposal_screen.dart';
-import 'package:credit_system/features/customers/presentation/correction_adjustment_screen.dart';
-import 'package:credit_system/features/customers/presentation/correction_request_screen.dart';
-import 'package:credit_system/features/customers/presentation/correction_review_screen.dart';
 import 'package:credit_system/features/customers/presentation/voucher_pdf_viewer_web.dart'
     if (dart.library.io) 'voucher_pdf_viewer_mobile.dart';
 import 'package:uuid/uuid.dart';
@@ -34,20 +30,19 @@ import 'package:uuid/uuid.dart';
 /// large type, and the collateral still at stake (settlement never returns
 /// pledged items).
 ///
-/// The amount field is pre-filled to the credit's full outstanding balance.
-/// Tapping **Settle** opens a bottom sheet of settlement options:
+/// The amount field is pre-filled to the credit's full outstanding balance
+/// and stays editable. Tapping **Settle** posts that entered amount directly
+/// through the existing payment path (receipts, idempotency, overpayment
+/// protection, correction lock, audit unchanged): the full balance posts a
+/// full settlement and pops with the committed [Receipt] so the profile can
+/// confirm it, while a lower amount posts an ordinary partial payment and
+/// stays on this screen with a refreshed balance and receipt.
 ///
-/// - **Settle in full** — posts the full outstanding balance through the
-///   existing payment path (receipts, idempotency, overpayment protection,
-///   correction lock, audit unchanged). A confirmed full settlement pops
-///   with the committed [Receipt] so the profile can confirm it.
-/// - **Partial settlement** — dismisses the sheet and focuses the amount
-///   field for a lower amount; with a partial amount entered it posts an
-///   ordinary partial payment, which stays on this screen.
-/// - **Settle** — Story 5.6 partial-forgiveness proposal
-///   (staff-initiated, Shop Owner approves).
-/// - **Extend due date** — FR-26 extension (Shop Owner only, new date plus a
-///   mandatory reason), reusing [OverdueDao.grantDueDateExtension].
+/// A separate **Extend due date** control is shown on eligible credits to any
+/// active actor. It reuses [OverdueDao.grantDueDateExtension] (FR-26, new date
+/// plus a mandatory reason); the Shop-Owner-only rule stays enforced by the
+/// DAO, so a non-owner's tap surfaces a permission error rather than hiding
+/// the control.
 class SettleSummaryScreen extends StatefulWidget {
   /// The active shop tenant UUID.
   final String shopId;
@@ -196,21 +191,6 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
       widget.currentUser.effectivePermissions
           .contains(AppPermission.recordPayments);
 
-  /// Whether the actor may request corrections (staff payment-correction or
-  /// Story 5.6 balance-adjustment proposals).
-  bool get _canRequestCorrection =>
-      widget.currentUser.isActive &&
-      widget.currentUser.effectivePermissions
-          .contains(AppPermission.requestCorrections);
-
-  /// Whether the actor may approve (or directly execute) balance adjustments
-  /// and correction resolutions.
-  bool get _canApproveCorrections =>
-      widget.currentUser.isActive &&
-      widget.currentUser.role == AppRole.shopOwner &&
-      widget.currentUser.effectivePermissions
-          .contains(AppPermission.approveCorrections);
-
   /// Whether the credit is eligible for settlement (disbursed, active/overdue,
   /// balance > 0) — the same rule the payment path enforces.
   bool get _creditEligible =>
@@ -233,17 +213,9 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
     }
   }
 
-  /// The amount currently entered in the field, or null when empty/invalid.
-  Money? get _enteredAmount => _parseAmount(_amountController.text);
-
-  /// Whether the actor may grant due date extensions (Shop Owner only, FR-26).
-  bool get _canExtendDueDate =>
-      widget.currentUser.isActive &&
-      widget.currentUser.role == AppRole.shopOwner;
-
-  Future<void> _recordPayment({Money? amountOverride}) async {
+  Future<void> _recordPayment() async {
     final amountInput = _amountController.text.trim();
-    final amount = amountOverride ?? _parseAmount(amountInput);
+    final amount = _parseAmount(amountInput);
     if (amount == null) {
       setState(() {
         _paymentError = 'Enter a valid positive payment amount.';
@@ -336,123 +308,13 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
     }
   }
 
-  /// Opens the bottom sheet of settlement options for the current credit.
-  ///
-  /// The sheet is intentionally the confirmation step in place of a plain
-  /// "are you sure?" — every option here either posts through the existing
-  /// payment path (full / partial), routes to the existing forgiveness
-  /// proposal flow, or grants an FR-26 due date extension. Nothing posts
-  /// from a sheet row without an explicit tap.
-  Future<void> _openSettleSheet() async {
-    final credit = _credit;
-    if (credit == null) return;
-    final balance = Money.fromCents(credit.balanceCents);
-    final entered = _enteredAmount;
-    final partialEntered =
-        entered != null && entered.minorUnits < credit.balanceCents;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Settlement options',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  Text(
-                    balance.format(),
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              key: const Key('settle_sheet_full'),
-              leading: const Icon(Icons.payments_outlined),
-              title: Text('Settle in full — ${balance.format()}'),
-              subtitle: const Text('Posts the outstanding balance as a full settlement'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _recordPayment(amountOverride: Money.fromCents(credit.balanceCents));
-              },
-            ),
-            ListTile(
-              key: const Key('settle_sheet_partial'),
-              leading: Icon(partialEntered ? Icons.payments : Icons.edit_outlined),
-              title: Text(
-                partialEntered
-                    ? 'Record partial payment — ${entered.format()}'
-                    : 'Partial settlement',
-              ),
-              subtitle: Text(
-                partialEntered
-                    ? 'Records the entered amount as a partial payment'
-                    : 'Clears the amount field to enter a partial payment',
-              ),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                if (partialEntered) {
-                  _recordPayment(amountOverride: entered);
-                } else {
-                  setState(() => _amountController.clear());
-                  _amountFocusNode.requestFocus();
-                }
-              },
-            ),
-            if (_canRequestCorrection && !credit.correctionPending)
-              ListTile(
-                key: const Key('request_adjustment_button'),
-                leading: const Icon(Icons.volunteer_activism_outlined),
-                title: const Text('Settle'),
-                subtitle: const Text(
-                  'Customer cannot pay in full? The Shop Owner approves any forgiveness',
-                ),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _openAdjustmentProposal();
-                },
-              ),
-            if (_canExtendDueDate && credit.status != CreditStatus.settled)
-              ListTile(
-                key: const Key('settle_sheet_extend'),
-                leading: const Icon(Icons.event_outlined),
-                title: const Text('Extend due date'),
-                subtitle: const Text(
-                  'Shop Owner only — new date plus a mandatory reason (FR-26)',
-                ),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _extendDueDate(credit);
-                },
-              ),
-            const SizedBox(height: 8),
-            TextButton(
-              key: const Key('settle_sheet_cancel'),
-              onPressed: () => Navigator.of(sheetContext).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// Grants an FR-26 due date extension on the current credit from the settle
-  /// flow. Shop Owner only; requires a new date strictly after today (shop
-  /// local) and a non-empty reason. Reuses [OverdueDao.grantDueDateExtension]
-  /// so the sync queue, audit trail and overdue→active reset behave exactly
-  /// as they do from the overdue screen.
+  /// flow. Requires a new date strictly after today (shop local) and a
+  /// non-empty reason. The Shop-Owner-only rule stays enforced inside
+  /// [OverdueDao.grantDueDateExtension], so a non-owner's tap reaches the DAO
+  /// and is reported through the SnackBar error path below. Reusing the DAO
+  /// keeps the sync queue, audit trail and overdue→active reset identical to
+  /// the overdue screen.
   Future<void> _extendDueDate(Credit credit) async {
     final today = _shopTimeZone.localDateOf(DateTime.now().toUtc());
     final firstDate = DateTime(today.year, today.month, today.day + 1);
@@ -542,39 +404,6 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
           duration: const Duration(seconds: 4),
         ),
       );
-    }
-  }
-
-  /// Story 5.6: opens the balance-adjustment proposal flow for the current
-  /// credit (partial forgiveness requested because the customer cannot pay in
-  /// full). The proposal is staff-initiated and Shop-Owner-approved; on
-  /// submission this screen reloads so the correction lock shows and the
-  /// option is withdrawn until the owner decides.
-  Future<void> _openAdjustmentProposal() async {
-    final proposed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => AdjustmentProposalScreen(
-          shopId: widget.shopId,
-          creditId: widget.creditId,
-          currentUser: widget.currentUser,
-          database: widget.database,
-        ),
-      ),
-    );
-
-    if (!mounted) return;
-
-    if (proposed == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Adjustment proposed. Awaiting Shop Owner approval. '
-            'Payments are locked on this credit meanwhile.',
-          ),
-          duration: Duration(seconds: 4),
-        ),
-      );
-      await _load();
     }
   }
 
@@ -782,9 +611,8 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Tap Settle for settlement options — settle in full, enter a '
-              'partial amount, propose a balance adjustment, or extend the due '
-              'date.',
+              'Tap Settle to post the entered amount — the full balance '
+              'settles the credit, a lower amount records a partial payment.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 16),
@@ -817,45 +645,53 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
             ],
             const SizedBox(height: 20),
 
-            // Settlement entry (only when eligible)
-            if (canPay) ...[
-              const Text(
-                'Amount to Settle',
-                style: TextStyle(fontWeight: FontWeight.bold),
+            // Settlement entry. The amount field and confirm button are
+            // always visible. Tapping Settle posts the entered amount directly
+            // through the unchanged payment path; ineligibility or a missing
+            // permission is surfaced inline as an error when it is used. The
+            // copy below is informational only and never gates the controls.
+            const Text(
+              'Amount to Settle',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('settle_amount_input'),
+              controller: _amountController,
+              focusNode: _amountFocusNode,
+              decoration: InputDecoration(
+                labelText: 'Amount (LKR)',
+                hintText: 'e.g. 1,500.00',
+                border: const OutlineInputBorder(),
+                suffixText: 'Max: ${balance.format()}',
               ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                key: const Key('settle_confirm_button'),
+                onPressed: _isSubmitting ? null : _recordPayment,
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Settle'),
+              ),
+            ),
+            // Informational copy for blocked states. The button above stays
+            // tappable so the exact eligibility/permission error is shown by
+            // the payment path when it is used.
+            if (!canPay) ...[
               const SizedBox(height: 8),
-              TextField(
-                key: const Key('settle_amount_input'),
-                controller: _amountController,
-                focusNode: _amountFocusNode,
-                decoration: InputDecoration(
-                  labelText: 'Amount (LKR)',
-                  hintText: 'e.g. 1,500.00',
-                  border: const OutlineInputBorder(),
-                  suffixText: 'Max: ${balance.format()}',
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  key: const Key('settle_confirm_button'),
-                  onPressed: _isSubmitting ? null : _openSettleSheet,
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Settle'),
-                ),
-              ),
-            ] else
               const Text(
                 'This credit is not eligible for payment recording.',
                 style: TextStyle(color: Colors.grey),
               ),
+            ],
             if (!canPay && _creditEligible && !_canRecordPayment) ...[
               const SizedBox(height: 8),
               const Text(
@@ -872,6 +708,25 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
                 child: const Text('Cancel'),
               ),
             ),
+
+            // FR-26 extension as its own control. It is shown to any active
+            // actor on an eligible, unsettled credit; the Shop-Owner-only rule
+            // stays in OverdueDao.grantDueDateExtension, so a non-owner's tap
+            // reaches the DAO and surfaces its permission error below.
+            if (widget.currentUser.isActive &&
+                _creditEligible &&
+                credit.status != CreditStatus.settled) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const Key('settle_extend_due_date_button'),
+                  onPressed: _isSubmitting ? null : () => _extendDueDate(credit),
+                  icon: const Icon(Icons.event_outlined),
+                  label: const Text('Extend due date'),
+                ),
+              ),
+            ],
 
             // Receipt preview (only after a partial payment stays on screen)
             if (_receipt != null) ...[
@@ -894,77 +749,6 @@ class _SettleSummaryScreenState extends State<SettleSummaryScreen> {
                       Text('Type: ${_receipt!.paymentTypeLabel}'),
                       Text('Recorded At: ${_receipt!.recordedAtFormatted}'),
                       const SizedBox(height: 12),
-                      if (_canRequestCorrection) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            key: const Key('request_correction_button'),
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      CorrectionRequestScreen(
-                                    shopId: widget.shopId,
-                                    creditId: _receipt!.creditId,
-                                    originalPaymentId: _receipt!.id,
-                                    paymentAmount:
-                                        Money.fromCents(_receipt!.amountCents),
-                                    currentUser: widget.currentUser,
-                                    database: widget.database,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: const Text('Request Correction'),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      if (_canApproveCorrections) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            key: const Key('review_corrections_button'),
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      CorrectionReviewScreen(
-                                    shopId: widget.shopId,
-                                    currentUser: widget.currentUser,
-                                    database: widget.database,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: const Text('Review Corrections'),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      if (_canApproveCorrections) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            key: const Key('adjust_balance_button'),
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      CorrectionAdjustmentScreen(
-                                    shopId: widget.shopId,
-                                    creditId: _receipt!.creditId,
-                                    currentUser: widget.currentUser,
-                                    database: widget.database,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: const Text('Adjust Balance'),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
                       if (_receiptBytes != null) ...[
                         SizedBox(
                           width: double.infinity,

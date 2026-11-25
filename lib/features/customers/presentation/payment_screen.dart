@@ -114,12 +114,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
       widget.currentUser.effectivePermissions
           .contains(AppPermission.recordPayments);
 
-  /// Whether the actor may request corrections (staff payment-correction or
-  /// Story 5.6 balance-adjustment proposals).
+  /// Whether the actor may request corrections (staff payment-correction
+  /// requests, which still follow the owner-approval flow).
   bool get _canRequestCorrection =>
       widget.currentUser.isActive &&
       widget.currentUser.effectivePermissions
           .contains(AppPermission.requestCorrections);
+
+  /// Whether the actor may post an immediate balance adjustment. Any active
+  /// authenticated actor qualifies — no permission gate — but the DAO still
+  /// rejects deactivated accounts and credits with a pending correction.
+  bool get _canPostAdjustment => widget.currentUser.isActive;
 
   /// Whether the actor may review (approve/reject) corrections.
   bool get _canReviewCorrections =>
@@ -234,11 +239,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  /// Story 5.6: opens the balance-adjustment proposal flow for the current
-  /// credit (partial forgiveness requested because the customer cannot pay in
-  /// full). The proposal is staff-initiated and Shop-Owner-approved; on
-  /// submission the payment screen reloads so the correction lock shows and
-  /// the option is withdrawn until the owner decides.
+  /// Opens the immediate balance-adjustment flow for the current credit
+  /// (partial forgiveness because the customer cannot pay in full). Submitting
+  /// posts the adjustment to the ledger at once; on return the payment screen
+  /// reloads so the new balance is shown.
   Future<void> _openAdjustmentProposal() async {
     final proposed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -257,8 +261,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Adjustment proposed. Awaiting Shop Owner approval. '
-            'Payments are locked on this credit meanwhile.',
+            'Adjustment applied immediately. The credit balance has been '
+            'updated in the ledger.',
           ),
           duration: Duration(seconds: 4),
         ),
@@ -453,7 +457,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       : const Text('Record Payment'),
                 ),
               ),
-              if (_canRequestCorrection && !credit.correctionPending) ...[
+              if (_canPostAdjustment && !credit.correctionPending) ...[
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 12),
@@ -463,9 +467,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Customer cannot pay the full balance? Propose to forgive '
-                  'part of it. Nothing posts until the Shop Owner approves; '
-                  'payments are locked meanwhile.',
+                  'Customer cannot pay the full balance? Forgive part of it. '
+                  'The adjustment is applied to the ledger immediately when '
+                  'you submit.',
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 const SizedBox(height: 8),
@@ -474,7 +478,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   child: OutlinedButton.icon(
                     key: const Key('request_adjustment_button'),
                     onPressed: _openAdjustmentProposal,
-                    icon: const Icon(Icons.volunteer_activism_outlined),
+                    icon: const Icon(Icons.receipt),
                     label: const Text('Settle'),
                   ),
                 ),

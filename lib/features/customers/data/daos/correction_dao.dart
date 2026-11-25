@@ -42,17 +42,16 @@ part 'correction_dao.g.dart';
 /// decreases it — the partial forgiveness write-down), and an approved
 /// credit-direction adjustment exceeding the outstanding balance is rejected.
 ///
-/// Balance adjustments and correction proposals are only accepted for an
-/// eligible credit: cash disbursed (workflow `disbursed`), financial status
-/// `active` or `overdue`, and a positive outstanding balance (the same
-/// semantics as [ReceiptService.isEligibleForPayment]). Pending-disbursement,
-/// cancelled and settled/zero-balance credits are refused at proposal time
-/// and re-checked inside the transaction. When an approved adjustment drives
-/// the balance to exactly zero the credit transitions to `settled` with
-/// `settled_at` in the same transaction — it is never stranded as an active
-/// zero-balance credit. A `credit`-direction proposal may not reference an
-/// original payment (that combination would post a mistyped movement); it is
-/// rejected at validation.
+/// Eligibility (cash disbursed, financial status `active`/`overdue`, positive
+/// balance — the semantics of [ReceiptService.isEligibleForPayment]) is gated
+/// by the adjustment screen; this DAO does not re-check it. The shared
+/// balance-adjustment write path enforces tenant scope, the pending correction
+/// lock, idempotency, a non-negative resulting balance, and atomic settlement:
+/// when an adjustment drives the balance to exactly zero the credit
+/// transitions to `settled` with `settled_at` in the same transaction — it is
+/// never stranded as an active zero-balance credit. A `credit`-direction
+/// correction proposal may not reference an original payment (that combination
+/// would post a mistyped movement); it is rejected at validation.
 @DriftAccessor(
   tables: [Credits, Payments, CreditCorrections, CreditLedgerEntries, SyncQueue, Shops, AppUsers],
 )
@@ -984,9 +983,10 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
   /// 2. Input validation: idempotency key, credit id, amount and reason must be
   ///    present; amount must be positive; adjustment type must be a manual
   ///    adjustment (not `compensating_debit`).
-  /// 3. Eligibility: the credit must exist in the actor's shop and must not
-  ///    have a pending correction (the Story 5.3/5.5 correction lock blocks
-  ///    balance-changing transactions against an unverified balance).
+  /// 3. Credit checks: the credit must exist in the actor's shop and must not
+  ///    have a pending correction (the correction lock blocks balance-changing
+  ///    transactions against an unverified balance). Eligibility is checked by
+  ///    the adjustment screen, not here.
   /// 4. Atomic transaction:
   ///    a. Insert idempotency guard row in `sync_queue` (unique constraint on
   ///       `(shop_id, idempotency_key)` prevents duplicates).
@@ -1027,6 +1027,71 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
       actionDescription: 'adjust a credit balance',
     );
 
+    return _postBalanceAdjustment(
+      actor: actor,
+      idempotencyKey: idempotencyKey,
+      creditId: creditId,
+      amount: amount,
+      adjustmentType: adjustmentType,
+      reason: reason,
+      recordedAt: recordedAt,
+    );
+  }
+
+  /// Posts a balance adjustment to the immutable ledger immediately, for any
+  /// active authenticated actor in the shop tenant — no `requestCorrections`
+  /// permission and no Shop Owner approval step.
+  ///
+  /// This is a separate entry point from [adjustBalance] so the owner-only
+  /// authorization contract of that method stays unchanged. Both paths share
+  /// [_postBalanceAdjustment], which supplies the validation, tenant-scoped
+  /// transaction, correction lock, idempotency guard, ledger entry, audit/sync
+  /// entry (`adjust_balance`, category 7) and zero-balance settlement.
+  ///
+  /// Throws [PermissionDeniedException] when the actor is deactivated. The
+  /// remaining validation/state errors are identical to [adjustBalance].
+  /// Like that path, this entry point does not apply a payment-eligibility
+  /// gate: the Settle form keeps Submit tappable and the adjustment posts for
+  /// any credit in the shop, while the correction lock and over-balance guard
+  /// still apply.
+  Future<CreditLedgerEntry> postAdjustmentImmediately({
+    required AppUser actor,
+    required String idempotencyKey,
+    required String creditId,
+    required Money amount,
+    required CreditLedgerEntryType adjustmentType,
+    required String reason,
+    required DateTime recordedAt,
+  }) async {
+    // --- Authorization: any active authenticated actor; no permission gate ---
+    if (!actor.isActive) {
+      throw const PermissionDeniedException(
+        'Access denied: User account is deactivated.',
+      );
+    }
+
+    return _postBalanceAdjustment(
+      actor: actor,
+      idempotencyKey: idempotencyKey,
+      creditId: creditId,
+      amount: amount,
+      adjustmentType: adjustmentType,
+      reason: reason,
+      recordedAt: recordedAt,
+    );
+  }
+
+  /// The shared validation and atomic write path for both balance-adjustment
+  /// entry points ([adjustBalance] and [postAdjustmentImmediately]).
+  Future<CreditLedgerEntry> _postBalanceAdjustment({
+    required AppUser actor,
+    required String idempotencyKey,
+    required String creditId,
+    required Money amount,
+    required CreditLedgerEntryType adjustmentType,
+    required String reason,
+    required DateTime recordedAt,
+  }) async {
     // --- Input validation ---
     final key = idempotencyKey.trim();
     if (key.isEmpty) {
@@ -1093,8 +1158,8 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         );
       }
 
-      // --- Story 5.3 / 5.5 correction lock: while a correction is pending,
-      //     balance adjustments are blocked against the unverified balance. ---
+      // --- Correction lock: while a correction is pending, balance
+      //     adjustments are blocked against the unverified balance. ---
       if (credit.correctionPending) {
         throw StateError(
           'Cannot adjust balance: credit ID "$creditId" has a pending correction '
@@ -1180,9 +1245,9 @@ class CorrectionDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
-      // --- Conditionally update the credit balance. Story 5.6: an owner
-      //     adjustment driving the balance to exactly zero settles the
-      //     credit in the same transaction, mirroring the approval path. ---
+      // --- Conditionally update the credit balance. An adjustment driving the
+      //     balance to exactly zero settles the credit in the same
+      //     transaction. ---
       final zeroBalance = newBalanceCents == 0;
       final affected = await (update(credits)
             ..where((l) =>

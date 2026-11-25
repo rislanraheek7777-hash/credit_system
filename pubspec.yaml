@@ -46,6 +46,8 @@ dependencies:
   argon2: ^1.0.1
   sqlite3: ^3.7.1
   postgres: ^3.5.0
+  # Story 1.11: thin HTTP adapter to the standalone recovery backend.
+  http: ^1.6.0
   flutter_secure_storage: ^11.2.0
   timezone: ^0.11.2
   web: ^1.1.1

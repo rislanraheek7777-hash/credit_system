@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -1035,6 +1037,261 @@ void main() {
       final credit = await currentCredit(db);
       expect(credit.balanceCents, equals(300000));
       expect(credit.correctionPending, isTrue);
+    });
+  });
+
+  group('CorrectionDao - postAdjustmentImmediately (any active actor)', () {
+    test('a cashier without requestCorrections posts a credit adjustment '
+        'immediately, with no pending correction or lock', () async {
+      final entry = await correctionDao.postAdjustmentImmediately(
+        actor: cashier(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        amount: Money.fromCents(20000),
+        adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+        reason: 'Cash settlement concession.',
+        recordedAt: DateTime.utc(2026, 10, 23),
+      );
+
+      expect(entry.entryType, equals(CreditLedgerEntryType.adjustmentCredit));
+      expect(entry.amountCents, equals(20000));
+      expect(entry.preBalanceCents, equals(300000));
+      expect(entry.postBalanceCents, equals(280000));
+      expect(entry.recordedByUserId, equals(cashierId));
+      expect(entry.reason, equals('Cash settlement concession.'));
+
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(280000));
+      expect(credit.correctionPending, isFalse);
+      expect(credit.status, equals(CreditStatus.active));
+
+      final entries = await currentLedgerEntries(db);
+      expect(entries, hasLength(1));
+      expect(entries.first.read<String>('entry_type'), equals('adjustment_credit'));
+
+      final corrections =
+          await correctionDao.getCorrectionsByStatus(shopId, 'pending_approval');
+      expect(corrections, isEmpty);
+    });
+
+    test('a manager without owner role posts a debit adjustment immediately',
+        () async {
+      final entry = await correctionDao.postAdjustmentImmediately(
+        actor: manager(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        amount: Money.fromCents(50000),
+        adjustmentType: CreditLedgerEntryType.adjustmentDebit,
+        reason: 'Undercharge at disbursement.',
+        recordedAt: DateTime.utc(2026, 10, 23),
+      );
+
+      expect(entry.entryType, equals(CreditLedgerEntryType.adjustmentDebit));
+      expect(entry.postBalanceCents, equals(350000));
+      expect(entry.recordedByUserId, equals(managerId));
+      expect((await currentCredit(db)).balanceCents, equals(350000));
+    });
+
+    test('a full write-off settles the credit in the same transaction',
+        () async {
+      final entry = await correctionDao.postAdjustmentImmediately(
+        actor: cashier(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        amount: Money.fromCents(300000),
+        adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+        reason: 'Insolvent customer; forgive everything.',
+        recordedAt: DateTime.utc(2026, 10, 23),
+      );
+
+      expect(entry.postBalanceCents, equals(0));
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(0));
+      expect(credit.status, equals(CreditStatus.settled));
+      expect(credit.settledAt, isNotNull);
+      expect(credit.workflowStatus, equals(CreditWorkflowStatus.disbursed));
+      expect(await currentLedgerEntries(db), hasLength(1));
+    });
+
+    test('the audit/sync entry records the actual submitting actor and the '
+        'adjust_balance event', () async {
+      await correctionDao.postAdjustmentImmediately(
+        actor: cashier(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        amount: Money.fromCents(10000),
+        adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+        reason: 'Audit trail check.',
+        recordedAt: DateTime.utc(2026, 10, 23),
+      );
+
+      final auditRows = (await db.select(db.syncQueue).get())
+          .where((row) => row.actionType == 'adjust_balance')
+          .toList();
+      expect(auditRows, isNotEmpty);
+      final payloads = auditRows
+          .map((row) => jsonDecode(row.payloadJson) as Map<String, dynamic>)
+          .toList();
+      expect(
+        payloads.any((payload) =>
+            payload['auditCategory'] == 7 &&
+            payload['auditEvent'] == 'adjust_balance' &&
+            payload['action'] == 'adjust_balance' &&
+            payload['actorId'] == cashierId &&
+            payload['shopId'] == shopId),
+        isTrue,
+      );
+    });
+
+    test('a deactivated actor is rejected', () async {
+      expect(
+        () => correctionDao.postAdjustmentImmediately(
+          actor: cashier(isActive: false),
+          idempotencyKey: const Uuid().v4(),
+          creditId: creditId,
+          amount: Money.fromCents(10000),
+          adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+          reason: 'Deactivated attempt.',
+          recordedAt: DateTime.utc(2026, 10, 23),
+        ),
+        throwsA(isA<PermissionDeniedException>()),
+      );
+      expect(await currentLedgerEntries(db), isEmpty);
+      expect((await currentCredit(db)).balanceCents, equals(300000));
+    });
+
+    test('repeating the same idempotency key resolves to the first entry',
+        () async {
+      final key = const Uuid().v4();
+      final first = await correctionDao.postAdjustmentImmediately(
+        actor: cashier(),
+        idempotencyKey: key,
+        creditId: creditId,
+        amount: Money.fromCents(10000),
+        adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+        reason: 'Idempotency check.',
+        recordedAt: DateTime.utc(2026, 10, 23),
+      );
+      final second = await correctionDao.postAdjustmentImmediately(
+        actor: cashier(),
+        idempotencyKey: key,
+        creditId: creditId,
+        amount: Money.fromCents(999999),
+        adjustmentType: CreditLedgerEntryType.adjustmentDebit,
+        reason: 'Different payload, same key.',
+        recordedAt: DateTime.utc(2026, 10, 24),
+      );
+
+      expect(second.id, equals(first.id));
+      expect(second.amountCents, equals(10000));
+      expect(await currentLedgerEntries(db), hasLength(1));
+      expect((await currentCredit(db)).balanceCents, equals(290000));
+    });
+
+    test('a pending payment correction blocks the adjustment', () async {
+      await correctionDao.requestCorrection(
+        actor: manager(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        originalPaymentId: paymentId,
+        amount: Money.fromCents(1000),
+        reason: 'Genuine payment correction.',
+        requestedAt: DateTime.utc(2026, 10, 22),
+      );
+
+      expect(
+        () => correctionDao.postAdjustmentImmediately(
+          actor: cashier(),
+          idempotencyKey: const Uuid().v4(),
+          creditId: creditId,
+          amount: Money.fromCents(10000),
+          adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+          reason: 'Should be blocked.',
+          recordedAt: DateTime.utc(2026, 10, 23),
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(await currentLedgerEntries(db), isEmpty);
+      final credit = await currentCredit(db);
+      expect(credit.balanceCents, equals(300000));
+      expect(credit.correctionPending, isTrue);
+    });
+
+    test('cross-shop credit access is rejected', () async {
+      final otherActor = AppUser(
+        id: 'corr-other-cashier',
+        shopId: otherShopId,
+        username: 'corr-other-cashier',
+        fullName: 'Other Cashier',
+        role: AppRole.cashier,
+        isActive: true,
+      );
+
+      expect(
+        () => correctionDao.postAdjustmentImmediately(
+          actor: otherActor,
+          idempotencyKey: const Uuid().v4(),
+          creditId: creditId,
+          amount: Money.fromCents(10000),
+          adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+          reason: 'Cross-shop attempt.',
+          recordedAt: DateTime.utc(2026, 10, 23),
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(await currentLedgerEntries(db), isEmpty);
+    });
+
+    test('over-balance forgiveness and a blank reason are rejected', () async {
+      expect(
+        () => correctionDao.postAdjustmentImmediately(
+          actor: cashier(),
+          idempotencyKey: const Uuid().v4(),
+          creditId: creditId,
+          amount: Money.fromCents(400000),
+          adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+          reason: 'Excessive forgiveness.',
+          recordedAt: DateTime.utc(2026, 10, 23),
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        () => correctionDao.postAdjustmentImmediately(
+          actor: cashier(),
+          idempotencyKey: const Uuid().v4(),
+          creditId: creditId,
+          amount: Money.fromCents(10000),
+          adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+          reason: '   ',
+          recordedAt: DateTime.utc(2026, 10, 23),
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(await currentLedgerEntries(db), isEmpty);
+      expect((await currentCredit(db)).balanceCents, equals(300000));
+    });
+
+    test('an ineligible credit still accepts an immediate adjustment',
+        () async {
+      await (db.update(db.credits)
+            ..where((c) => c.id.equals(creditId) & c.shopId.equals(shopId)))
+          .write(const CreditsCompanion(
+        workflowStatus: Value('pending_disbursement'),
+      ));
+
+      final entry = await correctionDao.postAdjustmentImmediately(
+        actor: cashier(),
+        idempotencyKey: const Uuid().v4(),
+        creditId: creditId,
+        amount: Money.fromCents(10000),
+        adjustmentType: CreditLedgerEntryType.adjustmentCredit,
+        reason: 'Undisbursed credit adjustment.',
+        recordedAt: DateTime.utc(2026, 10, 23),
+      );
+
+      expect(entry.postBalanceCents, equals(290000));
+      expect(await currentLedgerEntries(db), hasLength(1));
+      expect((await currentCredit(db)).balanceCents, equals(290000));
     });
   });
 }

@@ -63,7 +63,7 @@ Flutter **Web + Mobile**. Counter terminal (web) for daily operations; mobile fo
 - Correction-pending lock blocks new payments only on affected credit.
 - Monetary precision: 2 decimals, fixed-point/integer minor units.
 - Photo mandatory by default; audited owner-approved exception.
-- No borrower self-service, no SMS/WhatsApp, no third-party integrations, no OCR, no facial recognition, no RFID/barcode, no fuzzy name matching, no custom permissions beyond 14, in V1.
+- No borrower self-service, no bulk SMS/WhatsApp campaigns, no third-party integrations (except the narrow transactional OTP delivery adapter required by FR-34 / AD-9), no OCR, no facial recognition, no RFID/barcode, no fuzzy name matching, no custom permissions beyond 14, in V1.
 - Offline: local append-only queue; idempotent retry returns original receipt.
 
 ## Accessibility

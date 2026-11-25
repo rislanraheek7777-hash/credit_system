@@ -31,8 +31,29 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Static analysis
+      - name: Resolve standalone backend dependencies
+        working-directory: backend
+        run: dart pub get
+
+      - name: Static analysis (client)
         run: flutter analyze lib/ test/
+
+      - name: Static analysis (recovery backend)
+        working-directory: backend
+        run: dart analyze
+
+      - name: Recovery backend API contract tests
+        working-directory: backend
+        run: dart test
+
+      - name: Release recovery gateway wiring
+        env:
+          CS_RECOVERY_SERVER_URL: https://recovery.example.internal/
+        run: |
+          test -n "$CS_RECOVERY_SERVER_URL"
+          flutter test \
+            --dart-define=CS_RECOVERY_SERVER_URL="$CS_RECOVERY_SERVER_URL" \
+            test/unit/features/auth/gateway_wiring_test.dart
 
       - name: Custom lint - no monetary double
         run: |
@@ -48,3 +69,8 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
         run: |
           flutter test integration_test/ || true
+
+      - name: pgTAP tenant-isolation and recovery migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: bash test/integration/tenant_isolation/run_pgtap_tests.sh

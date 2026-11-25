@@ -39,8 +39,8 @@ part 'app_database.g.dart';
 /// Acts as the responsive, offline-capable local storage engine for retail
 /// counters.
 ///
-/// Schema Version: 27 (customer soft delete: customers.deleted_at;
-/// before that, Story 5.6 added the credit_corrections.direction column).
+/// Schema Version: 29 (Story 1.10: shop-scoped email/phone uniqueness on
+/// `app_users`; before that, version 28 normalized drifted overdue workflows).
 /// Tables:
 /// - [Shops]: Tenant profile, operating timezone, currency preference, contact
 ///   details, receipt notes.
@@ -130,7 +130,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 28;
+  int get schemaVersion => 29;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1089,6 +1089,134 @@ class AppDatabase extends _$AppDatabase {
             "SET \"workflow_status\" = 'disbursed' "
             "WHERE \"workflow_status\" = 'overdue' AND \"status\" = 'overdue'",
           );
+        }
+      }
+      if (from < 29) {
+        // Upgrade from Schema Version 28 to 29 (Story 1.10):
+        // Add shop-scoped email/phone uniqueness so a verified contact
+        // resolves to exactly one staff account per tenant. SQLite cannot
+        // add UNIQUE constraints in place, so the table is rebuilt using the
+        // safe procedure (foreign keys off + legacy_alter_table so child
+        // REFERENCES clauses keep pointing at `app_users`).
+        //
+        // Pre-existing duplicate contacts are NOT modified: the upgrade fails
+        // closed and leaves the legacy data untouched for an operator to fix.
+        final appUsersInfo =
+            await customSelect('PRAGMA table_info("app_users")').get();
+        if (appUsersInfo.isNotEmpty) {
+          final appUsersIndexes = await customSelect(
+            "PRAGMA index_list('app_users')",
+          ).get();
+
+          Future<bool> hasUniqueOn(List<String> columns) async {
+            for (final index in appUsersIndexes) {
+              if (index.read<int>('unique') != 1) continue;
+              final name = index.read<String>('name');
+              final info =
+                  await customSelect("PRAGMA index_info('$name')").get();
+              final indexed = info.map((row) => row.read<String>('name')).toSet();
+              // Exact match only: an index with extra columns does not
+              // provide the required two-column uniqueness constraint.
+              if (indexed.length == columns.length &&
+                  columns.every(indexed.contains)) {
+                return true;
+              }
+            }
+            return false;
+          }
+
+          final hasEmailUnique =
+              await hasUniqueOn(const ['shop_id', 'email']);
+          final hasPhoneUnique =
+              await hasUniqueOn(const ['shop_id', 'phone']);
+
+          if (!hasEmailUnique || !hasPhoneUnique) {
+            // Non-destructive: fail closed on duplicate verified contacts,
+            // exactly as PostgreSQL's ADD CONSTRAINT does. Never silently
+            // clear an owner-registered email or phone.
+            final duplicateEmail = await customSelect(
+              'SELECT "email" FROM "app_users" '
+              'WHERE "email" IS NOT NULL GROUP BY "shop_id", "email" '
+              'HAVING count(*) > 1 LIMIT 1',
+            ).get();
+            if (duplicateEmail.isNotEmpty) {
+              throw StateError(
+                'Cannot upgrade to schema 29: duplicate email within a shop. '
+                'Resolve the duplicate contacts before upgrading.',
+              );
+            }
+            final duplicatePhone = await customSelect(
+              'SELECT "phone" FROM "app_users" '
+              'WHERE "phone" IS NOT NULL GROUP BY "shop_id", "phone" '
+              'HAVING count(*) > 1 LIMIT 1',
+            ).get();
+            if (duplicatePhone.isNotEmpty) {
+              throw StateError(
+                'Cannot upgrade to schema 29: duplicate phone within a shop. '
+                'Resolve the duplicate contacts before upgrading.',
+              );
+            }
+
+            await customStatement('PRAGMA foreign_keys = OFF;');
+            await customStatement('PRAGMA legacy_alter_table = ON;');
+            try {
+              await transaction(() async {
+                await customStatement('DROP TABLE IF EXISTS "app_users_v29";');
+                await customStatement(
+                  'ALTER TABLE "app_users" RENAME TO "app_users_v29";',
+                );
+                await customStatement('''
+                  CREATE TABLE "app_users" (
+                    "id" TEXT NOT NULL,
+                    "shop_id" TEXT NOT NULL REFERENCES "shops" ("id") ON DELETE RESTRICT,
+                    "username" TEXT NOT NULL CHECK (length(username) BETWEEN 1 AND 100),
+                    "email" TEXT CHECK (email IS NULL OR length(email) BETWEEN 0 AND 255),
+                    "phone" TEXT CHECK (phone IS NULL OR length(phone) BETWEEN 0 AND 50),
+                    "full_name" TEXT NOT NULL CHECK (length(full_name) BETWEEN 1 AND 255),
+                    "role" TEXT NOT NULL,
+                    "is_active" INTEGER NOT NULL DEFAULT 1,
+                    "session_version" INTEGER NOT NULL DEFAULT 1,
+                    "permissions" TEXT,
+                    "password_hash" TEXT,
+                    "created_at" INTEGER NOT NULL,
+                    "updated_at" INTEGER NOT NULL,
+                    UNIQUE ("shop_id", "username"),
+                    UNIQUE ("shop_id", "email"),
+                    UNIQUE ("shop_id", "phone"),
+                    PRIMARY KEY ("id"),
+                    CHECK (session_version >= 1)
+                  );
+                ''');
+                await customStatement('''
+                  INSERT INTO "app_users" (
+                    "id", "shop_id", "username", "email", "phone",
+                    "full_name", "role", "is_active", "session_version",
+                    "permissions", "password_hash", "created_at", "updated_at"
+                  ) SELECT
+                    "id", "shop_id", "username", "email", "phone",
+                    "full_name", "role", "is_active", "session_version",
+                    "permissions", "password_hash", "created_at", "updated_at"
+                  FROM "app_users_v29";
+                ''');
+                await customStatement('DROP TABLE "app_users_v29";');
+                await customStatement(
+                  'CREATE INDEX IF NOT EXISTS "idx_app_users_shop_id" '
+                  'ON "app_users" ("shop_id");',
+                );
+                await customStatement(
+                  'CREATE INDEX IF NOT EXISTS "idx_app_users_shop_email" '
+                  'ON "app_users" ("shop_id", "email");',
+                );
+                await customStatement(
+                  'CREATE INDEX IF NOT EXISTS "idx_app_users_shop_phone" '
+                  'ON "app_users" ("shop_id", "phone");',
+                );
+              });
+            } finally {
+              await customStatement('PRAGMA legacy_alter_table = OFF;');
+              await customStatement('PRAGMA foreign_keys = ON;');
+            }
+          }
         }
       }
     },

@@ -1187,6 +1187,8 @@ class $AppUsersTable extends AppUsers
   @override
   List<Set<GeneratedColumn>> get uniqueKeys => [
     {shopId, username},
+    {shopId, email},
+    {shopId, phone},
   ];
   @override
   AppUserEntry map(Map<String, dynamic> data, {String? tablePrefix}) {

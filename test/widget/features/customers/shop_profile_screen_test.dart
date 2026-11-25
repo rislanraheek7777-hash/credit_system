@@ -80,6 +80,47 @@ void main() {
       expect(find.text('LKR'), findsOneWidget);
     });
 
+    testWidgets('page background follows dark theme surfaces in dark mode', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(brightness: Brightness.light, useMaterial3: true),
+          darkTheme: ThemeData(brightness: Brightness.dark, useMaterial3: true),
+          themeMode: ThemeMode.dark,
+          home: ShopProfileScreen(
+            shopId: shopId,
+            currentUser: owner(),
+            database: db,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final darkScheme = Theme.of(
+        tester.element(find.text('Shop ID: shop-1')),
+      ).colorScheme;
+
+      final gradients = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .map((box) => box.decoration)
+          .whereType<BoxDecoration>()
+          .map((decoration) => decoration.gradient)
+          .whereType<LinearGradient>()
+          .toList();
+
+      expect(
+        gradients.any(
+          (gradient) =>
+              gradient.colors.length == 2 &&
+              gradient.colors.first == darkScheme.surface &&
+              gradient.colors.last == darkScheme.surfaceContainerLow,
+        ),
+        isTrue,
+        reason: 'The shop profile page background must switch to dark surfaces',
+      );
+    });
+
     testWidgets('shows error when shop not found', (tester) async {
       final screen = ShopProfileScreen(
         shopId: 'nonexistent',

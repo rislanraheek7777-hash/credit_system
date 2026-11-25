@@ -19,7 +19,6 @@ import 'package:credit_system/features/collateral/domain/models/collateral_item.
 import 'package:credit_system/features/customers/presentation/customer_edit_screen.dart';
 import 'package:credit_system/features/customers/presentation/credit_draft_agreement_action.dart';
 import 'package:credit_system/features/customers/presentation/credit_origination_screen.dart';
-import 'package:credit_system/features/customers/presentation/credit_settle_action.dart';
 import 'package:credit_system/features/customers/presentation/credit_adjustment_action.dart';
 import 'package:credit_system/features/customers/presentation/settle_summary_screen.dart';
 import 'package:credit_system/features/customers/presentation/payment_screen.dart';
@@ -149,8 +148,9 @@ class _CreditStatusSection extends StatelessWidget {
                   ),
                 ),
                 // The per-card adjustment action sits below Settle, mirroring
-                // its placement: offered to actors holding `requestCorrections`,
-                // disabled with a lock subtitle while a proposal is pending.
+                // its placement: offered to any active actor, posting the
+                // adjustment immediately and disabled only while a genuine
+                // payment correction is pending.
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: CreditAdjustmentAction(
@@ -178,9 +178,9 @@ class _CreditStatusSection extends StatelessWidget {
 /// When a customer has multiple actionable credits, tapping a credit's tile
 /// opens its payment screen directly, and each card's per-card Settle action
 /// settles that card's own credit — the card you tapped always settles its
-/// own credit. Each card also offers a per-card Settle
-/// action (Story 5.6) to actors holding `requestCorrections`; it is disabled
-/// with a lock subtitle while a proposal is pending on the credit.
+/// own credit. Each card also offers a per-card Settle adjustment action to
+/// any active actor; submitting applies the adjustment immediately, and the
+/// action is disabled only while a payment correction is pending.
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({
     super.key,
@@ -339,11 +339,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
   }
 
-  /// Opens the adjustment proposal screen for [credit] and, when the staff
-  /// member submitted a proposal, reloads the credit list (so the lock shows)
-  /// and confirms with a SnackBar.
+  /// Opens the adjustment screen for [credit] and, when the actor submitted an
+  /// adjustment, reloads the credit list (so the new balance shows) and
+  /// confirms with a SnackBar.
   ///
-  /// The proposal screen pops with `true` only when a proposal was recorded;
+  /// The adjustment screen pops with `true` only when an adjustment was posted;
   /// backing out returns nothing, so no confirmation is shown.
   Future<void> _requestAdjustment(Credit credit) async {
     final proposed = await Navigator.of(context).push<bool>(
@@ -359,11 +359,12 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
     if (!mounted) return;
 
-    // No result means the user backed out without proposing anything;
-    // only a record reload (so the lock shows) runs after a real proposal.
+    // No result means the user backed out without submitting anything;
+    // only a record reload (so the new balance shows) runs after a real
+    // adjustment.
     if (proposed != true) return;
 
-    // Reload from the database so the credit list reflects the lock.
+    // Reload from the database so the credit list reflects the new balance.
     await _loadProfile(showLoading: false);
 
     if (!mounted) return;
@@ -371,8 +372,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-          'Adjustment proposed. Awaiting Shop Owner approval. '
-          'Payments are locked on this credit meanwhile.',
+          'Adjustment applied immediately. The credit balance has been '
+          'updated in the ledger.',
         ),
         duration: Duration(seconds: 4),
       ),

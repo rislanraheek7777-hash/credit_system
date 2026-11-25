@@ -59,30 +59,69 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
     return entry != null ? _toDomain(entry) : null;
   }
 
-  /// Retrieves a user by their tenant [shopId] and login identifier
-  /// (username, email, or phone number), returning null if not found.
+  /// Seeds the minimal identity needed for a fresh-device login after a
+  /// successful server-side credential recovery.
+  ///
+  /// Deliberately narrow: no password hash, permission data, email or phone is
+  /// written. A subsequent online login re-authenticates against PostgreSQL.
+  Future<void> seedRecoveryIdentity({
+    required String userId,
+    required String shopId,
+    required String username,
+    required String role,
+    required int sessionVersion,
+  }) async {
+    final existing = await getUserById(userId);
+    final now = DateTime.now().toUtc();
+    final companion = AppUsersCompanion(
+      id: Value(userId),
+      shopId: Value(shopId),
+      username: Value(username),
+      fullName: Value(existing?.fullName ?? username),
+      role: Value(role),
+      isActive: const Value(true),
+      sessionVersion: Value(sessionVersion),
+      createdAt: Value(existing?.createdAt ?? now),
+      updatedAt: Value(now),
+      // A server-side reset invalidates any locally cached password hash.
+      passwordHash: const Value(null),
+    );
+    if (existing == null) {
+      await into(appUsers).insert(companion);
+    } else {
+      await (update(appUsers)..where((u) => u.id.equals(userId)))
+          .write(companion);
+    }
+  }
+
+  /// Retrieves a user by their tenant [shopId] and username, returning null
+  /// if not found. Email and phone are contact details, not login identifiers.
   Future<AppUser?> getUserByLoginIdentifier(
       String shopId, String identifier) async {
     final query = select(appUsers)
       ..where((u) =>
-          u.shopId.equals(shopId) &
-          (u.username.equals(identifier) |
-              u.email.equals(identifier) |
-              u.phone.equals(identifier)));
+          u.shopId.equals(shopId) & u.username.equals(identifier));
     final entry = await query.getSingleOrNull();
     return entry != null ? _toDomain(entry) : null;
   }
 
-  /// Retrieves a user by login identifier (username, email, or phone)
-  /// across all shops, returning null if not found.
-  Future<AppUser?> getUserByLoginIdentifierGlobal(String identifier) async {
+  /// Resolves the local tenant scopes in which [username] is cached.
+  ///
+  /// Returns **only** shop identifiers — never credentials, contact details,
+  /// or any user record. This read-only helper exists solely so the offline-
+  /// capable login screen can select a tenant before attempting server-
+  /// authoritative authentication. It is never used by credential recovery,
+  /// which obtains tenant context exclusively from PostgreSQL records.
+  ///
+  /// A username may legitimately exist in more than one tenant, so all matching
+  /// shop ids are returned in a stable order and the caller must choose the
+  /// tenant explicitly (rather than relying on an ambiguous global user row).
+  Future<List<String>> resolveLocalShopIdsForUsername(String username) async {
     final query = select(appUsers)
-      ..where((u) =>
-          u.username.equals(identifier) |
-          u.email.equals(identifier) |
-          u.phone.equals(identifier));
-    final entry = await query.getSingleOrNull();
-    return entry != null ? _toDomain(entry) : null;
+      ..where((u) => u.username.equals(username))
+      ..orderBy([(u) => OrderingTerm.asc(u.shopId)]);
+    final entries = await query.get();
+    return entries.map((entry) => entry.shopId).toSet().toList();
   }
 
   /// Backwards-compatible alias for [getUserByLoginIdentifier].

@@ -194,15 +194,15 @@ A Shop Owner can configure the shop's currency display format and presentation s
 * **Audit Requirements:** Logs all presentation formatting changes and any attempted ledger currency modifications in the append-only, tamper-resistant audit trail.
 * **Out of Scope:** Multi-currency transactions, dynamic FX conversion, or multi-currency wallets within a single shop in Version 1.
 
-#### FR-4: Strict Server-Side Tenant Isolation Enforcement
-The system must enforce strict tenant data isolation on the server side across all database queries, API routes, search indexes, and file storage requests. No user in Shop A can search, retrieve, view, or modify customer records, credits, pledged items, payments, staff profiles, or audit logs belonging to Shop B under any operational condition. Realizes UJ-1, UJ-2, UJ-3.
+#### FR-4: Strict Application-Enforced Tenant Isolation
+The system must enforce strict tenant data isolation in the application layer across all repository queries, search indexes, and file storage requests in the single-device SQLite deployment. No user in Shop A can search, retrieve, view, or modify customer records, credits, pledged items, payments, staff profiles, or audit logs belonging to Shop B. Realizes UJ-1, UJ-2, UJ-3.
 * **Realizes:** UJ-1, UJ-2, UJ-3.
 * **Consequences (testable):**
-  - API requests, URL manipulations, or direct database queries attempting to access a foreign tenant ID return an immediate authorization rejection (`403 Forbidden` / `404 Not Found`) without revealing whether the resource exists in another shop.
+  - Every repository query applies the authenticated `shop_id`; any attempt to resolve a foreign tenant ID is rejected by the guard without revealing whether the resource exists in another shop.
   - Customer NIC or phone searches execute strictly within the active shop tenant and return zero results if the individual exists only in another shop.
-* **Business Rules & Permissions:** Enforced on all incoming requests regardless of role.
+* **Business Rules & Permissions:** Enforced in the data layer on every query regardless of role; UI selectors are presentation conveniences only.
 * **Audit Requirements:** Unauthorized cross-tenant access attempts trigger high-priority security audit logs in the append-only, tamper-resistant audit trail.
-* **Out of Scope:** Physical database-per-tenant hardware isolation (architecture evaluates logical isolation strategies).
+* **Out of Scope:** Server-side/RLS enforcement, HTTP API routes, and physical database-per-tenant isolation — there is no server in this deployment.
 
 ---
 
@@ -216,9 +216,9 @@ A Shop Owner can create, view, activate, and deactivate staff member accounts fo
 * **Consequences (testable):**
   - Deactivating a staff account immediately revokes all active authentication tokens and active sessions on the server side, preventing subsequent logins and operations.
   - Deactivated staff members cannot be assigned as the actor for new credits, payments, disbursements, or item returns.
-* **Business Rules & Permissions:** Restricted to Shop Owner role.
-* **Audit Requirements:** Logs account creation, activation, and deactivation with timestamps and actor ID in the append-only, tamper-resistant audit trail.
-* **Out of Scope:** Self-service public registration for staff members (all staff creation is owner-initiated).
+* **Business Rules & Permissions:** Account creation, activation, and deactivation remain restricted to the Shop Owner role. Staff may self-initiate credential recovery for their own account only (FR-34); this does not grant account-creation authority.
+* **Audit Requirements:** Logs account creation, activation, and deactivation with timestamps and actor ID in the append-only, tamper-resistant audit trail. Credential-recovery events append under Categories 12 and 14 (FR-34); no new event category is introduced.
+* **Out of Scope:** Self-service public *registration* for staff members (all staff creation is owner-initiated). Self-service *recovery* of an existing account is governed by FR-34 and is not registration.
 
 #### FR-6: Granular Permission Assignment
 A Shop Owner can enable or disable specific operational permission toggles for each staff account, covering an explicit catalog of 14 permissions:
@@ -652,24 +652,40 @@ The system must maintain an append-only, tamper-resistant audit trail recording 
 * **Business Rules & Permissions:** System-wide automated capture; viewing audit logs requires `View Audit Logs` permission (or Shop Owner role).
 * **Audit Requirements:** Self-auditing append-only log.
 
-#### FR-32: Data Backup, Recovery Objectives & Durability
-The system architecture must implement automated backups and formal recovery procedures. Realizes non-functional operational continuity.
+#### FR-32: Local File Backup & Durability
+The system must provide a documented backup/restore procedure for the single app-private SQLite file. Realizes non-functional operational continuity.
 * **Realizes:** Non-functional operational continuity.
 * **Consequences (testable):**
-  - **Recovery Point Objective (RPO):** Maximum acceptable data loss window of $\le 15$ minutes in the event of catastrophic server failure.
-  - **Recovery Time Objective (RTO):** System restoration to fully operational status within $\le 4$ hours.
-  - **Restoration Drill Verification:** Disaster recovery restore procedures must be successfully executed and verified against automated consistency test suites prior to production go-live.
-* **Business Rules & Permissions:** Platform infrastructure governance.
-* **Audit Requirements:** Backup execution and restoration drills logged in platform administration logs.
+  - Backups are user-initiated exports of the SQLite file with `PRAGMA integrity_check` verification; the recovery point is the interval between user backups and is disclosed to the user.
+  - A restore drill copies a backup file over the active database and verifies integrity plus a known record before resuming operation.
+* **Business Rules & Permissions:** User-controlled local file governance.
+* **Audit Requirements:** Backup execution and restoration drills logged in the append-only audit trail.
+* **Out of Scope:** WAL archiving, PITR, cloud object storage, and server-side backup schedules — no server or cloud component exists.
 
 #### FR-33: Tenant Isolation & Role-Based Access Automated Verification Gates
 Multi-tenant isolation and role-based permissions must be verified through automated regression test suites prior to release. Realizes non-functional security.
 * **Realizes:** Non-functional security.
 * **Consequences (testable):**
-  - **Automated Tenant Boundary Test Suite:** Automated test suite attempts cross-tenant entity lookups, payment postings, and customer searches across isolated tenants, verifying 100% rejection with `403 Forbidden` / `404 Not Found`.
+  - **Automated Tenant Boundary Test Suite:** automated repository tests attempt cross-tenant entity lookups, payment postings, and customer searches with a foreign `shop_id`, verifying 100% rejection and zero leakage; no HTTP or PostgreSQL integration applies.
   - **RBAC Matrix Verification:** Automated test suite verifies all 14 permission toggles, ensuring that unprivileged accounts are blocked from unauthorized operations (e.g. approving corrections, viewing financial summaries, confirming item handovers).
 * **Business Rules & Permissions:** Release gate criteria.
 * **Audit Requirements:** Automated test run reports preserved with build artifacts.
+
+#### FR-34: Secure Staff Credential Recovery (Out-of-Band OTP)
+A staff member who cannot log in can recover their username and reset their password through an in-app, single-use OTP delivered to the verified contact channel on file for their staff account. Realizes UJ-1, UJ-4.
+* **Realizes:** UJ-1, UJ-4.
+* **Consequences (testable):**
+  - Each request carries a client-generated `client_operation_id` (UUIDv4) and idempotency key; the backend returns the **stored** operation id and idempotency key on re-transmission without issuing or delivering a second OTP.
+  - OTP generation, hashing, delivery and verification run **inside the app** against its SQLite database; provider configuration and the pepper are app-held secrets, an accepted single-device risk documented in the runbook.
+  - Every recovery query is application-tenant-scoped via the repository guard; no client-supplied `shop_id` is accepted, and re-transmission returns the stored challenge without a second OTP.
+  - OTPs are high-entropy, hashed at rest, single-use, short-TTL, and invalidated after bounded failed attempts. No OTP, password, reset token, or username is returned by an unauthenticated endpoint.
+  - All unauthenticated recovery responses use one generic message regardless of whether the identifier exists, preventing account enumeration and cross-tenant probing.
+  - Tenant context derives from the authenticated session, never a client-supplied shop ID; the login-identifier collision gap in `deferred-work.md` must be closed before release.
+  - A successful reset atomically updates the hash and increments `session_version` in one SQLite transaction (revoking all local sessions) and appends a Category 12 event; failures append Category 14.
+  - Self-service applies only to the caller's own account; it cannot change another user's role, permissions, or active status.
+* **Business Rules & Permissions:** Exempt from the 14-permission catalog (unauthenticated flow); no 15th permission is added. Accounts without a verified contact channel require the Shop Owner to register one via FR-5 before recovery is available.
+* **Audit Requirements:** Append `credential_recovery_requested` / `credential_password_reset` under Category 12 and failed/abuse attempts under Category 14, with tenant ID, actor/target user ID, and server timestamp. Passwords, OTPs, and reset tokens are never written to audit records. No fifteenth category is introduced.
+* **Out of Scope:** Borrower recovery (no borrower credentials in V1); platform-admin break-glass; cross-device recovery sync; role/permission changes via recovery; new permissions; standalone backend service, PostgreSQL, `DATABASE_URL`, RLS, and server-side audit writer.
 
 ---
 
@@ -710,4 +726,5 @@ Multi-tenant isolation and role-based permissions must be verified through autom
 | **FR-31** | Append-Only Audit Trail | Non-functional | All Roles | Immutability & 14-event completeness test |
 | **FR-32** | Data Backup & Disaster Recovery | Non-functional | Platform Admin | RPO <= 15m, RTO <= 4h drill |
 | **FR-33** | Tenant Isolation Verification Gates | Non-functional | QA / Security | Zero cross-tenant leakage verification |
+| **FR-34** | Secure Staff Credential Recovery | UJ-1, UJ-4 | All Staff (self-service) | OTP single-use/expiry, generic-response enumeration test, cross-tenant recovery rejection, session revocation verification |
 

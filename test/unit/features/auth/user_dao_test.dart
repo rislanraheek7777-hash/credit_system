@@ -350,6 +350,31 @@ void main() {
       expect(service.verifyPassword('wrong-password', retrieved.passwordHash), isFalse);
     });
 
+    test('recovery cache seeding clears a stale local password hash', () async {
+      final user = AppUser(
+        id: 'user-pw-reseed',
+        shopId: 'shop-alpha-100',
+        username: 'staff.reseed',
+        fullName: 'Staff Reseed',
+        role: AppRole.cashier,
+      );
+      await userDao.createUserWithPassword(user, 'OldPassword123');
+      expect((await userDao.getUserById(user.id))!.passwordHash, isNotNull);
+
+      await userDao.seedRecoveryIdentity(
+        userId: user.id,
+        shopId: user.shopId,
+        username: user.username,
+        role: user.role.key,
+        sessionVersion: 4,
+      );
+
+      final seeded = (await userDao.getUserById(user.id))!;
+      expect(seeded.passwordHash, isNull);
+      expect(seeded.sessionVersion, equals(4));
+      expect(seeded.username, equals('staff.reseed'));
+    });
+
     test('CREATE USER WITH PASSWORD: rejects empty plaintext password', () async {
       final user = AppUser(
         id: 'user-pw-create-002',
@@ -416,7 +441,7 @@ void main() {
       expect(betaUser.shopId, equals('shop-beta-200'));
     });
 
-    test('login identifier: resolves user by username within shop', () async {
+    test('username lookup: resolves user by username within shop', () async {
       final user = AppUser(
         id: 'user-login-001',
         shopId: 'shop-alpha-100',
@@ -435,28 +460,27 @@ void main() {
       expect(byUsername, isNotNull);
       expect(byUsername!.id, equals('user-login-001'));
 
+      // Email and phone are contact details only, not login identifiers.
       final byEmail = await userDao.getUserByLoginIdentifier(
         'shop-alpha-100',
         'login@example.com',
       );
-      expect(byEmail, isNotNull);
-      expect(byEmail!.id, equals('user-login-001'));
+      expect(byEmail, isNull);
 
       final byPhone = await userDao.getUserByLoginIdentifier(
         'shop-alpha-100',
         '+94771112222',
       );
-      expect(byPhone, isNotNull);
-      expect(byPhone!.id, equals('user-login-001'));
+      expect(byPhone, isNull);
 
       final missing = await userDao.getUserByLoginIdentifier(
         'shop-alpha-100',
-        'nobody@example.com',
+        'unknown.user',
       );
       expect(missing, isNull);
     });
 
-    test('login identifier: global lookup resolves across shops', () async {
+    test('username lookup: resolves tenant scopes without exposing user records', () async {
       final user = AppUser(
         id: 'user-global-001',
         shopId: 'shop-beta-200',
@@ -467,15 +491,19 @@ void main() {
       );
       await userDao.createUser(user);
 
-      final resolved = await userDao.getUserByLoginIdentifierGlobal(
-        'global@example.com',
+      // Only shop ids are returned — no credentials, contact details, or
+      // user records are exposed by a cross-tenant resolution.
+      final shopIds = await userDao.resolveLocalShopIdsForUsername('global.user');
+      expect(shopIds, equals(['shop-beta-200']));
+
+      expect(
+        await userDao.resolveLocalShopIdsForUsername('global@example.com'),
+        isEmpty,
       );
-      expect(resolved, isNotNull);
-      expect(resolved!.shopId, equals('shop-beta-200'));
 
       final scopedMiss = await userDao.getUserByLoginIdentifier(
         'shop-alpha-100',
-        'global@example.com',
+        'global.user',
       );
       expect(scopedMiss, isNull);
     });

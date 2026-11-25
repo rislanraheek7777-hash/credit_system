@@ -108,7 +108,9 @@ void main() {
     await database.customSelect('SELECT 1').get(); // force the migration open
     await database.close();
 
-    expect(readUserVersion(file), 28);
+    // Opening at the current schema (29) applies v28 normalization and then
+    // the Story 1.10 v29 app_users uniqueness migration.
+    expect(readUserVersion(file), 29);
 
     final raw = sqlite.sqlite3.open(file.path);
     try {

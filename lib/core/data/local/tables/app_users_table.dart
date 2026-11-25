@@ -62,6 +62,10 @@ class AppUsers extends Table {
   @override
   List<Set<Column>> get uniqueKeys => [
     {shopId, username},
+    // Story 1.10: close the contact-identifier collision so a verified email
+    // or phone resolves to exactly one staff account within a tenant.
+    {shopId, email},
+    {shopId, phone},
   ];
 
   @override

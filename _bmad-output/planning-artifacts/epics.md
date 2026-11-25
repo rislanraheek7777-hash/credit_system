@@ -126,6 +126,7 @@ This document provides the complete epic and story breakdown for **Credit Manage
 * **FR-31 (NFR-1):** Epic 1 (Authoritative append-only schema & trigger) & Epics 1–7 (Cross-cutting logging of all 14 critical event categories)
 * **FR-32 (NFR-2):** Epic 1 (Core continuous WAL archiving & storage versioning) & Epic 7 (Disaster recovery drill protocol & readiness reporting: mandatory RPO <= 15m, RTO <= 4h)
 * **FR-33 (NFR-3):** Epic 1 (Automated CI test pipeline setup) & Epics 1–7 (Mandatory CI merge gates for zero cross-tenant leakage & 14-permission RBAC suites)
+* **FR-34:** Epic 1 — Secure Staff Credential Recovery (single-use OTP, server-authoritative reset, session revocation)
 
 ---
 
@@ -181,9 +182,9 @@ flowchart TD
 #### Epic Overview Summary
 
 **Epic 1: Shop Administration, Staff RBAC & Secure Multi-Tenant Workspace**  
-Shop Owners can configure their shop profile, local timezone (`Asia/Colombo`), branding, and currency display; manage counter staff accounts with the 14-permission RBAC catalog; immediately revoke sessions upon account deactivation via server-validated `session_version`; operate in a strictly isolated multi-tenant environment (PostgreSQL RLS); initialize the append-only audit log trigger rejecting `UPDATE`/`DELETE`; configure continuous WAL archiving for PITR (mandatory RPO <= 15m, RTO <= 4h); and establish the automated CI test pipeline.  
-* **FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-12, FR-31, FR-32, FR-33  
-* **Architecture:** AD-1 (PostgreSQL RLS, Drift SQLite), AD-2 (Integer minor units / Money Value Object), AD-4 (`features/shop`, `features/auth`, `core/`), AD-6 (RBAC & session revocation, audit trigger), AD-7 (CI pipeline setup), AD-8 (Base WAL archiving setup)
+Shop Owners can configure their shop profile, local timezone (`Asia/Colombo`), branding, and currency display; manage counter staff accounts with the 14-permission RBAC catalog; immediately revoke sessions upon account deactivation via server-validated `session_version`; operate in a strictly isolated multi-tenant environment (PostgreSQL RLS); initialize the append-only audit log trigger rejecting `UPDATE`/`DELETE`; configure continuous WAL archiving for PITR (mandatory RPO <= 15m, RTO <= 4h); and establish the automated CI test pipeline; and provide self-service staff credential recovery in-app against SQLite (Story 1.10).  
+* **FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-12, FR-31, FR-32, FR-33, FR-34  
+* **Architecture:** AD-1 (PostgreSQL RLS, Drift SQLite), AD-2 (Integer minor units / Money Value Object), AD-4 (`features/shop`, `features/auth`, `core/`), AD-6 (RBAC & session revocation, audit trigger), AD-7 (CI pipeline setup), AD-8 (Base WAL archiving setup), AD-9 (Transactional OTP & credential recovery)
 
 **Epic 2: Customer Identity, KYC Onboarding & Profile Management**  
 Counter staff can quickly register new and returning customers with complete KYC details (Name, NIC, Phone, Address, Customer Photo); capture device/webcam photos or submit owner-approved photo exceptions; resolve shared-phone duplicate warnings while blocking duplicate NICs; securely access masked identity data based on `viewSensitiveCustomerData` permission; navigate multi-credit customer profiles; log audit events for onboarding and overrides; and verify zero cross-tenant customer data leakage in automated CI tests.  
@@ -219,7 +220,7 @@ Shop Owners can view real-time daily cash movements (cash in vs. confirmed cash 
 
 ## Epic 1: Shop Administration, Staff RBAC & Secure Multi-Tenant Workspace
 
-Shop Owners can configure their shop profile, local timezone (`Asia/Colombo`), branding, and currency display; manage counter staff accounts with the 14-permission RBAC catalog; immediately revoke sessions upon account deactivation via server-validated `session_version`; operate in a strictly isolated multi-tenant environment (PostgreSQL RLS); initialize the append-only audit log trigger rejecting `UPDATE`/`DELETE`; configure continuous WAL archiving for PITR (mandatory RPO <= 15m, RTO <= 4h); and establish the automated CI test pipeline.
+Shop Owners can configure their shop profile, local timezone (`Asia/Colombo`), branding, and currency display; manage counter staff accounts with the 14-permission RBAC catalog; immediately revoke sessions upon account deactivation via server-validated `session_version`; operate in a strictly isolated multi-tenant environment (PostgreSQL RLS); initialize the append-only audit log trigger rejecting `UPDATE`/`DELETE`; configure continuous WAL archiving for PITR (mandatory RPO <= 15m, RTO <= 4h); establish the automated CI test pipeline; and provide self-service staff credential recovery in-app against SQLite (Story 1.10).
 
 ### Story 1.1: Immutable Money Value Object & Monetary Precision Foundations
 
@@ -261,7 +262,9 @@ So that all financial calculations across the platform are mathematically exact,
 
 ---
 
-### Story 1.2: Dual-Tier Relational Database Foundations & Migration Harness
+### Story 1.2: SQLite Relational Database Foundations & Migration Harness
+
+> **SQLite-only amendment (2026-11-25):** PostgreSQL, dual-tier sync, and `PendingServerAck`/`ConfirmedByServer` are void. Drift SQLite is the sole authority; all ACs referring to cloud migration or server acknowledgment are superseded by local schema/migration tests.
 
 As a Software Developer,  
 I want dual-tier relational database connections configured for local Drift (SQLite) and cloud PostgreSQL 16+ with safe schema migration harnesses and an offline synchronization queue schema,  
@@ -296,7 +299,9 @@ So that the application has responsive local persistence at the counter alongsid
 
 ---
 
-### Story 1.3: Server-Enforced PostgreSQL Tenant Isolation & Append-Only Audit Trigger
+### Story 1.3: Application-Enforced Tenant Isolation & SQLite Append-Only Audit Trigger
+
+> **SQLite-only amendment (2026-11-25):** RLS policies, `app.current_shop_id`, `NOBYPASSRLS` and server-side audit writer are replaced by: (a) repository guards that scope every query to the authenticated `shop_id`, verified by cross-tenant repository tests; (b) SQLite `BEFORE UPDATE/DELETE ... RAISE(ABORT)` triggers on `audit_events`.
 
 As a Platform Security Officer and Shop Owner,  
 I want server-enforced PostgreSQL Row-Level Security (RLS) driven strictly by trusted authentication context, alongside a database trigger that rejects all `UPDATE` and `DELETE` operations on audit logs,  
@@ -338,7 +343,9 @@ So that cross-tenant data leakage is physically prevented at the database engine
 
 ---
 
-### Story 1.4: Cloud Backup, Continuous WAL Archiving & Restore-Drill Harness
+### Story 1.4: Local SQLite File Backup & Restore-Drill Harness
+
+> **SQLite-only amendment (2026-11-25):** No WAL archiving, PITR, S3/R2 versioning or cloud provider. Backup = user-initiated SQLite file export with `PRAGMA integrity_check`; restore drill = file restore + integrity + known-record check.
 
 As a Shop Owner and Systems Administrator,  
 I want continuous Write-Ahead Log (WAL) archiving configured for Point-in-Time Recovery (PITR), versioned cloud object storage, and an automated restore drill script,  
@@ -373,6 +380,8 @@ So that database recovery capabilities meeting RPO <= 15 minutes and RTO <= 4 ho
 ---
 
 ### Story 1.5: Automated Security, Multi-Tenant & Integrity CI Verification Pipeline
+
+> **SQLite-only amendment (2026-11-25):** CI runs `flutter analyze`, pure-Dart unit tests and Drift SQLite integration tests. No PostgreSQL service, pgTAP, or server boundary suite; cross-tenant and audit-immutability gates run against SQLite.
 
 As a Software Developer and Shop Owner,  
 I want an automated Continuous Integration (CI) pipeline running risk-prioritized unit, integration, and security verification suites on every code change,  
@@ -540,6 +549,8 @@ So that terminated or compromised counter staff cannot perform unauthorized coun
 
 ### Story 1.9: Platform Administrator Governance & Cross-Tenant Access Restrictions
 
+> **SQLite-only amendment (2026-11-25):** Platform-admin default-deny is enforced by application guards and repository queries only; there are no server endpoints or RLS policies. Blocked attempts append Category 14 locally.
+
 As a Platform Security Officer and Shop Owner,  
 I want platform administrator accounts to be default-denied read access to shop customer personal data, credit agreements, and financial ledgers,  
 So that independent retail shops have guaranteed data privacy, strict tenant isolation, and regulatory compliance without unauthorized operator access.
@@ -571,6 +582,75 @@ So that independent retail shops have guaranteed data privacy, strict tenant iso
 * **Dependencies:** Story 1.2 (Database foundations), Story 1.3 (Tenant isolation), Story 1.8 (Authentication tokens)
 * **Testing Guidance:** Automated CI test suite asserting that platform administrator tokens fail to query customer PII or financial tables (HTTP 403 / zero rows); integration tests simulating cross-tenant SQL injection and parameter manipulation; audit logging tests for Event Category 14 on unauthorized administrative access attempts.
 
+---
+
+### Story 1.10: Secure Staff Credential Recovery (Forgot Username / Password)
+
+> **SQLite-only amendment (2026-11-25):** recovery runs in-app against SQLite. The PostgreSQL/backend-specific ACs below are superseded by: (a) an unauthenticated request returns the same generic body/status for matched and unmatched identifiers while storing a single-use OTP challenge in `credential_recovery_challenges`; (b) one SQLite transaction atomically rotates the password hash, increments `session_version`, consumes the challenge and appends Category 12; failures append Category 14. Re-transmission uses SQLite `UNIQUE(client_operation_id)`/`UNIQUE(idempotency_key)`. App-held delivery secrets are an accepted single-device risk.
+
+As a Counter Staff member who cannot log in,  
+I want to recover my username and reset my password using a single-use OTP sent to my verified contact channel,  
+So that I can regain access without any unauthenticated caller enumerating accounts or taking over another shop's staff credentials.
+
+**Acceptance Criteria:**
+
+**Given** an unauthenticated user on the login screen  
+**When** they open "Forgot username or password?" and submit a login identifier  
+**Then** the standalone backend service resolves the staff account from its own records using tenant-safe lookup (never a client-supplied shop ID) and, if an account with a verified contact channel exists, issues a single-use OTP hashed at rest with a short TTL  
+**And** unauthenticated responses are identical in body and status whether or not an account matched (timing equality is not required)  
+**And** no username, shop ID, or contact-channel value is disclosed.
+
+**Given** a credential recovery challenge has been issued  
+**When** the same request is re-transmitted with the same `client_operation_id` / idempotency key  
+**Then** the server returns the existing challenge without issuing a second OTP or second delivery  
+**And** the client disables the request control while in flight.
+
+**Given** the OTP entry step  
+**When** the user submits a valid, unconsumed, unexpired OTP with a new password  
+**Then** the server verifies in constant time against the stored hash, atomically updates the password hash and increments `session_version` in PostgreSQL  
+**And** all existing sessions are immediately revoked on their next request (401)  
+**And** the challenge is marked consumed and cannot be reused.
+
+**Given** a delivery or verification request  
+**When** it reaches the backend  
+**Then** it is authenticated with a signed, short-lived, single-use reference bound to the challenge; no caller-supplied destination or code is accepted  
+**And** the backend enforces the five-attempt cap and abuse throttling with exactly one Category 14 event per failure/abuse path.
+
+**Given** an invalid, expired, consumed OTP, or more than the bounded number of failed attempts  
+**When** verification fails  
+**Then** the server returns the same generic failure message, increments the attempt counter, invalidates the challenge at the threshold, and appends a Category 14 security audit event  
+**And** the response never reveals whether the identifier, OTP, or challenge existed.
+
+**Given** the client is offline  
+**When** the user attempts any recovery step  
+**Then** the action is blocked and no local `app_users` password write occurs  
+**And** the legacy client-side reset dialog in `login_screen.dart` is removed.
+
+**Given** the Flutter client  
+**When** recovery is exercised  
+**Then** it holds no OTP, hash, pepper, provider credential, or privileged DB connection and runs no DDL or migration bootstrap at startup  
+**And** migration 003 is applied only by a DBA/CI deployment step.
+
+**Given** the `app_users` login-identifier collision recorded in `deferred-work.md`  
+**When** recovery identity resolution goes live  
+**Then** email/phone uniqueness within a shop is enforced by schema (`uniqueKeys`) and server lookup  
+**And** no recovery challenge can be attributed to a user in a different tenant.
+
+**Given** any successful or failed recovery operation  
+**When** it commits  
+**Then** an append-only event is written server-side under Category 12 (`credential_recovery_requested`, `credential_password_reset`) or Category 14 (failure/abuse) with tenant ID, actor/target user ID, and server timestamp  
+**And** no password, OTP, or reset token value appears in the audit record or application logs  
+**And** no fifteenth audit category or sixteenth permission is introduced.
+
+* **Traceability:** FR-4, FR-5, FR-31 (Events #12/#14), FR-33, FR-34, AD-1, AD-4 (`features/auth`), AD-6, AD-9, UX (Credential Recovery flow)
+* **Dependencies:** Story 1.2 (SQLite schema), Story 1.3 (tenant guard + audit trigger), Story 1.7, Story 1.8, Story 1.5 (CI gates), and resolution of the `deferred-work.md` login-identifier collision
+* **Testing Guidance:** Backend API contract tests plus real-PostgreSQL integration tests: OTP single-use/expiry/attempt-threshold, idempotent re-transmission, cross-tenant rejection, generic-response equality (body + status) for matched vs unmatched identifiers, session revocation on next request, Category 12/14 append and immutability, no credential values in logs. Widget tests for the two-step flow. These join the mandatory CI merge gate.
+
+---
+
+### Story 1.11: REMOVED — Standalone Credential Recovery Backend Service
+
+> **Removed 2026-11-25:** the SQLite-only single-device decision eliminates the standalone backend, `DATABASE_URL`, PostgreSQL RLS and pgTAP. Recovery is implemented in-app under Story 1.10 (AD-9). Do not implement this story.
 
 ---
 
@@ -1536,7 +1616,7 @@ So that no privilege escalation or cross-tenant data leakage vulnerability can e
 
 * **Traceability:** FR-4, FR-6, FR-33 (NFR-3), AD-6, AD-7
 * **Dependencies:** Story 1.5 (CI pipeline setup)
-* **Testing Guidance:** Automated security regression test suite; cross-tenant SQL injection and header forgery tests; automated matrix test exercising all 14 RBAC toggles.
+* **Testing Guidance:** Automated security regression test suite; cross-tenant SQL injection and header forgery tests; automated matrix test exercising all 14 RBAC toggles; recovery-specific gates for generic-response equality (matched vs unmatched identifiers), OTP single-use/expiry/attempt-threshold, idempotent re-transmission, no credential values in logs/audit, and immediate session revocation (Story 1.10 / FR-34).
 
 ---
 

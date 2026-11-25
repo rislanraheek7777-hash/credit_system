@@ -8,6 +8,7 @@ import 'package:credit_system/core/data/remote/postgres_executor.dart';
 import 'package:credit_system/core/data/secure_storage.dart';
 import 'package:credit_system/features/auth/data/services/auth_service.dart';
 import 'package:credit_system/features/auth/data/services/jwt_service.dart';
+import 'package:credit_system/features/auth/data/services/otp_gateway.dart';
 import 'package:credit_system/features/auth/data/services/password_hash_service.dart';
 
 /// Mock [PostgreSqlExecutor] for unit testing [AuthService].
@@ -97,20 +98,14 @@ class _MockSqlExecutor implements SqlDatabaseExecutor {
     if (sql.contains('FROM app_users') && _pg.userExists) {
       final user = _pg.simulatedUser ?? _pg._defaultUser();
       // Only enforce identifier matching for the login lookup query, which
-      // uses `username = @p0 OR email = @p0 OR phone = @p0`. Other queries
-      // (validateSession, revokeSession, etc.) pass different parameters.
-      final isLoginLookup = sql.contains('OR email = @p0') ||
-          sql.contains('OR phone = @p0');
+      // uses `WHERE username = @p0` (email/phone are not login identifiers).
+      // Other queries (validateSession, revokeSession, etc.) query by id.
+      final isLoginLookup = sql.contains('WHERE username = @p0');
       if (isLoginLookup) {
         final identifier =
             (parameters != null && parameters.isNotEmpty) ? parameters.first : null;
-        if (identifier != null) {
-          final matches = user['username'] == identifier ||
-              user['email'] == identifier ||
-              user['phone'] == identifier;
-          if (!matches) {
-            return [];
-          }
+        if (identifier != null && user['username'] != identifier) {
+          return [];
         }
       }
       return [user];
@@ -267,7 +262,7 @@ void main() {
       );
     });
 
-    test('authenticate accepts an email identifier', () async {
+    test('authenticate rejects an email identifier (username-only login)', () async {
       const password = 'secure-password-123';
       final hash = passwordHash.hashPassword(password);
       mockPg.simulatedUser = {
@@ -282,17 +277,13 @@ void main() {
         'password_hash': hash,
       };
 
-      final result = await authService.authenticate(
-        'shop-uuid-456',
-        'anura@example.com',
-        password,
+      await expectLater(
+        authService.authenticate('shop-uuid-456', 'anura@example.com', password),
+        throwsA(isA<AuthenticationException>()),
       );
-
-      expect(result.token, isNotEmpty);
-      expect(result.userId, equals('user-uuid-123'));
     });
 
-    test('authenticate accepts a phone identifier', () async {
+    test('authenticate rejects a phone identifier (username-only login)', () async {
       const password = 'secure-password-123';
       final hash = passwordHash.hashPassword(password);
       mockPg.simulatedUser = {
@@ -307,32 +298,8 @@ void main() {
         'password_hash': hash,
       };
 
-      final result = await authService.authenticate(
-        'shop-uuid-456',
-        '+94771234567',
-        password,
-      );
-
-      expect(result.token, isNotEmpty);
-      expect(result.userId, equals('user-uuid-123'));
-    });
-
-    test('authenticate rejects an unknown email/phone identifier', () async {
-      mockPg.userExists = true;
-      mockPg.simulatedUser = {
-        'id': 'user-uuid-123',
-        'shop_id': 'shop-uuid-456',
-        'username': 'staff.anura',
-        'email': 'anura@example.com',
-        'full_name': 'Anura Kumara',
-        'role': 'cashier',
-        'is_active': true,
-        'session_version': 3,
-        'password_hash': 'any',
-      };
-
       await expectLater(
-        authService.authenticate('shop-uuid-456', 'nobody@example.com', 'password'),
+        authService.authenticate('shop-uuid-456', '+94771234567', password),
         throwsA(isA<AuthenticationException>()),
       );
     });
@@ -829,14 +796,262 @@ void main() {
       expect(session.isActive, isTrue);
     });
   });
+
+  group('AuthService - Standalone Recovery Backend (Story 1.11)', () {
+    const operationId = '11111111-2222-4333-8444-555555555555';
+    const storedOperationId = '33333333-4444-4555-8666-777777777777';
+    const storedIdempotency = '44444444-5555-4666-8777-888888888888';
+    const identifier = 'staff.anura';
+    const genericMessage = 'If the account exists, a recovery code has been sent.';
+
+    late _NoSqlPg pg;
+    late _RecordingOtpGateway gateway;
+    late AuthService service;
+
+    setUp(() {
+      pg = _NoSqlPg();
+      gateway = _RecordingOtpGateway();
+      service = AuthService(
+        pg: pg,
+        jwt: JwtService('test-secret-key-for-testing-only'),
+        passwordHash: PasswordHashService(),
+        secureStorage: MockSecureStorage(),
+        otpGateway: gateway,
+      );
+    });
+
+    test('request delegates to the gateway and uses its authoritative ids',
+        () async {
+      final result = await service.requestCredentialRecovery(
+        identifier: identifier,
+        channel: RecoveryChannel.email,
+        clientOperationId: operationId,
+      );
+
+      expect(result.clientOperationId, equals(storedOperationId));
+      expect(result.idempotencyKey, equals(storedIdempotency));
+      expect(gateway.requests, equals(1));
+      expect(gateway.lastRequest, equals({
+        'identifier': identifier,
+        'channel': 'email',
+        'client_operation_id': operationId,
+        'idempotency_key': operationId,
+      }));
+      expect(pg.executed, isEmpty,
+          reason: 'the client must perform no privileged recovery DML');
+    });
+
+    test('re-transmission returns the stored ids without local reference state',
+        () async {
+      final result = await service.requestCredentialRecovery(
+        identifier: identifier,
+        channel: RecoveryChannel.sms,
+        clientOperationId: operationId,
+        idempotencyKey: operationId,
+      );
+      expect(result.clientOperationId, equals(storedOperationId));
+      expect(result.idempotencyKey, equals(storedIdempotency));
+      expect(gateway.requests, equals(1));
+    });
+
+    test('confirm delegates verification and returns only the backend username',
+        () async {
+      final result = await service.confirmCredentialRecovery(
+        clientOperationId: storedOperationId,
+        otp: 'backend-code',
+        newPassword: 'a-brand-new-password',
+      );
+
+      expect(result.username, equals('staff.anura'));
+      expect(result.userId, equals('11111111-2222-4333-8444-555555555555'));
+      expect(result.shopId, equals('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'));
+      expect(result.role, equals('cashier'));
+      expect(result.sessionVersion, equals(4));
+      expect(gateway.verifies, equals(1));
+      expect(gateway.lastVerify, equals({
+        'client_operation_id': storedOperationId,
+        'otp': 'backend-code',
+        'new_password': 'a-brand-new-password',
+      }));
+      expect(pg.executed, isEmpty,
+          reason: 'hash rotation and session revocation belong to the backend');
+    });
+
+    test('a rejected code maps to one generic failure with no disclosure',
+        () async {
+      gateway.rejectCode = true;
+      await expectLater(
+        service.confirmCredentialRecovery(
+          clientOperationId: storedOperationId,
+          otp: 'wrong-code',
+          newPassword: 'a-brand-new-password',
+        ),
+        throwsA(isA<CredentialRecoveryException>()
+            .having((error) => error.message, 'message', genericMessage)
+            .having((error) => error.toString(), 'toString',
+                isNot(contains('wrong-code')))),
+      );
+      expect(gateway.verifies, equals(1));
+    });
+
+    test('short passwords and malformed ids fail before any server work',
+        () async {
+      await expectLater(
+        service.confirmCredentialRecovery(
+          clientOperationId: storedOperationId,
+          otp: 'code',
+          newPassword: 'short',
+        ),
+        throwsA(isA<CredentialRecoveryException>()),
+      );
+      await expectLater(
+        service.requestCredentialRecovery(
+          identifier: identifier,
+          channel: RecoveryChannel.email,
+          clientOperationId: 'not-a-uuid',
+        ),
+        throwsA(isA<CredentialRecoveryException>()),
+      );
+      expect(gateway.requests, equals(0));
+      expect(gateway.verifies, equals(0));
+      expect(pg.executed, isEmpty);
+    });
+
+    test('connectivity failures are offline, with no database fallback',
+        () async {
+      gateway.unavailable = true;
+      await expectLater(
+        service.requestCredentialRecovery(
+          identifier: identifier,
+          channel: RecoveryChannel.email,
+          clientOperationId: operationId,
+        ),
+        throwsA(isA<CredentialRecoveryOfflineException>()),
+      );
+      await expectLater(
+        service.confirmCredentialRecovery(
+          clientOperationId: storedOperationId,
+          otp: 'code',
+          newPassword: 'a-brand-new-password',
+        ),
+        throwsA(isA<CredentialRecoveryOfflineException>()),
+      );
+      expect(pg.executed, isEmpty);
+    });
+  });
 }
 
+/// Records (and forbids) any attempt by the recovery methods to touch the
+/// privileged PostgreSQL connection.
+class _NoSqlPg extends PostgreSqlExecutor {
+  _NoSqlPg() : super.withConnectionString('');
+
+  final List<String> executed = <String>[];
+
+  @override
+  Future<void> execute(String sql, [List<dynamic>? parameters]) async {
+    executed.add(sql);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> query(
+    String sql, [
+    List<dynamic>? parameters,
+  ]) async {
+    executed.add(sql);
+    return const <Map<String, dynamic>>[];
+  }
+
+  @override
+  Future<T> transactionWithTenant<T>(
+    String shopId,
+    Future<T> Function(SqlDatabaseExecutor tx) action,
+  ) async {
+    executed.add('transaction:$shopId');
+    return action(_NoSqlTx(this));
+  }
+}
+
+class _NoSqlTx implements SqlDatabaseExecutor {
+  _NoSqlTx(this._pg);
+
+  final _NoSqlPg _pg;
+
+  @override
+  Future<void> execute(String sql, [List<dynamic>? parameters]) async =>
+      _pg.execute(sql, parameters);
+
+  @override
+  Future<List<Map<String, dynamic>>> query(
+    String sql, [
+    List<dynamic>? parameters,
+  ]) =>
+      _pg.query(sql, parameters);
+
+  @override
+  Future<T> transaction<T>(Future<T> Function(SqlDatabaseExecutor tx) action) =>
+      action(this);
+}
+
+/// Gateway double: records the exact HTTP payloads and never holds a pepper,
+/// a destination, or a locally generated code.
+class _RecordingOtpGateway implements OtpGateway {
+  int requests = 0;
+  int verifies = 0;
+  bool unavailable = false;
+  bool rejectCode = false;
+  Map<String, dynamic>? lastRequest;
+  Map<String, dynamic>? lastVerify;
+
+  @override
+  Future<RecoveryRequestAck> requestRecovery({
+    required String identifier,
+    required RecoveryChannel channel,
+    required String clientOperationId,
+    required String idempotencyKey,
+  }) async {
+    requests++;
+    lastRequest = <String, dynamic>{
+      'identifier': identifier,
+      'channel': channel.key,
+      'client_operation_id': clientOperationId,
+      'idempotency_key': idempotencyKey,
+    };
+    if (unavailable) throw const RecoveryEndpointUnavailableException();
+    return const RecoveryRequestAck(
+      storedOperationId: '33333333-4444-4555-8666-777777777777',
+      storedIdempotencyKey: '44444444-5555-4666-8777-888888888888',
+    );
+  }
+
+  @override
+  Future<RecoveryVerifyAck> verifyRecovery({
+    required String clientOperationId,
+    required String otp,
+    required String newPassword,
+  }) async {
+    verifies++;
+    lastVerify = <String, dynamic>{
+      'client_operation_id': clientOperationId,
+      'otp': otp,
+      'new_password': newPassword,
+    };
+    if (unavailable) throw const RecoveryEndpointUnavailableException();
+    if (rejectCode) {
+      throw const OtpDeliveryException('Recovery request failed');
+    }
+    return const RecoveryVerifyAck(
+      username: 'staff.anura',
+      userId: '11111111-2222-4333-8444-555555555555',
+      shopId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      role: 'cashier',
+      sessionVersion: 4,
+    );
+  }
+}
+
+
 /// Builds a JWT token with valid signature for testing validateSession.
-/// Takes a valid token from [jwtService], modifies the payload claims, and
-/// re-signs with the same secret.
-///
-/// If [removeKey] is specified, that key is removed from the payload instead
-/// of being overridden.
 String _buildTamperedAuthToken(
   JwtService jwtService, {
   String? removeKey,
@@ -849,33 +1064,21 @@ String _buildTamperedAuthToken(
     role: 'cashier',
   );
   final parts = validToken.split('.');
-
-  // Decode the original payload
   final originalPayload = _decodeAuthJwtPayload(parts[1]);
-
-  // Apply modifications
   final modifiedPayload = Map<String, dynamic>.from(originalPayload);
-  if (removeKey != null) {
-    modifiedPayload.remove(removeKey);
-  }
-  if (role != null) {
-    modifiedPayload['role'] = role;
-  }
-
-  // Re-encode payload and compute fresh signature
+  if (removeKey != null) modifiedPayload.remove(removeKey);
+  if (role != null) modifiedPayload['role'] = role;
   final headerB64 = parts[0];
   final payloadB64 = base64Url.encode(utf8.encode(jsonEncode(modifiedPayload)));
   final signingInput = '$headerB64.$payloadB64';
-
   final key = utf8.encode('test-secret-key-for-testing-only');
   final hmac = Hmac(sha256, key);
-  final sigBytes = Uint8List.fromList(hmac.convert(utf8.encode(signingInput)).bytes);
+  final sigBytes =
+      Uint8List.fromList(hmac.convert(utf8.encode(signingInput)).bytes);
   final signatureB64 = base64Url.encode(sigBytes);
-
   return '$headerB64.$payloadB64.$signatureB64';
 }
 
-/// Helper to decode a base64url JWT payload segment.
 Map<String, dynamic> _decodeAuthJwtPayload(String base64UrlPayload) {
   final jsonStr = utf8.decode(base64Url.decode(base64UrlPayload));
   return jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -906,4 +1109,3 @@ class MockSecureStorage implements SecureStorage {
     return true;
   }
 }
-

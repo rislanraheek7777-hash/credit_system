@@ -1,6 +1,7 @@
 import 'package:credit_system/core/data/remote/postgres_executor.dart';
 import 'package:credit_system/core/data/secure_storage.dart';
 import 'package:credit_system/features/auth/data/services/jwt_service.dart';
+import 'package:credit_system/features/auth/data/services/otp_gateway.dart';
 import 'package:credit_system/features/auth/data/services/password_hash_service.dart';
 
 /// Result of a successful authentication: a signed JWT and the user's
@@ -104,6 +105,63 @@ class SessionValidationException implements Exception {
   String toString() => 'SessionValidationException: $message';
 }
 
+/// Generic outcome of a credential-recovery *request*.
+///
+/// Deliberately contains no username, shop id, channel, or delivery status so
+/// an unauthenticated caller cannot distinguish a matched identifier from an
+/// unknown one.
+class CredentialRecoveryRequestResult {
+  final String clientOperationId;
+  final String idempotencyKey;
+
+  const CredentialRecoveryRequestResult({
+    required this.clientOperationId,
+    required this.idempotencyKey,
+  });
+}
+
+/// Outcome of a *successfully verified* credential recovery.
+///
+/// The username is disclosed only here — never in the request response or the
+/// delivery payload (Story 1.10).
+class CredentialRecoveryConfirmResult {
+  final String username;
+  final String userId;
+  final String shopId;
+  final String role;
+  final int sessionVersion;
+
+  const CredentialRecoveryConfirmResult({
+    required this.username,
+    required this.userId,
+    required this.shopId,
+    required this.role,
+    required this.sessionVersion,
+  });
+}
+
+/// Generic failure for every unauthenticated recovery error.
+///
+/// The same message is used for unknown identifiers, wrong/expired/consumed
+/// codes, and exceeded attempts so no condition can be distinguished.
+class CredentialRecoveryException implements Exception {
+  final String message;
+
+  const CredentialRecoveryException(this.message);
+
+  @override
+  String toString() => 'CredentialRecoveryException: $message';
+}
+
+/// Recovery is blocked when no server authority is reachable.
+class CredentialRecoveryOfflineException extends CredentialRecoveryException {
+  static const String offlineMessage =
+      'Recovery is unavailable while offline. Please try again when connected.';
+
+  const CredentialRecoveryOfflineException()
+      : super(offlineMessage);
+}
+
 /// Server-side authentication service implementing Story 1.8.
 ///
 /// Verifies credentials against PostgreSQL (the authoritative source of
@@ -126,6 +184,17 @@ class AuthService {
   final PasswordHashService _passwordHash;
   final SecureStorage _secureStorage;
 
+  /// Replaceable recovery gateway. Inject a fake in tests; production builds
+  /// fall back to [HttpOtpGateway.fromEnvironment], which reads only the
+  /// public backend URL — never a pepper, provider credential, or destination.
+  final OtpGateway? _otpGateway;
+  OtpGateway? _defaultOtpGateway;
+
+  /// Injectable default-gateway factory. Production uses
+  /// [HttpOtpGateway.fromEnvironment]; tests inject a mocked client while still
+  /// exercising the build-time `CS_RECOVERY_SERVER_URL` wiring.
+  final OtpGateway Function()? gatewayFactory;
+
   /// Creates an [AuthService] with the given PostgreSQL executor, JWT
   /// service, password hash service, and secure storage.
   ///
@@ -145,6 +214,8 @@ class AuthService {
     required this._jwt,
     required this._passwordHash,
     required this._secureStorage,
+    this._otpGateway,
+    this.gatewayFactory,
   });
 
   /// Authenticates a staff member against PostgreSQL and issues a JWT.
@@ -191,8 +262,6 @@ class AuthService {
                  session_version, password_hash
           FROM app_users
           WHERE username = @p0
-             OR email = @p0
-             OR phone = @p0
         ''',
         [username],
       );
@@ -863,5 +932,130 @@ class AuthService {
       );
     }
   }
-}
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Story 1.11 — thin HTTP caller for the standalone recovery authority
+  //
+  // The client performs no privileged DML: no challenge SELECT FOR UPDATE, no
+  // attempt counting, no password rotation, no session-version bump and no
+  // audit append. All of that lives in the separately deployed backend.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /// One literal for every unauthenticated outcome so matched and unmatched
+  /// callers receive the same message. Timing equality is not claimed.
+  static const String _recoveryGenericResponse =
+      'If the account exists, a recovery code has been sent.';
+
+  static const int _minPasswordLength = 8;
+
+  /// Step 1: delegate resolution, challenge reservation, code generation and
+  /// delivery to the backend. The client only forwards opaque identifiers.
+  Future<CredentialRecoveryRequestResult> requestCredentialRecovery({
+    required String identifier,
+    required RecoveryChannel channel,
+    required String clientOperationId,
+    String? idempotencyKey,
+  }) async {
+    final normalizedIdentifier = identifier.trim();
+    final operationId = clientOperationId.trim();
+    final idempotency = (idempotencyKey ?? clientOperationId).trim();
+
+    if (normalizedIdentifier.isEmpty ||
+        !_isUuidShape(operationId) ||
+        !_isUuidShape(idempotency)) {
+      throw const CredentialRecoveryException(_recoveryGenericResponse);
+    }
+    final gateway = _resolveGateway();
+    if (gateway == null) throw const CredentialRecoveryOfflineException();
+
+    try {
+      final ack = await gateway.requestRecovery(
+        identifier: normalizedIdentifier,
+        channel: channel,
+        clientOperationId: operationId,
+        idempotencyKey: idempotency,
+      );
+      return CredentialRecoveryRequestResult(
+        clientOperationId: ack.storedOperationId,
+        idempotencyKey: ack.storedIdempotencyKey,
+      );
+    } on CredentialRecoveryException {
+      rethrow;
+    } on OtpDeliveryException catch (error) {
+      if (_isRecoveryConnectivityFailure(error)) {
+        throw const CredentialRecoveryOfflineException();
+      }
+      throw const CredentialRecoveryException(_recoveryGenericResponse);
+    } catch (_) {
+      throw const CredentialRecoveryException(_recoveryGenericResponse);
+    }
+  }
+
+  /// Step 2: ask the backend to verify the code and rotate the password in
+  /// PostgreSQL. The username comes back only on success.
+  Future<CredentialRecoveryConfirmResult> confirmCredentialRecovery({
+    required String clientOperationId,
+    required String otp,
+    required String newPassword,
+  }) async {
+    final operationId = clientOperationId.trim();
+    final submittedOtp = otp.trim();
+    if (!_isUuidShape(operationId) ||
+        submittedOtp.isEmpty ||
+        newPassword.length < _minPasswordLength) {
+      throw const CredentialRecoveryException(_recoveryGenericResponse);
+    }
+    final gateway = _resolveGateway();
+    if (gateway == null) throw const CredentialRecoveryOfflineException();
+
+    try {
+      final ack = await gateway.verifyRecovery(
+        clientOperationId: operationId,
+        otp: submittedOtp,
+        newPassword: newPassword,
+      );
+      return CredentialRecoveryConfirmResult(
+        username: ack.username,
+        userId: ack.userId,
+        shopId: ack.shopId,
+        role: ack.role,
+        sessionVersion: ack.sessionVersion,
+      );
+    } on CredentialRecoveryException {
+      rethrow;
+    } on OtpDeliveryException catch (error) {
+      if (_isRecoveryConnectivityFailure(error)) {
+        throw const CredentialRecoveryOfflineException();
+      }
+      throw const CredentialRecoveryException(_recoveryGenericResponse);
+    } catch (_) {
+      throw const CredentialRecoveryException(_recoveryGenericResponse);
+    }
+  }
+
+  /// Resolves (and caches) the production default gateway for the CI wiring
+  /// assertion; never used by application code.
+  OtpGateway? get resolvedGatewayForTest => _resolveGateway();
+
+  OtpGateway? _resolveGateway() {
+    if (_otpGateway != null) return _otpGateway;
+    if (_defaultOtpGateway != null) return _defaultOtpGateway;
+    try {
+      _defaultOtpGateway = gatewayFactory != null
+          ? gatewayFactory!()
+          : HttpOtpGateway.fromEnvironment();
+    } catch (_) {
+      // Unconfigured endpoint: recovery is treated as offline.
+    }
+    return _defaultOtpGateway;
+  }
+
+  bool _isUuidShape(String value) => RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        caseSensitive: false,
+      ).hasMatch(value);
+
+  bool _isRecoveryConnectivityFailure(OtpDeliveryException error) =>
+      error is RecoveryEndpointUnavailableException ||
+      error.message.toLowerCase().contains('unavailable');
+}

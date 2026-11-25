@@ -237,6 +237,8 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
     }
 
     final canEdit = _canEditProfile;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -252,9 +254,14 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
         ),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFF3E5F5), Color(0xFFE1F5FE)],
+            // Keep the branded pale gradient in light mode, but follow the
+            // theme's dark surfaces when dark mode is active so the page
+            // doesn't stay light while the rest of the app goes dark.
+            colors: isDark
+                ? [colorScheme.surface, colorScheme.surfaceContainerLow]
+                : const [Color(0xFFF3E5F5), Color(0xFFE1F5FE)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -467,9 +474,12 @@ class _ShopProfileScreenState extends State<ShopProfileScreen> {
             ),
             const SizedBox(height: 8),
             if (!_canEditProfile) ...[
-              const Text(
+              Text(
                 'You do not have permission to edit shop profile.',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
             ],
           ],

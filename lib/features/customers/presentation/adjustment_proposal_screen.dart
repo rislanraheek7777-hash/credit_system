@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:credit_system/core/data/local/app_database.dart';
 import 'package:credit_system/core/errors/monetary_exceptions.dart';
 import 'package:credit_system/core/money/money.dart';
-import 'package:credit_system/core/permissions/app_permission.dart';
 import 'package:credit_system/core/permissions/authorization_guard.dart';
 import 'package:credit_system/features/auth/domain/models/app_user.dart';
 import 'package:credit_system/features/customers/data/daos/correction_dao.dart';
@@ -10,31 +9,29 @@ import 'package:credit_system/features/customers/data/daos/credit_dao.dart';
 import 'package:credit_system/features/customers/domain/models/credit.dart';
 import 'package:uuid/uuid.dart';
 
-/// Story 5.6: staff-proposed, owner-approved balance adjustment.
+/// Settle: balance adjustment posted immediately, without owner approval.
 ///
-/// Accessible from the customer profile credit cards, the payment screen and
-/// the settle summary screen (the settle flow) so a customer who cannot pay
-/// in full can have part of the outstanding balance proposed for forgiveness
-/// before settlement. The proposal is recorded as `pending_approval` and the
-/// credit is locked pending Shop Owner review — nothing posts to the ledger
-/// until the Shop Owner approves. A Shop Owner may alternatively execute a
-/// direct adjustment via the owner-only `adjust_balance` path (PRD FR-22
-/// AC-5, unchanged by this screen).
+/// Accessible from the customer profile credit cards and the payment screen so
+/// a customer who cannot pay in full can have part of the outstanding balance
+/// forgiven before settlement. Any active authenticated actor may submit; the
+/// adjustment is posted straight to the immutable ledger when they tap Submit
+/// — no `pending_approval` correction record and no lock. A Shop Owner may
+/// still execute a direct adjustment via the owner-only `adjust_balance` path
+/// (PRD FR-22 AC-5, unchanged by this screen).
 ///
 /// Two input modes are offered (FR-22, as amended 2026-11-19):
-/// - `amount + direction`: the staff member enters the amount and whether the
-///   balance increases (`debit`) or decreases (`credit`, partial forgiveness).
-/// - `new effective balance`: the staff member enters the balance the credit
-///   should carry after approval; the system derives
-///   `delta = current balance − desired balance` and posts the proposal with
+/// - `amount + direction`: the actor enters the amount and whether the balance
+///   increases (`debit`) or decreases (`credit`, partial forgiveness).
+/// - `new effective balance`: the actor enters the balance the credit should
+///   carry after the adjustment; the system derives
+///   `delta = current balance − desired balance` and posts the adjustment with
 ///   the derived amount and direction (`credit` when the desired balance is
 ///   lower, `debit` when higher). The same validations apply — an implied
 ///   over-balance or below-zero result is rejected with the same errors as
 ///   manual mode.
 ///
-/// Forgiveness is never recorded without owner authorization: a staff actor
-/// cannot approve their own proposal, and rejection leaves the balance
-/// untouched.
+/// A genuine payment correction still follows the owner-approval lock flow;
+/// while one is pending the DAO refuses adjustments against that credit.
 class AdjustmentProposalScreen extends StatefulWidget {
   const AdjustmentProposalScreen({
     super.key,
@@ -48,10 +45,10 @@ class AdjustmentProposalScreen extends StatefulWidget {
   /// never trusted from UI input.
   final String shopId;
 
-  /// The credit agreement the proposal targets.
+  /// The credit agreement the adjustment targets.
   final String creditId;
 
-  /// The authenticated actor submitting the proposal.
+  /// The authenticated actor submitting the adjustment.
   final AppUser currentUser;
 
   /// Optional injected [AppDatabase] for testing.
@@ -62,7 +59,7 @@ class AdjustmentProposalScreen extends StatefulWidget {
       _AdjustmentProposalScreenState();
 }
 
-/// Input modes offered by the proposal screen.
+/// Input modes offered by the adjustment screen.
 enum AdjustmentInputMode {
   /// Enter an amount and pick a direction explicitly.
   amountAndDirection,
@@ -91,24 +88,10 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
   final TextEditingController _newBalanceController = TextEditingController();
   final TextEditingController _reasonController = TextEditingController();
 
-  /// Whether the actor may submit an adjustment proposal.
-  bool get _canRequestAdjustment =>
-      widget.currentUser.isActive &&
-      widget.currentUser.effectivePermissions
-          .contains(AppPermission.requestCorrections);
-
-  /// Whether the credit is eligible for a new proposal (disbursed, active or
-  /// overdue, positive balance, no pending correction). Mirrors
-  /// `ReceiptService.isEligibleForPayment` and the DAO gate.
-  bool get _creditEligibleForAdjustment {
-    final credit = _credit;
-    if (credit == null) return false;
-    return !credit.correctionPending &&
-        credit.isDisbursed &&
-        (credit.status == CreditStatus.active ||
-            credit.status == CreditStatus.overdue) &&
-        credit.balanceCents > 0;
-  }
+  /// A single idempotency key for this screen instance. Retries reuse it so an
+  /// ambiguous commit resolves to the already-recorded adjustment instead of
+  /// posting a second one.
+  final String _idempotencyKey = const Uuid().v4();
 
   @override
   void initState() {
@@ -175,11 +158,9 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
   }
 
   /// Whether the submit button must stay disabled because the current inputs
-  /// cannot produce a valid proposal. The reason is mirrored inline so a
+  /// cannot produce a valid adjustment. The reason is mirrored inline so a
   /// blocked button always explains itself.
   bool _submitBlocked(Credit credit) {
-    // An ineligible credit cannot be proposed against.
-    if (!_creditEligibleForAdjustment) return true;
     if (_mode == AdjustmentInputMode.amountAndDirection) {
       final amount = _parseAmount(_amountController.text);
       if (amount == null) return true; // unparseable input
@@ -195,11 +176,6 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
   /// A short human explanation for why submit is disabled, or null when the
   /// form is submittable.
   String? _blockedReason(Credit credit) {
-    if (!_creditEligibleForAdjustment) {
-      return credit.correctionPending
-          ? 'An adjustment or correction is already pending on this credit.'
-          : 'This credit is not eligible for a balance adjustment.';
-    }
     if (_mode == AdjustmentInputMode.amountAndDirection) {
       final amount = _parseAmount(_amountController.text);
       if (amount == null) return 'Enter a valid positive adjustment amount.';
@@ -278,24 +254,6 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
       }
     }
 
-    if (!_canRequestAdjustment) {
-      setState(() {
-        _error =
-            'You do not have the Request Corrections permission.';
-      });
-      return;
-    }
-
-    if (!_creditEligibleForAdjustment) {
-      setState(() {
-        _error = credit.correctionPending
-            ? 'A correction is already pending on this credit. Adjustment '
-                'requests are blocked until the Shop Owner decides it.'
-            : 'This credit is not eligible for a balance adjustment.';
-      });
-      return;
-    }
-
     if (direction == CorrectionDao.directionCredit &&
         amount.minorUnits > credit.balanceCents) {
       setState(() {
@@ -311,16 +269,16 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
     });
 
     try {
-      final idempotencyKey = const Uuid().v4();
-      await _correctionDao.requestCorrection(
+      await _correctionDao.postAdjustmentImmediately(
         actor: widget.currentUser,
-        idempotencyKey: idempotencyKey,
+        idempotencyKey: _idempotencyKey,
         creditId: widget.creditId,
-        originalPaymentId: null,
         amount: amount,
+        adjustmentType: direction == CorrectionDao.directionCredit
+            ? CreditLedgerEntryType.adjustmentCredit
+            : CreditLedgerEntryType.adjustmentDebit,
         reason: reason,
-        requestedAt: DateTime.now().toUtc(),
-        direction: direction,
+        recordedAt: DateTime.now().toUtc(),
       );
 
       if (!mounted) return;
@@ -347,7 +305,7 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _error = 'Proposal failed: $e';
+        _error = 'Adjustment failed: $e';
       });
     }
   }
@@ -374,7 +332,7 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
     final desired = _parseMoneyAllowingZero(_newBalanceController.text);
     final derivedDelta = desired == null ? null : credit.balanceCents - desired.minorUnits;
 
-    // Balance preview after the proposal would be approved, shown for both
+    // Balance preview after the adjustment is applied, shown for both
     // directions in manual mode and always in derive mode.
     int? afterCents;
     if (isAmountMode && amount != null) {
@@ -470,10 +428,10 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
                   children: [
                     RadioListTile<String>(
                       key: const Key('adjustment_direction_credit'),
-                      title: const Text('Forgive part of the balance'),
+                      title: const Text('Settle the balance'),
                       subtitle: const Text(
                         'The credit balance decreases by the amount (partial '
-                        'forgiveness). Nothing posts until the Shop Owner approves.',
+                        'forgiveness). Applied to the ledger as soon as you submit.',
                       ),
                       value: CorrectionDao.directionCredit,
                     ),
@@ -482,7 +440,7 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
                       title: const Text('Increase the balance'),
                       subtitle: const Text(
                         'The credit balance increases by the amount (for example, '
-                        'an undercharge). Nothing posts until the Shop Owner approves.',
+                        'an undercharge). Applied to the ledger as soon as you submit.',
                       ),
                       value: CorrectionDao.directionDebit,
                     ),
@@ -520,7 +478,7 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
                 key: const Key('adjustment_new_balance_input'),
                 controller: _newBalanceController,
                 decoration: InputDecoration(
-                  labelText: 'Balance the credit should carry after approval (LKR)',
+                  labelText: 'Balance the credit should carry after adjustment (LKR)',
                   hintText: 'e.g. 1,500.00 (0.00 forgives the whole balance)',
                   border: const OutlineInputBorder(),
                 ),
@@ -553,7 +511,7 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
               const SizedBox(height: 8),
               Text(
                 key: const Key('adjustment_balance_preview'),
-                'Balance after approval: '
+                'Balance after adjustment: '
                 '${Money.fromCents(afterCents).format()}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -570,7 +528,7 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
               controller: _reasonController,
               maxLines: 3,
               decoration: const InputDecoration(
-                labelText: 'Why is this adjustment proposed?',
+                labelText: 'Why is this adjustment being made?',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -598,14 +556,14 @@ class _AdjustmentProposalScreenState extends State<AdjustmentProposalScreen> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Submit for Shop Owner approval'),
+                    : const Text('Submit'),
               ),
             ),
             const SizedBox(height: 12),
             const Text(
-              'The proposal stays pending until the Shop Owner approves or '
-              'rejects it. No adjustment posts to the ledger meanwhile, and '
-              'payments on this credit are blocked until the decision.',
+              'This adjustment is applied to the ledger immediately when you '
+              'submit: the balance changes at once and, if it reaches zero, '
+              'the credit is settled. It cannot be undone from this screen.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],

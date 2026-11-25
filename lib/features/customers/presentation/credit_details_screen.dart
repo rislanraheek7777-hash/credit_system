@@ -151,6 +151,7 @@ class _CreditDetailsScreenState extends State<CreditDetailsScreen> {
 
   /// Empty state when the shop has no credits yet.
   Widget _buildEmptyState() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -161,20 +162,20 @@ class _CreditDetailsScreenState extends State<CreditDetailsScreen> {
             color: Colors.grey.shade400,
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'No credit details found',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey,
+              color: colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Create your first credit agreement using the credit origination flow.',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey,
+              color: colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -225,6 +226,7 @@ class _CreditDetailsScreenState extends State<CreditDetailsScreen> {
 
   /// Summary header with key metrics and quick stats.
   Widget _buildSummaryHeader() {
+    final colorScheme = Theme.of(context).colorScheme;
     final totalPrincipal =
         _credits.fold<int>(0, (sum, l) => sum + l.principalCents);
     final totalBalance =
@@ -252,10 +254,10 @@ class _CreditDetailsScreenState extends State<CreditDetailsScreen> {
               Text(
                 'Credit Summary',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: colorScheme.onSurface,
                 ),
               ),
               SizedBox(height: 12),
@@ -321,6 +323,7 @@ class _MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -335,9 +338,9 @@ class _MetricTile extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -452,10 +455,10 @@ class _CreditCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final actions = _getActions(context);
     final statusColor = _statusColor(credit.status);
     final statusBadgeColor = _statusBadgeColor(credit.status);
-    final principal = Money.fromCents(credit.principalCents);
     final balance = Money.fromCents(credit.balanceCents);
 
     return Card(
@@ -486,10 +489,10 @@ class _CreditCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Credit ${credit.id.substring(0, credit.id.length.clamp(0, 8))}...',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -522,9 +525,9 @@ class _CreditCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Customer: ${customer?.fullName ?? 'Unknown'}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Colors.black87,
+                        color: colorScheme.onSurface,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -556,29 +559,17 @@ class _CreditCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
 
-              // Amount and balance row
+              // Balance row - moved after customer as requested
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 2,
                     child: Text(
-                      principal.format(),
+                      'Balance: ${balance.format(includeSymbol: false)}',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Text(
-                      'Balance: ${balance.format()}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -593,9 +584,9 @@ class _CreditCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Due: ${credit.dueDateAsCalendarDate(shopTimeZone)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -676,14 +667,14 @@ class _CreditCard extends StatelessWidget {
                       Icon(
                         Icons.lock_clock,
                         size: 14,
-                        color: Colors.grey,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 4),
-                      const Text(
+                      Text(
                         'Pending disbursement — cash not yet handed over',
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey,
+                          color: colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
                         ),
                       ),

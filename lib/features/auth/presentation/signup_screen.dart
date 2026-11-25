@@ -8,7 +8,10 @@ import 'package:credit_system/features/shop/domain/models/shop_profile.dart';
 import 'package:credit_system/core/permissions/app_permission.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  const SignupScreen({super.key, this.database});
+
+  /// Injectable for widget tests; production builds use a real [AppDatabase].
+  final AppDatabase? database;
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -17,6 +20,7 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -30,7 +34,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
-    _db = AppDatabase();
+    _db = widget.database ?? AppDatabase();
     _userDao = UserDao(_db!);
     _shopDao = ShopDao(_db!);
   }
@@ -38,6 +42,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -57,17 +62,9 @@ class _SignupScreenState extends State<SignupScreen> {
 
     setState(() => _isLoading = true);
     try {
+      final username = _usernameController.text.trim();
       final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
-    if (email.isEmpty && phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email or phone is required')),
-      );
-      setState(() => _isLoading = false);
-      return;
-    }
-    final isEmail = email.isNotEmpty;
-    final username = isEmail ? email : phone;
+      final phone = _phoneController.text.trim();
       final user = AppUser(
         id: const Uuid().v4(),
         shopId: 'default-shop',
@@ -114,6 +111,24 @@ class _SignupScreenState extends State<SignupScreen> {
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Name'),
                 validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                key: const Key('signupUsernameField'),
+                controller: _usernameController,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  hintText: 'Enter username',
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Username is required';
+                  }
+                  if (v.trim().length > 100) {
+                    return 'Username cannot exceed 100 characters';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(

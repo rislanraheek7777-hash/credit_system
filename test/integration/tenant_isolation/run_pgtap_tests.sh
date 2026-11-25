@@ -132,6 +132,13 @@ if [[ -n "$MIGRATION_DIR" && -f "$MIGRATION_DIR/001_initial_schema.sql" ]]; then
     echo "Applying migrations against test database..."
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIGRATION_DIR/001_initial_schema.sql"
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIGRATION_DIR/002_rls_roles_audit.sql"
+    # Use the same idempotent CLI as operators so schema_migrations is recorded
+    # and an operator/CI re-run cannot apply 003 twice.
+    (
+      cd "$SCRIPT_DIR/../../../backend" || exit 1
+      dart pub get >/dev/null
+      dart run bin/migrate.dart --path "$MIGRATION_DIR/003_credential_recovery.sql"
+    )
     echo "Migrations applied successfully."
     echo ""
 fi

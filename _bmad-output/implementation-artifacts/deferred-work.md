@@ -13,6 +13,7 @@
 - source_spec: `spec-fix-customer-id-type-mismatch.md`
   summary: `app_users` table documents email/phone as unique within shop but `uniqueKeys` only declares `{shopId, username}`; `getUserByLoginIdentifierGlobal` resolves across all shops, so colliding identifiers can attribute a login to the wrong shop.
   evidence: `lib/core/data/local/tables/app_users_table.dart:63` and `lib/features/auth/data/daos/user_dao.dart:73-80`. Pre-existing design gap; flagged by verification-gap review.
+  resolution: BLOCKING dependency for Story 1.10 / FR-34 — recovery identity resolution must never attribute a challenge to a user in another tenant. Enforce `uniqueKeys` on `(shopId, email)` and `(shopId, phone)` in both Drift and PostgreSQL, replace global login lookup with tenant-scoped resolution, and add cross-tenant rejection tests before Story 1.10 is releasable.
 - source_spec: `spec-dashboard-live-metrics.md`
   summary: Dashboard "Collected" is derived from credit balance deltas, so correction write-downs and manual balance adjustments look like cash collected.
   evidence: `correction_dao.dart` updates `credits.balance_cents` on corrections and adjustments, and the dashboard sums `principal_cents - balance_cents`; needs a product decision between cash-received and net-principal definitions.
@@ -254,3 +255,55 @@
 - source_spec: `spec-5-6-staff-proposed-owner-approved-balance-adjustments-partial-forgiveness.md`
   summary: A full forgiveness settled at the counter produces no settlement document/receipt of its own - the adjustment_credit ledger entry is the only terminal artifact, and Epic 6/7 cannot distinguish "forgiven at counter" from "settled by payment with receipt".
   evidence: Blind-hunter finding in the 5.6 review; product/Epic-7 scope question - a settlement-disposition document, or an explicit Epic 7 derived marker in the audit viewer. Not addable here without new "settlement semantics" scope and human renegotiation of the frozen intent.
+
+- source_spec: `spec-remove-balance-adjustment-approval-from-settle.md`
+  summary: The per-card Settle action is unwired — `CreditSettleAction` is instantiated nowhere in `lib/`, `_CreditStatusSection.onSettle` is never consumed, `SettleSummaryScreen` is unreachable through the real customer-profile flow, and 10 settle widget tests are red at `settle_credit_button_*`.
+  evidence: Pre-existing uncommitted working-tree change at build start (the `credit_settle_action` import was removed before this build); confirmed by verification-gap review. Outside this story's settle-screen-only scope and kept as-is by human choice; restoring the entry point would re-activate the extended in-group absence assertions that currently never execute.
+
+- source_spec: `spec-remove-balance-adjustment-approval-from-settle.md`
+  summary: The `credit_details_screen.dart` display change (principal row removed, balance switched to `format(includeSymbol: false)`, inaccurate "moved after customer" comment) ships with no effective verification — its only test fails at line 89 before reaching the stale line-91 assertion.
+  evidence: Verification-gap and blind-hunter findings in this build's review; the changed display is pre-existing working-tree work, outside settle scope, kept as-is by human choice. Needs a green widget test pinning the new no-symbol balance text and the absence of the principal row.
+
+- source_spec: `spec-remove-balance-adjustment-approval-from-settle.md`
+  summary: Non-settle entry points still label owner-approval flows as "Settle" - `payment_screen.dart` / `credit_adjustment_action.dart` use the "Settle" label with a receipt icon, and `adjustment_proposal_screen.dart` pairs a "Settle the balance" title with a "partial forgiveness / Shop Owner approves" subtitle - leaving contradictory copy outside the settle screen.
+  evidence: Blind-hunter findings in this build's review; pre-existing working-tree edits outside settle scope, kept as-is by human choice under D2.
+
+- source_spec: `spec-post-adjustment-immediately-without-owner-approval.md`
+  summary: The pre-existing `credit_details_screen.dart` display change still lacks effective verification - the principal row is gone, the balance uses `format(includeSymbol: false)`, and `credit_details_screen_test.dart` fails at line 89 before reaching its stale line-91 assertion.
+  evidence: Edge-case, verification-gap and blind-hunter findings in this build's review; the change predates this story and is outside the approved code-scope intent. Needs a green widget test pinning the new balance text and the absence of the principal row.
+
+- source_spec: `spec-post-adjustment-immediately-without-owner-approval.md`
+  summary: The per-card Settle action remains unwired - `CreditSettleAction` has no instantiation in `lib/`, `_CreditStatusSection.onSettle` is never consumed, `SettleSummaryScreen` is unreachable through the real flow, and 10 settle widget tests stay red.
+  evidence: Blind-hunter finding in this build's review; pre-existing at baseline and already filed by the sibling settle spec. Restoring that entry point is a separate work stream.
+
+- source_spec: `spec-post-adjustment-immediately-without-owner-approval.md`
+  summary: No server-side authorization layer distinguishes cashier-originated `adjust_balance` rows - PostgreSQL RLS enforces tenant isolation but grants `cs_app` INSERT without a role/permission predicate, so the new permissionless adjustment path is not constrained beyond the client.
+  evidence: Blind-hunter finding in this build's review; D4 explicitly excludes permission-catalog and server changes. Needs a separate server/RLS decision and verification against a PostgreSQL instance.
+
+- source_spec: `spec-post-adjustment-immediately-without-owner-approval.md`
+  summary: Historical planning docs still describe staff-propose/owner-approve for this submit - `EXPERIENCE.md` lines 33/49/95 and PRD FR-22 - while the approved spec renegotiated the behavior to immediate posting.
+  evidence: Blind-hunter findings in this build's review; the human-approved frozen Intent/Decisions are the renegotiation record, and updating planning artifacts was not part of this story's intent. Reconcile the docs in a dedicated correct-course pass.
+
+- source_spec: `spec-enable-settle-submit-button.md`
+  summary: Scratch/test-log artifacts (`output.txt`, `summary.txt`, `test_output.txt`, `_tmp/claims credit details.txt`) are staged in the working tree, contain mojibake, duplicate each other and no longer match the tests they log.
+  evidence: Blind-hunter findings in this build's review; all four were already staged additions at build start and are not produced by this story. Remove them and add ignore rules in a separate hygiene pass.
+
+- source_spec: `spec-enable-settle-submit-button.md`
+  summary: The pre-existing immediate-adjustment path still lacks server-side authorization, in-transaction eligibility re-checks and an effective screen-level idempotency-retry test.
+  evidence: Blind-hunter and verification-gap findings in this build's review; all are pre-existing work from `spec-post-adjustment-immediately-without-owner-approval.md`, already deferred there and untouched by this UI-only story. Needs server/RLS and DAO work in its own stream.
+
+- source_spec: `spec-enable-settle-submit-button.md`
+  summary: The per-card Settle action remains unwired, so the newly always-visible `settle_confirm_button` is still unreachable through the real profile flow; the credit-details display change and stale "Settle" labels also remain unverified.
+  evidence: Verification-gap and blind-hunter findings in this build's review; all are pre-existing at baseline and already filed by the two sibling settle specs. The human explicitly chose the summary-button option (Q1-C) over restoring the entry point (Q1-D).
+
+- source_spec: `spec-1-10-secure-staff-credential-recovery.md`
+  summary: RESOLVED by Correct Course 2026-11-25 — AD-9 now mandates a standalone backend service; remaining work is implementation of Stories 1.11 and 1.10 via a fresh build, not a defect waiver.
+  evidence: Four review passes found unresolved spec-level defects — no bearer auth on /deliver and /verify, no server-side attempt/audit control on /verify, dead deliveryReference, privileged DDL applied from main() on every client launch, duplicated SQL with only a parity-test guard, blank contact strings colliding under (shop_id,email)/(shop_id,phone) uniqueness, and pgTAP fixtures using an unsupported role. Human chose redesign on 2026-11-25; see the PAUSED note in the spec and Review Triage Log pass 4.
+
+- source_spec: `spec-1-11-standalone-credential-recovery-backend-service.md`
+  summary: Review loopback limit reached (iteration 5) with high items still open — finalized-but-undelivered challenge recovery, unvalidated SMTP From header, default-gateway POST test, and real-PostgreSQL execution of production SQL.
+  evidence: Backend 52/52 and Flutter 175 tests pass and both analyzers are clean, but backend SQL is exercised through substring-matching fakes and pgTAP was not run locally. See Review Triage Log pass 6 in the spec. Resolve in a follow-up build with a real PostgreSQL test harness.
+
+- source_spec: none
+  summary: Standalone backend / PostgreSQL work is void under the SQLite-only single-device decision.
+  evidence: AD-1, AD-9 and PRD FR-4/FR-32/FR-33/FR-34 amended 2026-11-25; Story 1.11 removed and Story 1.10 re-scoped in-app. Backend package and PostgreSQL migration artifacts remain in the working tree only as superseded work.

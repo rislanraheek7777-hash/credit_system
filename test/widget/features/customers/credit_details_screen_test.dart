@@ -117,6 +117,75 @@ void main() {
     await db.close();
   });
 
+  testWidgets('credit card text follows the dark theme instead of staying black', (
+    WidgetTester tester,
+  ) async {
+    final db = await openTestDatabase();
+
+    const shopId = 'shop-dark-mode';
+    const customerId = 789;
+
+    await seedShopAndCustomer(db, shopId: shopId, customerId: customerId);
+    final now = DateTime.now().toUtc();
+    await insertCredit(db,
+      Credit(
+        id: 'credit-dark-1',
+        shopId: shopId,
+        customerId: customerId,
+        principalCents: 500000,
+        balanceCents: 300000,
+        status: CreditStatus.active,
+        workflowStatus: CreditWorkflowStatus.disbursed,
+        dueDate: now.add(const Duration(days: 30)),
+        createdAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark, useMaterial3: true),
+        home: CreditDetailsScreen(
+          shopId: shopId,
+          currentUser: AppUser(
+            id: testUserId,
+            shopId: shopId,
+            username: 'testuser',
+            fullName: 'Test User',
+            role: AppRole.manager,
+            isActive: true,
+          ),
+          database: db,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final colorScheme = Theme.of(
+      tester.element(find.text('Credit credit-d...')),
+    ).colorScheme;
+
+    // Primary text must follow the theme, not a hardcoded near-black.
+    expect(
+      tester.widget<Text>(find.text('Credit credit-d...')).style?.color,
+      colorScheme.onSurface,
+    );
+    expect(
+      tester
+          .widget<Text>(find.textContaining('Customer: Sunil Perera'))
+          .style
+          ?.color,
+      colorScheme.onSurface,
+    );
+
+    // Secondary metadata must follow the theme's muted color.
+    expect(
+      tester.widget<Text>(find.textContaining('Due:')).style?.color,
+      colorScheme.onSurfaceVariant,
+    );
+
+    await db.close();
+  });
+
   group('CreditDetailsScreen - draft agreement action', () {
     const shopId = 'shop-123';
     const customerId = 456;
